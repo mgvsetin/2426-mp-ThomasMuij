@@ -1,7 +1,6 @@
-import psycopg
 from dataclasses import dataclass
 from datetime import datetime
-# from psycopg import sql
+from psycopg import sql
 
 from pg_connection import get_connection
 
@@ -22,10 +21,13 @@ class Tag:
     def get_columns(columns=['id', 'balance', 'created_at']):
         with get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("""SELECT * FROM tag""")
+            columns = [sql.Identifier(column) for column in columns]
+            print(columns)
+            print(sql.SQL('SELECT {columns} FROM tag').format(columns=sql.SQL(', ').join(columns)).as_string())
+            cur.execute(sql.SQL('SELECT {columns} FROM tag').format(columns=sql.SQL(', ').join(columns)))
             return cur.fetchall()
         
-    def insert_rows(rows=[]):
+    def insert_rows(rows: list[list], columns=['balance', 'created_at']):
         with get_connection() as conn:
             cur = conn.cursor()
 
@@ -34,7 +36,4 @@ class Tag:
                                 VALUES (%s, %s)""", rows)
 
 # tag1 = Tag(1, 200, datetime(2004, 2, 25, 23, 59, 59))
-Tag.init_db()
-Tag.insert_rows([[2000, datetime.now()], [250, datetime.now()]])
-cols = Tag.get_columns()
-print(cols)
+Tag.get_columns()
