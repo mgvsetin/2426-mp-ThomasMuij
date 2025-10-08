@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fake frontend</title>
+</head>
+
+<body>
+
+
+  <script>
+    async function get(path, type) {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000${path}`);
+        let message;
+        if (type === 'json') {
+          message = await response.json();
+        } else if (type === 'text') {
+          message = await response.text()
+        }
+        document.body.innerHTML = message;
+        console.log(message);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    async function post(path, responseType, requestType) {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000${path}`, {
+          method: 'POST',
+          body: 'I sent this',
+          // headers: {
+          //   'Content-Type': ''
+          // }
+        });
+        let message;
+        if (responseType === 'json') {
+          message = await response.json();
+        } else if (responseType === 'text') {
+          message = await response.text()
+        }
+        document.body.innerHTML = message;
+        console.log(message);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    post('/login', 'text');
+  </script>
+</body>
+
+</html>
