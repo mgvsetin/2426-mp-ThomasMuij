@@ -30,7 +30,7 @@ def init_db():
             cur.execute(sql)
 
 
-@click.command('init-db')
+@click.command('init-db') # flask --app cashier_app init-db
 def init_db_command():
     init_db()
     click.echo('Initialized the database.')

@@ -1,8 +1,29 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid()
 
-CREATE TYPE account_type AS ENUM ('admin','main_cashier','cashier');
-CREATE TYPE transaction_type AS ENUM ('purchase','deposit','withdrawal');
-CREATE TYPE account_change_type AS ENUM ('username','password_hash');
+DO $$
+BEGIN
+  BEGIN
+    CREATE TYPE account_type AS ENUM ('admin','manager','main_cashier','cashier');
+  EXCEPTION
+    WHEN duplicate_object THEN
+      NULL;
+  END;
+
+  BEGIN
+    CREATE TYPE transaction_type AS ENUM ('purchase','deposit','withdrawal');
+  EXCEPTION
+    WHEN duplicate_object THEN
+      NULL;
+  END;
+
+  BEGIN
+    CREATE TYPE account_change_type AS ENUM ('username','password_hash');
+  EXCEPTION
+    WHEN duplicate_object THEN
+      NULL;
+  END;
+END
+$$ LANGUAGE plpgsql;
 
 
 -- // metadata / reference_id / notes
@@ -20,9 +41,6 @@ CREATE TABLE IF NOT EXISTS tag (
 );
 
 
--- admin can't make purchases, deposits or withdrawals
--- main_cashier can make deposits and withdrawals, not purchases
--- cashier can make purchases, not deposits, withdrawals
 CREATE TABLE IF NOT EXISTS account (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   type account_type NOT NULL,
@@ -31,12 +49,12 @@ CREATE TABLE IF NOT EXISTS account (
   created_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz
 );
-CREATE UNIQUE INDEX ux_account_username_active ON account (LOWER(username)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_account_username_active ON account (LOWER(username)) WHERE deleted_at IS NULL;
 
 
 CREATE TABLE IF NOT EXISTS account_history (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES app_account(id) ON DELETE CASCADE,
+  account_id uuid NOT NULL REFERENCES account(id) ON DELETE CASCADE,
   change account_change_type NOT NULL,
   old_value text,
   new_value text,
