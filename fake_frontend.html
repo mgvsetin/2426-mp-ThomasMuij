@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fake frontend</title>
+</head>
+
+<body>
+  <!-- <form action="http://127.0.0.1:5000/login" method="POST" enctype="application/x-www-form-urlencoded">
+    <input name="username" />
+    <input name="email" type="email" />
+    <button type="submit">Send</button>
+  </form> -->
+
+  <script>
+    async function get(path, responseType='text') {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000${path}`);
+        let message;
+        if (responseType === 'json') {
+          message = await response.json();
+        } else if (responseType === 'text') {
+          message = await response.text()
+        }
+        document.body.innerHTML += message;
+        console.log(message);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    async function post(path, requestBody, contentType = 'text/plain', responseType='text') {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000${path}`, {
+          method: 'POST',
+          body: requestBody,
+          headers: {
+            'Content-Type': contentType
+          }
+        });
+        let message;
+        if (responseType === 'json') {
+          message = await response.json();
+        } else if (responseType === 'text') {
+          message = await response.text()
+        }
+        document.body.innerHTML += message;
+        console.log(message);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    async function requestMethod(path, method, responseType='text') {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000${path}`, {
+          method: method
+        });
+        let message;
+        if (responseType === 'json') {
+          message = await response.json();
+        } else if (responseType === 'text') {
+          message = await response.text()
+        }
+        document.body.innerHTML += message;
+        console.log(message);
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    get('/login')
+  </script>
+</body>
+
+</html>

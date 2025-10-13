@@ -1,6 +1,6 @@
-import psycopg
-from psycopg import sql
-from pg_database.pg_connection import get_connection
+# import psycopg
+# from psycopg import sql
+# from pg_database.pg_connection import get_connection
 
 
 # with get_connection() as conn:
@@ -18,3 +18,13 @@ from pg_database.pg_connection import get_connection
 #     print(query.as_string())
 
 #     # cur.execute(query, ['mat', 20])
+
+# import psycopg
+# from pg_modules.pg_connection import get_connection
+
+# with get_connection() as conn:
+#     print(conn.execute('SELECT * FROM tag').fetchall())
+# conn.close()
+# conn.close()
+
+print(len('this is my really long username'))
