@@ -36,7 +36,7 @@ def verify_login(username: str, password: str) -> bool:
                 cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, user_id))
     return True
 
-password = 'Thisismypassword'
+password = 'development'
 import time
 print('start hash')
 start = time.time()

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Přihlášení</title>
+
+  <link rel="stylesheet" href="/static/styles/general.css">
+  <link rel="stylesheet" href="/static/styles/login.css">
+</head>
+<!-- credentials: 'same-origin' on fetch -->
+ <!-- Cache-Control: no-store -->
+<body>
+    <main id="main">
+      <div id="login-container">
+        <div id="login-text">Přihlášení</div>
+        <form id="login-form" method="post">
+          <label for="username" id="username-label">Uživatelské jméno</label>
+          <input id="username" name="username" placeholder="Username">
+          <label for="password" id="password-label">Heslo</label>
+          <input type="password" id="password" name="password" placeholder="Password">
+          <div id="error-message">Neplatné uživatelské jméno nebo heslo.</div>
+          <input type="submit" value="Přihlásit se" id="submit-button">
+        </form>
+      </div>
+    </main>
+
+    <script src="/static/scripts/login.js"></script>
+</body>
+
+</html>

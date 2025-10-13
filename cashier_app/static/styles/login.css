@@ -44,6 +44,22 @@
   padding: 7px;
 }
 
+#error-message {
+  color: rgb(194, 14, 26);
+  background-color: rgb(250, 219, 221);
+  padding: 11px 10px 9px;
+  border-radius: 5px;
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: center;
+  width: 200px;
+  display: none
+}
+
+.show-error-message #error-message {
+  display: block;
+}
+
 #submit-button {
   border-radius: 5px;
   border: none;

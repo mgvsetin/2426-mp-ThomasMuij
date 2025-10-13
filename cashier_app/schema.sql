@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid()
 DO $$
 BEGIN
   BEGIN
-    CREATE TYPE account_type AS ENUM ('admin','manager','main_cashier','cashier');
+    CREATE TYPE account_type AS ENUM ('admin','site_manager','main_cashier','cashier');
   EXCEPTION
     WHEN duplicate_object THEN
       NULL;
@@ -17,7 +17,7 @@ BEGIN
   END;
 
   BEGIN
-    CREATE TYPE account_change_type AS ENUM ('username','password_hash');
+    CREATE TYPE account_change_type AS ENUM ('username','password_hash','type');
   EXCEPTION
     WHEN duplicate_object THEN
       NULL;

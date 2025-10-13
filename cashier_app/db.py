@@ -1,15 +1,14 @@
 from flask import g, current_app
 import click
 import psycopg
-from psycopg.rows import namedtuple_row
+from psycopg.rows import dict_row
 
 
-def get_db(row_factory=namedtuple_row, **kwargs):
+def get_db(row_factory=dict_row, **kwargs):
     if 'db' not in g:
         conninfo = current_app.config['DATABSE_CONNINFO']
         
         g.db = psycopg.connect(conninfo, row_factory=row_factory, **kwargs)
-        g
 
     return g.db
 

@@ -7,11 +7,18 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY = 'dev',
         DATABSE_CONNINFO = """
-            dbname=cashier_system
+            dbname=cashier_app
             host=localhost
             user=postgres
             password=heslo123
-            port=5432"""
+            port=5432""",
+        PASSWORD_HASHER_PARAMETERS = {
+            'time_cost': 3,
+            'memory_cost': 65536,
+            'parallelism':2,
+            'hash_len': 32,
+            'salt_len':16
+        }
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -28,10 +35,13 @@ def create_app(test_config=None):
         response.append(app.instance_path)
         return response
     
-    from . import db
+    from cashier_app import db
     db.init_app(app)
 
-    from . import auth
+    from cashier_app import auth
     app.register_blueprint(auth.bp)
+
+    from cashier_app import session
+    app.register_blueprint(session.bp)
 
     return app
