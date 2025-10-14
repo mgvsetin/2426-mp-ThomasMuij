@@ -1,6 +1,7 @@
 from flask import Flask
 import os
 
+# název funkce je důležitý, aby ji flask spustil
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
