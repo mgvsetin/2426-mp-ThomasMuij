@@ -1,0 +1,477 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Card-scanner demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; }
+    #log { white-space: pre-wrap; border: 1px solid #ddd; padding: 1rem; margin-top:1rem; height:160px; overflow:auto; }
+    .hidden-input { position: absolute; left: -9999px; width:1px; height:1px; opacity:0; }
+  </style>
+</head>
+<body>
+  <h1>Card scanner listener demo</h1>
+  <p>Focus anywhere and swipe/scan a card. This demo auto-detects a scanner vs manual typing using timing and terminator detection.</p>
+
+  <label><input id="useHiddenInput" type="checkbox"> Use hidden input (keeps cursor focused)</label>
+  <div id="log"></div>
+
+  <input id="hiddenInput" class="hidden-input" tabindex="-1" />
+
+<script>
+(function(){
+  const logEl = document.getElementById('log');
+  const useHiddenInputCheckbox = document.getElementById('useHiddenInput');
+  const hiddenInput = document.getElementById('hiddenInput');
+
+  // Config tuning:
+  const TERM_CHAR = '\n';        // many scanners end with Enter
+  const MAX_INTERKEY_MS = 60;   // average inter-key time threshold to consider "scanner" (tweak as needed)
+  const MIN_CHARS_FOR_SCAN = 6; // minimal chars to be considered a card read
+
+  // runtime buffer:
+  let buffer = '';
+  let lastTimestamp = null;
+  let timings = []; // array of interkey intervals in ms
+
+  function appendLog(s) {
+    logEl.textContent += s + '\\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearBuffer() {
+    buffer = '';
+    timings = [];
+    lastTimestamp = null;
+  }
+
+  function isFastScan() {
+    if (timings.length === 0) return false;
+    // compute average interkey interval
+    const avg = timings.reduce((a,b)=>a+b,0)/timings.length;
+    return avg <= MAX_INTERKEY_MS;
+  }
+
+  function maskPAN(pan) {
+    // simple masking for demo: keep first 6 and last 4, mask the rest
+    if (!pan || pan.length < 10) return pan;
+    const start = pan.slice(0,6);
+    const end = pan.slice(-4);
+    const masked = start + '*'.repeat(Math.max(0, pan.length - 10)) + end;
+    return masked;
+  }
+
+  function handleCompleteScan(raw) {
+    // raw = the full string scanner produced (without the final newline maybe)
+    appendLog('RAW: ' + raw);
+
+    // Example: magstripe track2 often looks like ;PAN=...?...? etc or track1 with % as start.
+    // For demo, attempt to find a PAN (rough heuristic: 12-19 digit sequence)
+    const panMatch = raw.match(/(\\d{12,19})/);
+    const pan = panMatch ? panMatch[1] : null;
+
+    if (pan) {
+      const masked = maskPAN(pan);
+      appendLog('Detected PAN: ' + masked);
+    } else {
+      appendLog('No obvious PAN detected (raw length ' + raw.length + ')');
+    }
+
+    // Send to server (example). IMPORTANT: do NOT send full PAN in logs; comply with PCI rules.
+    const payload = {
+      rawData: raw,                  // be careful with full rawData in production
+      maskedPan: pan ? maskPAN(pan) : null,
+      detectedPan: !!pan,
+      detectedByTiming: isFastScan(),
+      timestamp: new Date().toISOString()
+    };
+
+    // In production, you would tokenize/POST to a PCI-compliant endpoint using HTTPS, or offload to terminal.
+    fetch('/api/card-scan', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    }).then(r=> {
+      appendLog('Sent to server (check server logs). HTTP ' + r.status);
+    }).catch(err=>{
+      appendLog('Send failed: ' + err);
+    });
+
+    clearBuffer();
+  }
+
+  function handleKey(ch, event) {
+    const now = performance.now();
+    if (lastTimestamp !== null) {
+      timings.push(now - lastTimestamp);
+    }
+    lastTimestamp = now;
+
+    buffer += ch;
+
+    // Terminator char detection (Enter)
+    if (ch === '\\r' || ch === '\\n') {
+      const raw = buffer.replace(/[\\r\\n]+$/, '');
+      if (raw.length >= MIN_CHARS_FOR_SCAN && isFastScan()) {
+        handleCompleteScan(raw);
+      } else {
+        // treat as manual typing — optional: ignore or pass to focused field
+        appendLog('Manual input or short string: "' + raw + '"');
+        clearBuffer();
+      }
+    }
+
+    // Some scanners use start/stop sentinels: e.g. Track1 starts with % and ends with ?
+    // Example quick check:
+    if (buffer.startsWith('%') && buffer.includes('?')) {
+      const endIndex = buffer.indexOf('?') + 1;
+      const raw = buffer.slice(0, endIndex);
+      if (isFastScan()) handleCompleteScan(raw);
+    }
+  }
+
+  // Document-level listener approach (works regardless of focused element)
+  function onKeyDownDocument(e) {
+    // ignore modifier-only events
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+
+    // We usually care about printable characters and Enter
+    // Use e.key (represents the character considering layout) but fallback as needed
+    let ch = e.key;
+
+    // Normalize Enter to newline
+    if (ch === 'Enter') ch = '\\n';
+
+    // For some keyboards, e.key might be like "Unidentified" in weird scenarios.
+    // Always prevent default for scanner input if appropriate:
+    // e.g. if you are using a hidden input and don't want typed characters to leak.
+    // BUT be careful: preventing default globally may block user typing in forms.
+    // Here we do NOT call e.preventDefault() globally.
+
+    handleKey(ch, e);
+  }
+
+  // Optional: hidden input approach (keeps page focused on one control)
+  hiddenInput.addEventListener('input', (ev) => {
+    // If the input receives data directly (some readers deposit text into focused input)
+    // you can read and clear it here.
+    const val = hiddenInput.value;
+    if (val) {
+      // Many keyboard readers send a newline; treat it like complete scan
+      if (val.endsWith('\\n') || val.endsWith('\\r')) {
+        const raw = val.replace(/[\\r\\n]+$/, '');
+        if (raw.length >= MIN_CHARS_FOR_SCAN) handleCompleteScan(raw);
+      } else {
+        // accumulate or ignore
+        buffer += val;
+      }
+      hiddenInput.value = '';
+    }
+  });
+
+  // Manage focusing hidden input if checkbox checked
+  useHiddenInputCheckbox.addEventListener('change', () => {
+    if (useHiddenInputCheckbox.checked) {
+      hiddenInput.focus();
+      appendLog('Hidden input focused. Scans will go there.');
+    } else {
+      appendLog('Using document-level listener.');
+      document.activeElement.blur && document.activeElement.blur();
+    }
+  });
+
+  // Attach document listener
+  document.addEventListener('keydown', onKeyDownDocument, true); // use capture true to see events early
+
+  // helper to show sample message
+  appendLog('Ready. Try scanning a card or type manually. Toggle "Use hidden input" if needed.');
+})();
+</script>
+</body>
+</html>
+
+<!-- 
+Nice — this is a common need. Card readers that act like keyboards (keyboard-wedge/HID keyboard) are easy to handle in a webapp because they just emit key events. Below I’ll give you:
+
+a short explanation of the approaches,
+
+a ready-to-drop-in HTML/JS example that handles keyboard-wedge readers (with timing and sentinel detection),
+
+a minimal WebHID alternative (for true HID devices), and
+
+security/compliance notes you must follow.
+
+1) How it works (quick)
+
+Most card readers emulate a keyboard: they “type” the card data and usually append a terminator (often Enter) or have start/stop sentinels (e.g., % or ; depending on magstripe track).
+
+You can catch this with document.addEventListener('keydown', ...) or by focusing a (possibly hidden) <input>.
+
+To reliably tell scanner vs a real person typing, detect the timing between keystrokes — scanners are very fast (milliseconds between chars) while humans are much slower.
+
+For higher control (non-keyboard HID devices) use the WebHID API (Chrome/Edge; limited browser support).
+
+2) Copy-paste example (keyboard-wedge, timing + sentinel + masking + send to server)
+
+Save this as an HTML file and open it. It demonstrates a document-level listener, timing detection, sentinel or Enter-based termination, simple parsing, masking before sending to server.
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Card-scanner demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; }
+    #log { white-space: pre-wrap; border: 1px solid #ddd; padding: 1rem; margin-top:1rem; height:160px; overflow:auto; }
+    .hidden-input { position: absolute; left: -9999px; width:1px; height:1px; opacity:0; }
+  </style>
+</head>
+<body>
+  <h1>Card scanner listener demo</h1>
+  <p>Focus anywhere and swipe/scan a card. This demo auto-detects a scanner vs manual typing using timing and terminator detection.</p>
+
+  <label><input id="useHiddenInput" type="checkbox"> Use hidden input (keeps cursor focused)</label>
+  <div id="log"></div>
+
+  <input id="hiddenInput" class="hidden-input" tabindex="-1" />
+
+<script>
+(function(){
+  const logEl = document.getElementById('log');
+  const useHiddenInputCheckbox = document.getElementById('useHiddenInput');
+  const hiddenInput = document.getElementById('hiddenInput');
+
+  // Config tuning:
+  const TERM_CHAR = '\n';        // many scanners end with Enter
+  const MAX_INTERKEY_MS = 60;   // average inter-key time threshold to consider "scanner" (tweak as needed)
+  const MIN_CHARS_FOR_SCAN = 6; // minimal chars to be considered a card read
+
+  // runtime buffer:
+  let buffer = '';
+  let lastTimestamp = null;
+  let timings = []; // array of interkey intervals in ms
+
+  function appendLog(s) {
+    logEl.textContent += s + '\\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearBuffer() {
+    buffer = '';
+    timings = [];
+    lastTimestamp = null;
+  }
+
+  function isFastScan() {
+    if (timings.length === 0) return false;
+    // compute average interkey interval
+    const avg = timings.reduce((a,b)=>a+b,0)/timings.length;
+    return avg <= MAX_INTERKEY_MS;
+  }
+
+  function maskPAN(pan) {
+    // simple masking for demo: keep first 6 and last 4, mask the rest
+    if (!pan || pan.length < 10) return pan;
+    const start = pan.slice(0,6);
+    const end = pan.slice(-4);
+    const masked = start + '*'.repeat(Math.max(0, pan.length - 10)) + end;
+    return masked;
+  }
+
+  function handleCompleteScan(raw) {
+    // raw = the full string scanner produced (without the final newline maybe)
+    appendLog('RAW: ' + raw);
+
+    // Example: magstripe track2 often looks like ;PAN=...?...? etc or track1 with % as start.
+    // For demo, attempt to find a PAN (rough heuristic: 12-19 digit sequence)
+    const panMatch = raw.match(/(\\d{12,19})/);
+    const pan = panMatch ? panMatch[1] : null;
+
+    if (pan) {
+      const masked = maskPAN(pan);
+      appendLog('Detected PAN: ' + masked);
+    } else {
+      appendLog('No obvious PAN detected (raw length ' + raw.length + ')');
+    }
+
+    // Send to server (example). IMPORTANT: do NOT send full PAN in logs; comply with PCI rules.
+    const payload = {
+      rawData: raw,                  // be careful with full rawData in production
+      maskedPan: pan ? maskPAN(pan) : null,
+      detectedPan: !!pan,
+      detectedByTiming: isFastScan(),
+      timestamp: new Date().toISOString()
+    };
+
+    // In production, you would tokenize/POST to a PCI-compliant endpoint using HTTPS, or offload to terminal.
+    fetch('/api/card-scan', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    }).then(r=> {
+      appendLog('Sent to server (check server logs). HTTP ' + r.status);
+    }).catch(err=>{
+      appendLog('Send failed: ' + err);
+    });
+
+    clearBuffer();
+  }
+
+  function handleKey(ch, event) {
+    const now = performance.now();
+    if (lastTimestamp !== null) {
+      timings.push(now - lastTimestamp);
+    }
+    lastTimestamp = now;
+
+    buffer += ch;
+
+    // Terminator char detection (Enter)
+    if (ch === '\\r' || ch === '\\n') {
+      const raw = buffer.replace(/[\\r\\n]+$/, '');
+      if (raw.length >= MIN_CHARS_FOR_SCAN && isFastScan()) {
+        handleCompleteScan(raw);
+      } else {
+        // treat as manual typing — optional: ignore or pass to focused field
+        appendLog('Manual input or short string: "' + raw + '"');
+        clearBuffer();
+      }
+    }
+
+    // Some scanners use start/stop sentinels: e.g. Track1 starts with % and ends with ?
+    // Example quick check:
+    if (buffer.startsWith('%') && buffer.includes('?')) {
+      const endIndex = buffer.indexOf('?') + 1;
+      const raw = buffer.slice(0, endIndex);
+      if (isFastScan()) handleCompleteScan(raw);
+    }
+  }
+
+  // Document-level listener approach (works regardless of focused element)
+  function onKeyDownDocument(e) {
+    // ignore modifier-only events
+    if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
+
+    // We usually care about printable characters and Enter
+    // Use e.key (represents the character considering layout) but fallback as needed
+    let ch = e.key;
+
+    // Normalize Enter to newline
+    if (ch === 'Enter') ch = '\\n';
+
+    // For some keyboards, e.key might be like "Unidentified" in weird scenarios.
+    // Always prevent default for scanner input if appropriate:
+    // e.g. if you are using a hidden input and don't want typed characters to leak.
+    // BUT be careful: preventing default globally may block user typing in forms.
+    // Here we do NOT call e.preventDefault() globally.
+
+    handleKey(ch, e);
+  }
+
+  // Optional: hidden input approach (keeps page focused on one control)
+  hiddenInput.addEventListener('input', (ev) => {
+    // If the input receives data directly (some readers deposit text into focused input)
+    // you can read and clear it here.
+    const val = hiddenInput.value;
+    if (val) {
+      // Many keyboard readers send a newline; treat it like complete scan
+      if (val.endsWith('\\n') || val.endsWith('\\r')) {
+        const raw = val.replace(/[\\r\\n]+$/, '');
+        if (raw.length >= MIN_CHARS_FOR_SCAN) handleCompleteScan(raw);
+      } else {
+        // accumulate or ignore
+        buffer += val;
+      }
+      hiddenInput.value = '';
+    }
+  });
+
+  // Manage focusing hidden input if checkbox checked
+  useHiddenInputCheckbox.addEventListener('change', () => {
+    if (useHiddenInputCheckbox.checked) {
+      hiddenInput.focus();
+      appendLog('Hidden input focused. Scans will go there.');
+    } else {
+      appendLog('Using document-level listener.');
+      document.activeElement.blur && document.activeElement.blur();
+    }
+  });
+
+  // Attach document listener
+  document.addEventListener('keydown', onKeyDownDocument, true); // use capture true to see events early
+
+  // helper to show sample message
+  appendLog('Ready. Try scanning a card or type manually. Toggle "Use hidden input" if needed.');
+})();
+</script>
+</body>
+</html>
+
+
+Notes about that example:
+
+It uses document.addEventListener('keydown', ..., true) so it sees keys even if some inputs exist. If you want to avoid intercepting normal typing in forms, refine logic or only listen when a specific element has focus.
+
+Tune MAX_INTERKEY_MS to your scanner speed and environment. Typical scanner interkey intervals are < 30 ms; 30–80 ms is a reasonable threshold.
+
+Many scanners can be configured to send a prefix/suffix — using a unique prefix (e.g., ^ or %) makes detection trivial.
+
+3) WebHID option (when keyboard emulation is not used)
+
+If your reader exposes raw HID and you want to avoid keyboard emulation, use WebHID (Chrome/Edge). Browser support is limited (not all browsers). Minimal sample:
+
+// must be called from a user gesture (click)
+async function connectHID() {
+  const filters = [ /* vendor/product if known */ ];
+  const devices = await navigator.hid.requestDevice({ filters });
+  if (!devices || devices.length === 0) return;
+  const d = devices[0];
+  await d.open();
+  d.addEventListener('inputreport', ev => {
+    const { data, reportId } = ev;
+    // parse bytes from data (DataView)
+    // vendor docs will tell you how to parse the payload
+    // e.g. const b = new Uint8Array(data.buffer);
+  });
+}
+
+
+Use WebHID when you need structured access to the device (and when the device is not a keyboard). Remember it requires a user gesture to request a device.
+
+4) Practical tips & gotchas
+
+Focus: Keyboard readers send keystrokes to whichever element has focus. For best user experience either: keep a hidden autofocus input, or listen at document level and block processing only when necessary.
+
+Keyboard layout: event.key is layout-dependent; if you expect raw ASCII bytes, event.code or mapping may differ across locales. Many readers are USB HID keyboard layout set to US — test in your target locale.
+
+Prevent default? Don’t call e.preventDefault() unless you want to stop characters appearing in normal inputs. Be careful not to break other UX.
+
+Scanner configuration: If you control the scanner, configure it to add a prefix/suffix or a fixed terminator (like \n) — this makes detection robust.
+
+Parsing magstripe: Track 1 starts with %B and ends with ?. Track 2 starts with ; and ends with ?. Track data may include ^, = etc. Don’t assume formats — validate against specs if you need to extract PAN, expiry, name.
+
+Security & compliance (very important):
+
+Do not log full PAN (card number) in client logs or server logs unless you are PCI-compliant. Mask before logging.
+
+Use HTTPS for any server requests. Consider tokenization on a secure backend rather than sending raw card data to your servers.
+
+Be mindful of GDPR/PII rules for storage and transmission.
+
+If you handle card data, consult PCI DSS rules and ideally use a payment gateway/tokenizer.
+
+Browser support: document keyboard handling works everywhere. WebHID is newer and not supported in all browsers. Test in your target browsers.
+
+5) If you want a drop-in library / next steps
+
+If you want, I can:
+
+adapt the demo to only act when a certain page route or modal is open,
+
+add better parsing for magstripe tracks (Track 1/2 extraction), or
+
+show a secure backend example that tokenizes data and never stores PAN.
+Pick one and I’ll produce the code right away.
+
+That should get you up and running. Want me to adapt the demo to parse Track 1 / Track 2 specifically and extract PAN + expiry?
+-->

@@ -6,11 +6,6 @@ async function displayLoginError() {
     document.querySelector('#login-form')
       .classList.add('show-error-message')
   }
-
-  await fetch('/', {
-    method: 'POST',
-    body: 'mybody'
-  })
 }
 
 displayLoginError()

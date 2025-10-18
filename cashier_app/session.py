@@ -3,6 +3,15 @@ from cashier_app.db import get_db
 
 bp = Blueprint('session', __name__, url_prefix='/session')
 
+# {
+#   "sub": "user-id-uuid",
+#   "email": "user@example.com",
+#   "is_system_admin": false,
+#   "active_event_id": "event-uuid",
+#   "role_for_active_event": "cashier",
+#   "iat": 169XXX,
+#   "exp": 169YYY
+# }
 
 @bp.route('/account-info')
 def account_info():
@@ -15,8 +24,8 @@ def account_info():
         with conn.cursor() as cur:
             account: dict = cur.execute(
                 '''
-                SELECT id, type, username, created_at, deleted_at
-                WHERE id = %s''',
+                SELECT id, type, username
+                WHERE id = %s AND deleted_at IS NULL''',
                 (account_id,)).fetchone()
             
     if not account:

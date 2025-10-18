@@ -6,7 +6,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_mapping(
-        SECRET_KEY = 'dev',
+        SECRET_KEY = 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?
         DATABSE_CONNINFO = """
             dbname=cashier_app
             host=localhost
@@ -44,5 +44,10 @@ def create_app(test_config=None):
 
     from cashier_app import session
     app.register_blueprint(session.bp)
+
+    from cashier_app import order
+    app.register_blueprint(order.bp)
+    # aby fungovalo i url_for('index') (ne jenom url_for('order.index'))
+    app.add_url_rule('/', endpoint='index')
 
     return app

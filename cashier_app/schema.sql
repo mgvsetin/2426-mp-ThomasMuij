@@ -1,165 +1,654 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid()
-
-DO $$
-BEGIN
-  BEGIN
-    CREATE TYPE account_type AS ENUM ('admin','site_manager','main_cashier','cashier');
-  EXCEPTION
-    WHEN duplicate_object THEN
-      NULL;
-  END;
-
-  BEGIN
-    CREATE TYPE transaction_type AS ENUM ('purchase','deposit','withdrawal');
-  EXCEPTION
-    WHEN duplicate_object THEN
-      NULL;
-  END;
-
-  BEGIN
-    CREATE TYPE account_change_type AS ENUM ('username','password_hash','type');
-  EXCEPTION
-    WHEN duplicate_object THEN
-      NULL;
-  END;
-END
-$$ LANGUAGE plpgsql;
+CREATE EXTENSION IF NOT EXISTS pgcrypto; -- pro gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 
 
 -- // metadata / reference_id / notes
--- // Enforce username uniqueness using lower(username) and a partial index so soft-deleted accounts don’t collide.
--- // Add indexes on tag_id, account_id, and time. Consider partitioning transactions by time if volume is very high.
--- // on delete restrict
+-- // Add indexes on tag_id, account_id, and time like columns. Consider partitioning transactions by time if volume is very high.
 -- // Consider row-level security/audit logging if needed.
 
+-- make sure all the trigger constraints work (in tests?)
 
-CREATE TABLE IF NOT EXISTS tag (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  balance bigint NOT NULL DEFAULT 0, -- cache, not source of truth
-  created_at timestamptz NOT NULL DEFAULT now(),
-  deleted_at timestamptz
+-- make soft deletes cascade on other deletes/soft deletes?
+
+-- add logs tables
+
+-- allow negative balances here, but forbid them in the backend code
+
+-- ======================== employees ========================
+CREATE TABLE IF NOT EXISTS employees (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username        text NOT NULL,
+  email           citext NOT NULL, -- add verification
+  password_hash   text NOT NULL, -- Argon2 hash string (contains salt)
+  is_admin        boolean NOT NULL DEFAULT FALSE,
+  created_by      uuid REFERENCES employees(id),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  deleted_at      timestamptz -- NULL -> existuje, NOT NULL -> smazáno
+);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_username_active ON employees (LOWER(username)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_email_active ON employees (email) WHERE deleted_at IS NULL;
+
+-- blokuje delete a změnu created_at, created_by a znovu nastavení deleted_at, když není null:
+-- u insert/update odstraní mezery na začátku a konci pro email/username
+CREATE OR REPLACE FUNCTION employees_block_delete_limit_update_insert()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
+      RAISE EXCEPTION 'created_at is immutable and cannot be changed';
+    END IF;
+    IF (NEW.created_by IS DISTINCT FROM OLD.created_by) THEN
+      RAISE EXCEPTION 'created_by is immutable and cannot be changed';
+    END IF;
+    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+      RAISE EXCEPTION 'can not change deleted_at after deletion';
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table employees';
+  END IF;
+
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    NEW.username := trim(NEW.username);
+    NEW.email := trim(NEW.email);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_employees_block_delete_limit_update_insert
+  BEFORE UPDATE OR DELETE OR INSERT ON employees
+  FOR EACH ROW
+  EXECUTE FUNCTION employees_block_delete_limit_update_insert();
+
+
+
+-- ======================== users ========================
+CREATE TABLE IF NOT EXISTS users (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username        text NOT NULL,
+  email           citext NOT NULL, -- add verification
+  password_hash   text NOT NULL, -- Argon2 hash string (contains salt)
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  deleted_at      timestamptz -- NULL -> existuje, NOT NULL -> smazáno
+);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_username_active ON users (LOWER(username)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (email) WHERE deleted_at IS NULL;
+
+-- blokuje delete a změnu created_at a znovu nastavení deleted_at, když není null:
+-- u insert/update odstraní mezery na začátku a konci pro email/username
+CREATE OR REPLACE FUNCTION users_block_delete_limit_update_insert()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
+      RAISE EXCEPTION 'created_at is immutable and cannot be changed';
+    END IF;
+    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+      RAISE EXCEPTION 'can not change deleted_at after deletion';
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table users';
+  END IF;
+
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    NEW.username := trim(NEW.username);
+    NEW.email := trim(NEW.email);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_users_block_delete_limit_update_insert
+  BEFORE UPDATE OR DELETE OR INSERT ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION users_block_delete_limit_update_insert();
+
+
+
+-- ======================== products ========================
+-- transakce se sem neodkazují, protože se řádky mohou jakkoliv měnit
+-- potřebné hodnoty se pouze zkopírují
+CREATE TABLE IF NOT EXISTS products (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          text NOT NULL,
+  description   text
 );
 
 
-CREATE TABLE IF NOT EXISTS account (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  type account_type NOT NULL,
-  username text NOT NULL,
-  password_hash text NOT NULL, -- Argon2 hash string (contains salt)
-  created_at timestamptz NOT NULL DEFAULT now(),
-  deleted_at timestamptz
+
+-- ======================== product_images ========================
+-- User uploads via HTML form or AJAX.
+-- Validate file (MIME type, magic bytes, max size (max: 5-10MB?)).
+-- Sanitize filename, generate unique name (UUID), and save to storage.
+-- Optionally create resized versions / thumbnails and save those too.
+-- Store metadata + path/URL in DB.
+-- Serve images via CDN or static server. Use cache headers. 
+
+-- Use werkzeug.utils.secure_filename() plus prefix with UUID (avoid collisions and path traversal).
+-- Strip/normalize EXIF if you care about privacy/location.
+-- Set proper permissions on saved files (read by web server only).
+-- Prevent users from uploading HTML or scripts disguised as images.
+-- Rate-limit uploads and virus-scan if necessary.
+
+-- Serve static images directly with Nginx (or CDN). For authenticated resources, use signed URLs or X-Accel-Redirect / X-Sendfile so app doesn't stream the file.
+-- Use Cache-Control headers and long TTLs for immutable files (change filename on update).
+-- Create multiple sizes and use srcset in HTML for responsive images. Example:
+
+-- <img alt="..." src="/static/uploads/products/uid_thumb.jpg"
+--      srcset="/static/uploads/products/uid_small.jpg 300w,
+--              /static/uploads/products/uid_medium.jpg 800w,
+--              /static/uploads/products/uid_large.jpg 1200w"
+--      sizes="(max-width:600px) 300px, (max-width:1200px) 800px, 1200px" loading="lazy">
+CREATE TABLE IF NOT EXISTS product_images (
+  id            int GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  product_id    uuid REFERENCES products(id) ON DELETE CASCADE,
+  image_path    text NOT NULL,
+  filename      text NOT NULL,
+  content_type  text NOT NULL CHECK (content_type IN ('image/jpeg', 'image/png', 'image/webp')), --Validate by reading file header/magic bytes, not only extension
+  size_bytes    int NOT NULL,
+  width         int NOT NULL,
+  height        int NOT NULL,
+  alt_text      text NOT NULL,
+  uploaded_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_account_username_active ON account (LOWER(username)) WHERE deleted_at IS NULL;
 
 
-CREATE TABLE IF NOT EXISTS account_history (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  account_id uuid NOT NULL REFERENCES account(id) ON DELETE CASCADE,
-  change account_change_type NOT NULL,
-  old_value text,
-  new_value text,
-  changed_by uuid,
-  time timestamptz NOT NULL DEFAULT now(),
-  metadata jsonb DEFAULT '{}'::jsonb
+
+-- ======================== events ========================
+CREATE TABLE IF NOT EXISTS events (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  start_at    timestamptz,
+  end_at      timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  created_by  uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+  CHECK (start_at < end_at)
+  -- deletion? (through deleted_at or actually delete it and all (or some) related stuff but make sure there is a big warning or no deletion allowed)
+  -- or only allow deletion for events with nothing import referencing it or stuff that references it
 );
 
+-- blokuje delete a změnu created_at, created_by
+-- zajistí že end_at jde pouze nastavit po now()
+CREATE OR REPLACE FUNCTION events_block_delete_limit_update_insert()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
+      RAISE EXCEPTION 'created_at is immutable and cannot be changed';
+    END IF;
+    IF (NEW.created_by IS DISTINCT FROM OLD.created_by) THEN
+      RAISE EXCEPTION 'created_by is immutable and cannot be changed';
+    END IF;
 
--- source of truth for the tag balance, immutable
-CREATE TABLE IF NOT EXISTS transaction (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  type transaction_type NOT NULL,
-  -- ensure amount matches type
-  amount bigint NOT NULL, -- positive -> added to balance, negative -> removed from balance, ?convention enforced by trigger?: deposits > 0; purchase/withdrawal < 0
-  time timestamptz NOT NULL DEFAULT now(),
-  account_id uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
-  tag_id uuid NOT NULL REFERENCES tag(id) ON DELETE RESTRICT,
-  balance_before bigint, -- filled by trigger?
-  balance_after bigint, -- filled by trigger?
-  metadata jsonb DEFAULT '{}'::jsonb -- keep?
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table events';
+  END IF;
+
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    IF NEW.end_at <= now() THEN
+      RAISE EXCEPTION 'end_at can not be set to before now()';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_events_block_delete_limit_update_insert
+  BEFORE UPDATE OR DELETE OR INSERT ON events
+  FOR EACH ROW
+  EXECUTE FUNCTION events_block_delete_limit_update_insert();
+
+
+
+-- ======================== booths ========================
+CREATE TABLE IF NOT EXISTS booths (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            text NOT NULL,
+  event_id        uuid REFERENCES events(id) NOT NULL ON DELETE RESTRICT,
+  booth_type      text NOT NULL CHECK (booth_type IN ('cashier', 'seller')),
+  auth_required   boolean NOT NULL DEFAULT TRUE, -- TRUE -> event_manager nebo admin musí na počítaci povolit
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  created_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+  deleted_at      timestamptz
 );
+
+-- blokuje delete a změnu event_id, booth_type, created_at, created_by a znovu nastavení deleted_at, když není null:
+CREATE OR REPLACE FUNCTION booths_block_delete_limit_update()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
+      RAISE EXCEPTION 'created_at is immutable and cannot be changed';
+    END IF;
+    IF (NEW.created_by IS DISTINCT FROM OLD.created_by) THEN
+      RAISE EXCEPTION 'created_by is immutable and cannot be changed';
+    END IF;
+    IF (NEW.event_id IS DISTINCT FROM OLD.event_id) THEN
+      RAISE EXCEPTION 'event_id is immutable and cannot be changed';
+    END IF;
+    IF (NEW.booth_type IS DISTINCT FROM OLD.booth_type) THEN
+      RAISE EXCEPTION 'booth_type is immutable and cannot be changed';
+    END IF;
+    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+      RAISE EXCEPTION 'can not change deleted_at after deletion';
+    END IF;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table booths';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_booths_block_delete_limit_update
+  BEFORE UPDATE OR DELETE ON booths
+  FOR EACH ROW
+  EXECUTE FUNCTION booths_block_delete_limit_update();
+
+
+
+-- ======================== employee_event_booth_roles ========================
+-- seller: může dělat payments
+-- cashier: může dělat withdrawals and deposits
+-- event_manager: může dělat cokoliv v akci (např dávat účtům roli cashier)
+-- admin: (není částí této tabulky) může věci mimo akce (např. vytvářet účty)
+CREATE TABLE IF NOT EXISTS employee_event_booth_roles (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id   uuid REFERENCES employees(id) NOT NULL,
+  event_id      uuid REFERENCES events(id) NOT NULL,
+  booth_id      uuid REFERENCES booths(id), -- null -> event_manager
+  role          text NOT NULL CHECK (role IN ('event_manager','cashier','seller')),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (employee_id, event_id, booth_id)
+);
+-- v této tabulce jsou delete i update povoleny
+CREATE UNIQUE INDEX IF NOT EXISTS ux_employee_event_manager
+ON employee_event_booth_roles(employee_id, event_id)
+WHERE booth_id IS NULL;
+
+-- jestli je role null, tak ji automaticky doplní
+-- u insert/update kontroluje: 
+--   - jestli je event stejný tady i booth a booth existuje (pokud booth_id není null)
+--   - jestli se booths.booth_type a role shodují (pokud role není null)
+CREATE OR REPLACE FUNCTION employee_event_booth_roles_limit_autocomplete_insert_update()
+RETURNS trigger AS $$
+DECLARE
+  booth_event_id uuid;
+  booths_type text;
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    IF NEW.role IS NULL AND NEW.booth_id IS NULL THEN
+      NEW.role := 'event_manager';
+    END IF;
+
+    IF NEW.booth_id IS NOT NULL THEN
+      SELECT event_id, booth_type INTO booth_event_id, booths_type
+      FROM booths
+      WHERE NEW.booth_id = id
+      AND deleted_at IS NULL;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'booth % does not exist or is deleted', NEW.booth_id;
+      END IF;
+
+      IF NEW.role IS NULL THEN
+        NEW.role := booths_type;
+      END IF;
+
+      IF booth_event_id IS DISTINCT FROM NEW.event_id THEN
+        RAISE EXCEPTION 'booths event_id % and event_id % do not match', booth_event_id, NEW.event_id;
+      END IF;
+
+      IF booths_type IS DISTINCT FROM NEW.role THEN
+        RAISE EXCEPTION 'booth_type % and role % do not match', booths_type, NEW.role;
+      END IF;
+
+    ELSIF NEW.booth_id IS NULL THEN
+      IF NEW.role IS DISTINCT FROM 'event_manager' THEN
+        RAISE EXCEPTION 'role has to be event_manager if there is no booth_id';
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_employee_event_booth_roles_limit_autocomplete_insert_update
+  BEFORE INSERT OR UPDATE ON employee_event_booth_roles
+  FOR EACH ROW
+  EXECUTE FUNCTION employee_event_booth_roles_limit_autocomplete_insert_update();
+
+
+
+-- nic, co by se nemělo mazat se sem neodkazuje
+-- ======================== product_event_prices ========================
+CREATE TABLE IF NOT EXISTS product_event_prices (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id    uuid REFERENCES products(id) NOT NULL ON DELETE CASCADE,
+  event_id      uuid REFERENCES events(id) NOT NULL ON DELETE CASCADE,
+  price         int NOT NULL CHECK (price > 0),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (product_id, event_id)
+);
+-- v této tabulce jsou delete i update povoleny
+
+
+
+-- nic, co by se nemělo mazat se sem neodkazuje
+-- ======================== event_product_booth_link ========================
+CREATE TABLE IF NOT EXISTS event_product_booth_link (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_product_id  uuid REFERENCES product_event_prices(id) NOT NULL ON DELETE CASCADE,
+  event_id          uuid REFERENCES events(id) NOT NULL ON DELETE CASCADE,
+  booth_id          uuid REFERENCES booths(id) NOT NULL ON DELETE CASCADE,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (event_product_id, booth_id)
+);
+-- v této tabulce jsou delete i update povoleny
+
+-- automaticky doplní event_id (z product_event_prices) a zkontroluje jestli se shoduje s booth_id
+-- zkontroluje, že booth existuje
+CREATE OR REPLACE FUNCTION event_product_booth_link_limit_autocomplete_update_insert()
+RETURNS trigger AS $$
+DECLARE
+  booth_event_id uuid;
+  event_product_price_event_id uuid;
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    SELECT event_id INTO booth_event_id
+      FROM booths
+      WHERE NEW.booth_id = id
+      AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'booth % does not exist or is deleted', NEW.booth_id;
+    END IF;
+
+    SELECT event_id INTO event_product_price_event_id
+      FROM product_event_prices
+      WHERE NEW.event_product_id = id;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'product_event_prices % does not exist', NEW.event_product_id;
+    END IF;
+
+    IF booth_event_id IS DISTINCT FROM event_product_price_event_id THEN
+      RAISE EXCEPTION 'booths event_id % and product_event_prices event_id % do not match', booth_event_id, event_product_price_event_id;
+    END IF;
+
+    NEW.event_id := event_product_price_event_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_event_product_booth_link_limit_autocomplete_update_insert
+  BEFORE INSERT OR UPDATE ON event_product_booth_link
+  FOR EACH ROW
+  EXECUTE FUNCTION event_product_booth_link_limit_autocomplete_update_insert();
+
+
+
+-- -- ======================== tags ========================
+-- CREATE TABLE IF NOT EXISTS tags (
+--   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   is_being_used   boolean NOT NULL
+-- );
+
+
+
+-- ======================== wallets ========================
+-- created by?
+CREATE TABLE IF NOT EXISTS wallets (
+  id                            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- tag_id                        uuid REFERENCES tags(id) ON DELETE SET NULL,
+  tag_id                        uuid,
+  owner_id                      uuid REFERENCES users(id) ON DELETE SET NULL,
+  balance_czk                   int NOT NULL DEFAULT 0, -- cache, není zdroj pravdy
+  accountless_owner_identifier  text, -- nejspíš celé jméno, pro vrácení peněz na konci akce
+  created_by                    uuid REFERENCES employees(id) NOT NULL,
+  created_at                    timestamptz NOT NULL DEFAULT now(),
+  deleted_at                    timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_tag_id_active ON wallets (tag_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_owner_id_active ON wallets (owner_id) WHERE deleted_at IS NULL;
+
+-- blokuje delete a změnu created_at a znovu nastavení deleted_at na null
+CREATE OR REPLACE FUNCTION wallets_block_delete_limit_update()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
+      RAISE EXCEPTION 'created_at is immutable and cannot be changed';
+    END IF;
+    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+      RAISE EXCEPTION 'can not change deleted_at after deletion';
+    END IF;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table wallets';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_wallets_block_delete_limit_update
+  BEFORE UPDATE OR DELETE ON wallets
+  FOR EACH ROW
+  EXECUTE FUNCTION wallets_block_delete_limit_update();
+
+
+
+-- ======================== transactions ========================
+-- zdroj pravdy pro wallets, nedá se měnit
+CREATE TABLE IF NOT EXISTS transactions (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- tag_id            uuid NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+  tag_id            uuid NOT NULL,
+  wallet_id         uuid NOT NULL REFERENCES wallets(id) ON DELETE RESTRICT,
+  user_id           uuid REFERENCES users(id) ON DELETE RESTRICT,
+  event_id          uuid NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
+  booth_id          uuid NOT NULL REFERENCES booths(id) ON DELETE RESTRICT,
+  transaction_type  text NOT NULL CHECK (transaction_type IN ('payment', 'refund', 'deposit', 'withdrawal')),
+  amount_czk        int NOT NULL , -- kladné -> peníze přidány na wallet, záporné -> peníze odebrány z wallet
+  balance_before    int NOT NULL, -- dělá trigger
+  balance_after     int NOT NULL, -- dělá trigger
+  occurred_at       timestamptz NOT NULL DEFAULT now(),
+  performed_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+  products_info     jsonb DEFAULT '{}'::jsonb -- id (nezapomeň, že product mohl být smazán/upraven), price, name, amount
+  -- metadata          jsonb DEFAULT '{}'::jsonb, -- keep?, info about product?
+  CHECK (
+    (transaction_type IN ('deposit', 'refund') AND amount_czk > 0)
+    OR (transaction_type IN ('payment','withdrawal') AND amount_czk < 0)
+  ),
+  CHECK (balance_after = balance_before + amount_czk)
+);
+-- add the refund stuff
+
+-- blokuje delete a update
+-- u insert kontroluje: 
+--  - že event je aktivní
+--  - že booth existuje
+--  - že booth event_id a event_id jsou shodné
+--  - user existuje (pokud není null)
+--  - jestli employee existuje a má dostatečnou roli
+--  - jestli transaction_type je shodné s amount_czk
+--  - jestli wallet existuje
+--  - wallet.tag_id a wallet.user_id patří k transaction
+--  - změna: jestli wallet má dost peněz. Na: Je povoleno, ale api by mělo zabránit
+-- počítá a zapisuje balance_before a balance_after
+-- updatuje wallet balance_czk
+CREATE OR REPLACE FUNCTION transactions_block_delete_update_limit_insert()
+RETURNS trigger AS $$
+DECLARE
+  bal_before int;
+  bal_after int;
+  employee_booth_role text;
+  employee_is_admin boolean;
+  booth_event_id uuid;
+  wallet_tag_id uuid;
+  wallet_owner_id uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    RAISE EXCEPTION 'Updates are not allowed on table transactions';
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Deletes are not allowed on table transactions';
+
+  ELSIF TG_OP = 'INSERT' THEN
+    -- event je aktivní
+    PERFORM 1
+      FROM events
+      WHERE id = NEW.event_id
+      AND start_at IS NOT NULL
+      AND start_at <= NEW.occurred_at
+      AND (end_at IS NULL OR NEW.occurred_at < end_at);
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'event % is not active', NEW.event_id;
+    END IF;
+
+    -- booth existuje, event_id = booths.event_id:
+    SELECT event_id INTO booth_event_id
+      FROM booths
+      WHERE id = NEW.booth_id
+      AND deleted_at IS NULL;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'booth % does not exist or is deleted', NEW.booth_id;
+      END IF;
+
+      IF booth_event_id IS DISTINCT FROM NEW.event_id THEN
+        RAISE EXCEPTION 'booths event_id % and event_id % do not match', booth_event_id, NEW.event_id;
+      END IF;
+
+    -- user existuje:
+    IF NEW.user_id IS NOT NULL THEN
+      PERFORM 1
+        FROM users
+        WHERE id = NEW.user_id
+        AND deleted_at IS NULL;
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'user % does not exist or is deleted', NEW.user_id;
+      END IF;
+    END IF;
+
+    -- employee existuje:
+    SELECT is_admin INTO employee_is_admin
+      FROM employees
+      WHERE id = NEW.performed_by
+      AND deleted_at IS NULL;
+    
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'employee % does not exist or is deleted', NEW.performed_by;
+    END IF;
+
+    -- employee má dostatečnou roli:
+    SELECT role INTO employee_booth_role
+      FROM employee_event_booth_roles
+      WHERE employee_id = NEW.performed_by
+      AND event_id = NEW.event_id
+      AND booth_id = NEW.booth_id;
+    
+    IF NOT FOUND AND NOT employee_is_admin THEN
+      RAISE EXCEPTION 'employee % does not have any role in the booth', NEW.performed_by;
+    END IF;
+
+    IF NEW.transaction_type IN ('deposit', 'withdrawal')
+      AND NOT (employee_booth_role IN ('cashier', 'event_manager') OR employee_is_admin) THEN
+        RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    END IF;
+    IF NEW.transaction_type IN ('payment', 'refund')
+      AND NOT (employee_booth_role IN ('seller', 'cashier', 'event_manager') OR employee_is_admin) THEN
+        RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    END IF;
+
+    -- transaction_type je shodné s amount_czk
+    IF NEW.transaction_type in ('deposit', 'refund') AND NEW.amount_czk <= 0 THEN
+      RAISE EXCEPTION '% amount must be > 0', NEW.transaction_type;
+    ELSIF (NEW.transaction_type IN ('payment', 'withdrawal')) AND NEW.amount_czk >= 0 THEN
+      RAISE EXCEPTION '% amount must be < 0', NEW.transaction_type;
+    END IF;
+
+    
+    -- wallet existuje, získej potřebné data a zamkni řadu
+    SELECT tag_id, owner_id, balance_czk INTO wallet_tag_id, wallet_owner_id, bal_before
+      FROM wallets
+      WHERE id = NEW.wallet_id
+      AND deleted_at IS NULL
+      FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'wallet % does not exist or is deleted', NEW.wallet_id;
+    END IF;
+
+    -- wallet.tag_id a wallet.user_id patří k transaction
+    IF wallet_tag_id IS DISTINCT FROM NEW.tag_id THEN
+      RAISE EXCEPTION 'wallet tag_id % does not match transaction tag_id %', wallet_tag_id, NEW.tag_id;
+    END IF;
+
+    IF wallet_owner_id IS DISTINCT FROM NEW.user_id THEN
+      RAISE EXCEPTION 'wallet owner_id % does not match transaction user_id %', wallet_owner_id, NEW.user_id;
+    END IF;
+
+    -- spočítá balance_before
+    bal_after := bal_before + NEW.amount_czk;
+
+    -- -- wallet má dost peněz
+    -- IF bal_after < 0 THEN
+    --   RAISE EXCEPTION 'insufficient balance in wallet % (would be %)', NEW.wallet_id, bal_after;
+    -- END IF;
+
+    -- zapisuje balance_before a balance_after
+    NEW.balance_before := bal_before;
+    NEW.balance_after  := bal_after;
+    -- updatuje wallet balance_czk
+    UPDATE wallets SET balance_czk = bal_after WHERE id = NEW.wallet_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_transactions_block_delete_update_limit_insert
+  BEFORE UPDATE OR DELETE OR INSERT ON transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION transactions_block_delete_update_limit_insert();
+
+
+
+-- -- update these:
+
+-- -- development values
+-- -- make sure to delete this !!!
+-- INSERT INTO account (id, username, password_hash, is_admin, created_by, deleted_at)
+-- VALUES ('6623c93b-0612-4811-ae98-aad8817ecb71', 'development', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, NULL),
+-- ('6623c93b-0612-4811-ae98-aad8817ecb72', 'development_cashier', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '6623c93b-0612-4811-ae98-aad8817ecb71', NULL),
+-- ('6623c93b-0612-4811-ae98-aad8817ecb73', 'development_event_manager', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '6623c93b-0612-4811-ae98-aad8817ecb71', '2025-10-16 20:58:08.485849+0');
+
+-- INSERT INTO event (id, name, start_at, end_at, created_by)
+-- VALUES ('1623c93b-0612-4811-ae98-aad8817ecb71', 'development_event', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '6623c93b-0612-4811-ae98-aad8817ecb71');
+
+-- INSERT INTO account_event_roles (account_id, event_id, role)
+-- VALUES ('6623c93b-0612-4811-ae98-aad8817ecb72', '1623c93b-0612-4811-ae98-aad8817ecb71', 'cashier');
+
+-- -- INSERT INTO tag (physical_tag_uuid, event_id);
+
+-- -- transactions
+
+-- INSERT INTO product (id, name, description, price_czk)
+-- VALUES ('fc4056a6-ee0b-479a-a164-870e22b0c7a1', 'Hamburger 1', 'This is a yummy hamburger', 100),
+-- ('fc4056a6-ee0b-479a-a164-870e22b0c7a2', 'This is another hamburger but it has a considerably longer name. Like seriously what is this?', 'This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger ', 2000000),
+-- ('fc4056a6-ee0b-479a-a164-870e22b0c7a3', 'Tall hamburger', 'This is a tall hamburger', 250);
+
+-- INSERT INTO product_image (product_id, image_path, filename, content_type, size_bytes, width, height, alt_text)
+-- VALUES ('fc4056a6-ee0b-479a-a164-870e22b0c7a1', '/static/uploads', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
+-- ('fc4056a6-ee0b-479a-a164-870e22b0c7a2', '/static/uploads', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
+-- ('fc4056a6-ee0b-479a-a164-870e22b0c7a3', '/static/uploads', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture');
 
 
 -- maybe?
--- indexes for frequently queried columns
--- CREATE INDEX ix_transaction_tag_time ON transaction (tag_id, time DESC);
--- CREATE INDEX ix_transaction_account_time ON transaction (account_id, time DESC);
-
-
--- possibly add stuff under here:
--- permissions table (keeps mapping flexible)
--- TABLE account_type_permission {
---   id BIGINT PK // GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY
---   // account_type account_type NOT NULL
---   // allowed_transaction transaction_type NOT NULL
---   // UNIQUE (account_type, allowed_transaction)
--- }
-
--- INSERT INTO account_type_permission (account_type, allowed_tx) VALUES
---   ('main_cashier','deposit') ON CONFLICT DO NOTHING,
---   ('main_cashier','withdrawal') ON CONFLICT DO NOTHING,
---   ('cashier','purchase') ON CONFLICT DO NOTHING;
-
-
--- probably make this in python
--- -- Trigger function to update tag balance and validate permissions
--- CREATE OR REPLACE FUNCTION app_transaction_before_insert()
--- RETURNS trigger
--- LANGUAGE plpgsql
--- AS $$
--- DECLARE
---   acct_type account_type;
---   allowed boolean;
---   bal_before bigint;
---   bal_after bigint;
--- BEGIN
---   -- validate account exists and get its type
---   SELECT type INTO acct_type FROM app_account WHERE id = NEW.account_id;
---   IF NOT FOUND THEN
---     RAISE EXCEPTION 'account % does not exist', NEW.account_id;
---   END IF;
-
---   -- check permission: is NEW.type allowed for this account type?
---   SELECT EXISTS (
---     SELECT 1 FROM account_type_permission
---     WHERE account_type = acct_type AND allowed_tx = NEW.type
---   ) INTO allowed;
---   IF NOT allowed THEN
---     RAISE EXCEPTION 'account type % not allowed to perform transaction type %', acct_type, NEW.type;
---   END IF;
-
---   -- enforce amount sign semantics: deposits must be >0; purchase/withdrawal must be <0
---   IF NEW.type = 'deposit' AND NEW.amount <= 0 THEN
---     RAISE EXCEPTION 'deposit amount must be > 0';
---   ELSIF (NEW.type = 'withdrawal' OR NEW.type = 'purchase') AND NEW.amount >= 0 THEN
---     RAISE EXCEPTION '% amount must be < 0', NEW.type;
---   END IF;
-
---   -- Lock the tag row to avoid race conditions and get its balance
---   SELECT balance INTO bal_before FROM tag WHERE id = NEW.tag_id FOR UPDATE;
---   IF NOT FOUND THEN
---     RAISE EXCEPTION 'tag % does not exist', NEW.tag_id;
---   END IF;
-
---   bal_after := bal_before + NEW.amount;
-
---   -- optional business rule: do not allow negative tag balances
---   IF bal_after < 0 THEN
---     RAISE EXCEPTION 'insufficient balance on tag % (would be %)', NEW.tag_id, bal_after;
---   END IF;
-
---   -- update tag balance
---   UPDATE tag SET balance = bal_after WHERE id = NEW.tag_id;
-
---   -- populate transaction's before/after values
---   NEW.balance_before := bal_before;
---   NEW.balance_after := bal_after;
-
---   RETURN NEW;
--- END;
--- $$;
-
--- -- Attach trigger (BEFORE INSERT so we can modify NEW and stop invalid ops)
--- CREATE TRIGGER trg_app_transaction_before_insert
--- BEFORE INSERT ON app_transaction
--- FOR EACH ROW
--- EXECUTE FUNCTION app_transaction_before_insert();
+-- maybe add indexes for frequently queried columns:
+-- CREATE INDEX ix_transactions_tag_occurred_at ON transactions (tag_id, occurred_at DESC);
+-- CREATE INDEX ix_transactions_account_occurred_at ON transactions (account_id, occurred_at DESC);
+-- transactions (performed_by, occurred_at DESC)
+-- consider event_id indexes.
