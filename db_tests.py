@@ -12,20 +12,17 @@ def get_db(row_factory=dict_row, **kwargs):
     return psycopg.connect(conninfo, row_factory=row_factory, **kwargs)
 
 
+event_id = "30000000-0000-0000-0000-000000000001"
+employee_id = "10000000-0000-0000-0000-000000000002"
+
 with get_db() as conn:
     with conn.cursor() as cur:
-        cur.execute(
-            '''
+        role = cur.execute('''
             SELECT role
-            FROM account_event_roles
-            WHERE account_id = %s''',
-            ('6623c93b-0612-4811-ae98-aad8817ecb73',))
-        cur.execute(
-            '''
-            SELECT role
-            FROM account_event_roles
-            WHERE account_id = %s''',
-            ('6623c93b-0612-4811-ae98-aad8817ecb72',))
-        role = cur.fetchone()['role']
+            FROM employee_event_booth_roles
+            WHERE employee_id = %s
+            AND event_id = %s
+            AND booth_id IS NULL''',
+            (employee_id, event_id)).fetchone()
         
 print(role)

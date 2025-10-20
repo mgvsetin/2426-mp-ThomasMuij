@@ -1,13 +1,14 @@
 from flask import Flask
 import os
 
+
 # název funkce je důležitý, aby ji flask spustil
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_mapping(
-        SECRET_KEY = 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?
-        DATABSE_CONNINFO = """
+        SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32)
+        DATABASE_CONNINFO = os.environ.get('DATABASE_CONNINFO') or """
             dbname=cashier_app
             host=localhost
             user=postgres
@@ -19,7 +20,11 @@ def create_app(test_config=None):
             'parallelism':2,
             'hash_len': 32,
             'salt_len':16
-        }
+        },
+        SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
+        SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can
+        # SESSION_COOKIE_SECURE should be True in production when using HTTPS
+        # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -48,6 +53,9 @@ def create_app(test_config=None):
     from cashier_app import order
     app.register_blueprint(order.bp)
     # aby fungovalo i url_for('index') (ne jenom url_for('order.index'))
-    app.add_url_rule('/', endpoint='index')
+    app.add_url_rule('/', endpoint='index') # maybe remove, make a general index for employees and users
+
+    from cashier_app import events_booths
+    app.register_blueprint(events_booths.bp)
 
     return app

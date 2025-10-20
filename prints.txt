@@ -1,0 +1,4 @@
+with open(r'C:\Users\thoma\OneDrive\Dokumenty\code\2426-mp-ThomasMuij\prints.txt', 'w', encoding='utf-8') as f:
+            print(username_or_email, file=f)
+
+development_admin

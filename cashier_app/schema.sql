@@ -10,9 +10,11 @@ CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 
 -- make soft deletes cascade on other deletes/soft deletes?
 
--- add logs tables
+-- add logs tables (maybe not tables, outside db)
 
 -- allow negative balances here, but forbid them in the backend code
+
+-- add wallet expiration after some time if there is no owner
 
 -- ======================== employees ========================
 CREATE TABLE IF NOT EXISTS employees (
@@ -43,8 +45,15 @@ BEGIN
     IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
       RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
-  ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'Deletes are not allowed on table employees';
+  ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE employees
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
@@ -86,8 +95,15 @@ BEGIN
     IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
       RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
-  ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'Deletes are not allowed on table users';
+  ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE users
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
@@ -162,6 +178,7 @@ CREATE TABLE IF NOT EXISTS events (
   end_at      timestamptz,
   created_at  timestamptz NOT NULL DEFAULT now(),
   created_by  uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+  deleted_at timestamptz,
   CHECK (start_at < end_at)
   -- deletion? (through deleted_at or actually delete it and all (or some) related stuff but make sure there is a big warning or no deletion allowed)
   -- or only allow deletion for events with nothing import referencing it or stuff that references it
@@ -180,8 +197,15 @@ BEGIN
       RAISE EXCEPTION 'created_by is immutable and cannot be changed';
     END IF;
 
-  ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'Deletes are not allowed on table events';
+  ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE events
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
@@ -204,7 +228,7 @@ CREATE OR REPLACE TRIGGER trg_events_block_delete_limit_update_insert
 CREATE TABLE IF NOT EXISTS booths (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name            text NOT NULL,
-  event_id        uuid REFERENCES events(id) NOT NULL ON DELETE RESTRICT,
+  event_id        uuid NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
   booth_type      text NOT NULL CHECK (booth_type IN ('cashier', 'seller')),
   auth_required   boolean NOT NULL DEFAULT TRUE, -- TRUE -> event_manager nebo admin musí na počítaci povolit
   created_at      timestamptz NOT NULL DEFAULT now(),
@@ -233,8 +257,15 @@ BEGIN
       RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
 
-  ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'Deletes are not allowed on table booths';
+  ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE booths
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -270,15 +301,32 @@ WHERE booth_id IS NULL;
 -- u insert/update kontroluje: 
 --   - jestli je event stejný tady i booth a booth existuje (pokud booth_id není null)
 --   - jestli se booths.booth_type a role shodují (pokud role není null)
+--   - zajistí, že pokud je employee pro event event_manager, tak nemůže být přirazen k specifickému stánku
+--   - zajistí, že zde nemůže být přiřazen admin
 CREATE OR REPLACE FUNCTION employee_event_booth_roles_limit_autocomplete_insert_update()
 RETURNS trigger AS $$
 DECLARE
   booth_event_id uuid;
   booths_type text;
+  emp_is_admin boolean;
+  found_row int;
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     IF NEW.role IS NULL AND NEW.booth_id IS NULL THEN
       NEW.role := 'event_manager';
+    END IF;
+
+    SELECT is_admin INTO emp_is_admin
+    FROM employees
+    WHERE id = NEW.employee_id
+      AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'employee % does not exist or is deleted', NEW.employee_id;
+    END IF;
+
+    IF emp_is_admin THEN
+      RAISE EXCEPTION 'admins cannot be assigned to employee_event_booth_roles (employee %)', NEW.employee_id;
     END IF;
 
     IF NEW.booth_id IS NOT NULL THEN
@@ -303,10 +351,53 @@ BEGIN
         RAISE EXCEPTION 'booth_type % and role % do not match', booths_type, NEW.role;
       END IF;
 
+      IF TG_OP = 'INSERT' THEN
+        SELECT 1 INTO found_row
+        FROM employee_event_booth_roles
+        WHERE employee_id = NEW.employee_id
+          AND event_id = NEW.event_id
+          AND booth_id IS NULL
+        LIMIT 1;
+      ELSIF TG_OP = 'UPDATE' THEN
+        SELECT 1 INTO found_row
+        FROM employee_event_booth_roles
+        WHERE employee_id = NEW.employee_id
+          AND event_id = NEW.event_id
+          AND booth_id IS NULL
+          AND id IS DISTINCT FROM NEW.id
+        LIMIT 1;
+      END IF;
+
+      IF FOUND THEN
+        RAISE EXCEPTION 'employee % is already event_manager for event % and cannot be assigned to booths', NEW.employee_id, NEW.event_id;
+      END IF;
+
     ELSIF NEW.booth_id IS NULL THEN
       IF NEW.role IS DISTINCT FROM 'event_manager' THEN
-        RAISE EXCEPTION 'role has to be event_manager if there is no booth_id';
+        RAISE EXCEPTION 'role must be event_manager when booth_id is NULL';
       END IF;
+
+      IF TG_OP = 'INSERT' THEN
+        SELECT 1 INTO found_row
+        FROM employee_event_booth_roles
+        WHERE employee_id = NEW.employee_id
+          AND event_id = NEW.event_id
+          AND booth_id IS NOT NULL
+        LIMIT 1;
+      ELSIF TG_OP = 'UPDATE' THEN
+        SELECT 1 INTO found_row
+        FROM employee_event_booth_roles
+        WHERE employee_id = NEW.employee_id
+          AND event_id = NEW.event_id
+          AND booth_id IS NOT NULL
+          AND id IS DISTINCT FROM NEW.id
+        LIMIT 1;
+      END IF;
+
+      IF FOUND THEN
+        RAISE EXCEPTION 'cannot assign event_manager for employee % on event % while they are assigned to booths', NEW.employee_id, NEW.event_id;
+      END IF;
+
     END IF;
   END IF;
   RETURN NEW;
@@ -324,8 +415,8 @@ CREATE OR REPLACE TRIGGER trg_employee_event_booth_roles_limit_autocomplete_inse
 -- ======================== product_event_prices ========================
 CREATE TABLE IF NOT EXISTS product_event_prices (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id    uuid REFERENCES products(id) NOT NULL ON DELETE CASCADE,
-  event_id      uuid REFERENCES events(id) NOT NULL ON DELETE CASCADE,
+  product_id    uuid NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  event_id      uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   price         int NOT NULL CHECK (price > 0),
   created_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (product_id, event_id)
@@ -338,9 +429,9 @@ CREATE TABLE IF NOT EXISTS product_event_prices (
 -- ======================== event_product_booth_link ========================
 CREATE TABLE IF NOT EXISTS event_product_booth_link (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_product_id  uuid REFERENCES product_event_prices(id) NOT NULL ON DELETE CASCADE,
-  event_id          uuid REFERENCES events(id) NOT NULL ON DELETE CASCADE,
-  booth_id          uuid REFERENCES booths(id) NOT NULL ON DELETE CASCADE,
+  event_product_id  uuid NOT NULL REFERENCES product_event_prices(id) ON DELETE CASCADE,
+  event_id          uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  booth_id          uuid NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
   created_at        timestamptz NOT NULL DEFAULT now(),
   UNIQUE (event_product_id, booth_id)
 );
@@ -348,6 +439,7 @@ CREATE TABLE IF NOT EXISTS event_product_booth_link (
 
 -- automaticky doplní event_id (z product_event_prices) a zkontroluje jestli se shoduje s booth_id
 -- zkontroluje, že booth existuje
+-- kontroluje že booth je seller
 CREATE OR REPLACE FUNCTION event_product_booth_link_limit_autocomplete_update_insert()
 RETURNS trigger AS $$
 DECLARE
@@ -358,10 +450,11 @@ BEGIN
     SELECT event_id INTO booth_event_id
       FROM booths
       WHERE NEW.booth_id = id
+      AND booth_type = 'seller'
       AND deleted_at IS NULL;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'booth % does not exist or is deleted', NEW.booth_id;
+      RAISE EXCEPTION 'booth % does not exist, is not a seller or is deleted', NEW.booth_id;
     END IF;
 
     SELECT event_id INTO event_product_price_event_id
@@ -425,8 +518,15 @@ BEGIN
       RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
 
-  ELSIF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'Deletes are not allowed on table wallets';
+  ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE wallets
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -548,7 +648,9 @@ BEGIN
       FROM employee_event_booth_roles
       WHERE employee_id = NEW.performed_by
       AND event_id = NEW.event_id
-      AND booth_id = NEW.booth_id;
+      AND (booth_id = NEW.booth_id OR booth_id IS NULL)
+      ORDER BY (booth_id IS NOT NULL) DESC
+      LIMIT 1;
     
     IF NOT FOUND AND NOT employee_is_admin THEN
       RAISE EXCEPTION 'employee % does not have any role in the booth', NEW.performed_by;
@@ -618,32 +720,68 @@ CREATE OR REPLACE TRIGGER trg_transactions_block_delete_update_limit_insert
 
 -- -- update these:
 
--- -- development values
--- -- make sure to delete this !!!
--- INSERT INTO account (id, username, password_hash, is_admin, created_by, deleted_at)
--- VALUES ('6623c93b-0612-4811-ae98-aad8817ecb71', 'development', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, NULL),
--- ('6623c93b-0612-4811-ae98-aad8817ecb72', 'development_cashier', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '6623c93b-0612-4811-ae98-aad8817ecb71', NULL),
--- ('6623c93b-0612-4811-ae98-aad8817ecb73', 'development_event_manager', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '6623c93b-0612-4811-ae98-aad8817ecb71', '2025-10-16 20:58:08.485849+0');
+-- development values
+-- make sure to delete this !!!
+-- employees, users, products, product_images, events, booths,
+-- employee_event_booth_roles, product_event_prices,
+-- event_product_booth_link, wallets, transactions
 
--- INSERT INTO event (id, name, start_at, end_at, created_by)
--- VALUES ('1623c93b-0612-4811-ae98-aad8817ecb71', 'development_event', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '6623c93b-0612-4811-ae98-aad8817ecb71');
+INSERT INTO employees (id, username, email, password_hash, is_admin, created_by, deleted_at)
+VALUES 
+('10000000000000000000000000000001', 'development_admin', 'email_admin@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, NULL),
+('10000000000000000000000000000002', 'development_event_manager', 'email_event_manager@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000003', 'development_cashier', 'email_cashier@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000004', 'development_seller', 'email_seller@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000005', 'development_admin_deleted', 'email_admin_deleted@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, '2025-10-16 20:58:08.485849+0');
 
--- INSERT INTO account_event_roles (account_id, event_id, role)
--- VALUES ('6623c93b-0612-4811-ae98-aad8817ecb72', '1623c93b-0612-4811-ae98-aad8817ecb71', 'cashier');
+INSERT INTO products (id, name, description)
+VALUES
+('20000000000000000000000000000001', 'Hamburger 1', 'This is a yummy hamburger'),
+('20000000000000000000000000000002', 'This is another hamburger but it has a considerably longer name. Like seriously what is this?', 'This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger '),
+('20000000000000000000000000000003', 'Tall hamburger', 'This is a tall hamburger');
 
--- -- INSERT INTO tag (physical_tag_uuid, event_id);
+INSERT INTO product_images (product_id, image_path, filename, content_type, size_bytes, width, height, alt_text)
+VALUES
+('20000000000000000000000000000001', '/static/uploads', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
+('20000000000000000000000000000002', '/static/uploads', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
+('20000000000000000000000000000003', '/static/uploads', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture');
 
--- -- transactions
+INSERT INTO events (id, name, start_at, end_at, created_by)
+VALUES
+('30000000000000000000000000000001', 'development_event', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000002', 'development_event2', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000003', 'development_event3', '2025-12-16 20:40:55+02', '2026-12-16 20:40:55+02', '10000000000000000000000000000001');
 
--- INSERT INTO product (id, name, description, price_czk)
--- VALUES ('fc4056a6-ee0b-479a-a164-870e22b0c7a1', 'Hamburger 1', 'This is a yummy hamburger', 100),
--- ('fc4056a6-ee0b-479a-a164-870e22b0c7a2', 'This is another hamburger but it has a considerably longer name. Like seriously what is this?', 'This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger This is a yummy hamburger ', 2000000),
--- ('fc4056a6-ee0b-479a-a164-870e22b0c7a3', 'Tall hamburger', 'This is a tall hamburger', 250);
+INSERT INTO booths (id, name, event_id, booth_type, created_by)
+VALUES
+('40000000000000000000000000000001', 'development_booth_cashier', '30000000000000000000000000000001', 'cashier', '10000000000000000000000000000001'),
+('40000000000000000000000000000002', 'development_booth_seller', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001'),
+('40000000000000000000000000000003', 'development_booth_seller2', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001');
 
--- INSERT INTO product_image (product_id, image_path, filename, content_type, size_bytes, width, height, alt_text)
--- VALUES ('fc4056a6-ee0b-479a-a164-870e22b0c7a1', '/static/uploads', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
--- ('fc4056a6-ee0b-479a-a164-870e22b0c7a2', '/static/uploads', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
--- ('fc4056a6-ee0b-479a-a164-870e22b0c7a3', '/static/uploads', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture');
+INSERT INTO employee_event_booth_roles (id, employee_id, event_id, booth_id)
+VALUES
+('50000000000000000000000000000003', '10000000000000000000000000000002', '30000000000000000000000000000001', NULL),
+('50000000000000000000000000000001', '10000000000000000000000000000003', '30000000000000000000000000000001', '40000000000000000000000000000001'),
+('50000000000000000000000000000002', '10000000000000000000000000000004', '30000000000000000000000000000001', '40000000000000000000000000000002');
+
+INSERT INTO product_event_prices (id, product_id, event_id, price)
+VALUES
+('60000000000000000000000000000001', '20000000000000000000000000000001', '30000000000000000000000000000001', 2000),
+('60000000000000000000000000000002', '20000000000000000000000000000002', '30000000000000000000000000000001', 145),
+('60000000000000000000000000000003', '20000000000000000000000000000003', '30000000000000000000000000000001', 95);
+
+INSERT INTO event_product_booth_link (id, event_product_id, booth_id)
+VALUES
+('70000000000000000000000000000001', '60000000000000000000000000000001', '40000000000000000000000000000002'),
+('70000000000000000000000000000002', '60000000000000000000000000000002', '40000000000000000000000000000002'),
+('70000000000000000000000000000003', '60000000000000000000000000000003', '40000000000000000000000000000002'),
+('70000000000000000000000000000004', '60000000000000000000000000000001', '40000000000000000000000000000003');
+
+INSERT INTO wallets (id, tag_id, balance_czk, created_by)
+VALUES
+('80000000000000000000000000000001', '90000000000000000000000000000001', 5340, '10000000000000000000000000000003'),
+('80000000000000000000000000000002', '90000000000000000000000000000002', 21, '10000000000000000000000000000003');
+
 
 
 -- maybe?

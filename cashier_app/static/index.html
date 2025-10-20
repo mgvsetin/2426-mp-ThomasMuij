@@ -11,8 +11,16 @@
 </head>
 
 <body>
+  <div id="header">
+    <a href="/auth/logout">
+      <button id="logout-button">
+        Odhlásit
+      </button>
+    </a>
+  </div>
+
   <main id="order">
-    <div id="product-side">
+    <!-- <div id="product-side">
       <div id="product-grid">
         <div class="product-container">
           <div class="image-container">
@@ -30,7 +38,34 @@
       summary side
       <div id="order-summary"></div>
       <div id="payment-summary"></div>
-    </div>
+    </div> -->
+
+    <!-- <div id="event-selector-centerer">
+      <form id="event-selector-form" method="post">
+        <label for="event-selector" id="event-selector-label">Vyberte akci</label>
+        <select id="event-selector" name="events">
+          <option value="Zahradní slavnost id">Zahradní slavnost</option>
+          <option value="Nejlepší akce">Nejlepší akce</option>
+          <option value="Zahradní slavnost">Zahradní slavnost</option>
+          <option value="Nejlepší akce">Nejlepší akce</option>
+          <option value="Zahradní slavnost">Zahradní slavnost</option>
+        </select>
+        <input type="submit" value="Vybrat" id="submit-event-choice">
+      </form>
+    </div> -->
+
+    <!-- <div id="booth-selector-centerer">
+      <form id="booth-selector-form" method="post">
+        <label for="booth-selector" id="booth-selector-label">Vyberte stánek</label>
+        <select id="booth-selector" name="booths">
+          <option value="Vstup id">Vstup</option>
+          <option value="Východ">Východ</option>
+          <option value="Pod stromem">Pod stromem</option>
+          <option value="Stánek 3">Stánek 3</option>
+        </select>
+        <input type="submit" value="Vybrat" id="submit-booth-choice">
+      </form>
+    </div> -->
   </main>
 
   <script src="/static/scripts/index.js"></script>

@@ -1,3 +1,21 @@
+#header {
+  background-color: rgb(234, 234, 234);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: right;
+  padding-right: 20px;
+}
+
+#logout-button {
+  
+}
+
+
 #order {
   height: 100%;
   display: flex;
@@ -69,4 +87,62 @@
 #summary-side {
   background-color: pink;
   flex: 30%;
+}
+
+#event-selector-centerer,
+#booth-selector-centerer {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+#event-selector-form-container,
+#booth-selector-form-container {
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  padding: 18px 20px;
+}
+
+#event-selector-form,
+#booth-selector-form {
+  display: flex;
+  flex-direction: column;
+}
+
+#event-selector-label,
+#booth-selector-label {
+  font-weight: bold;
+  margin-bottom: 10px;
+  align-self: center;
+}
+
+#event-selector,
+#booth-selector {
+  height: 30px;
+  border: none;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+  outline: none;
+  width: 150px;
+  text-overflow: ellipsis;
+}
+
+#submit-event-choice,
+#submit-booth-choice {
+  border-radius: 5px;
+  border: none;
+  background-color: black;
+  color: white;
+  margin-top: 13px;
+  padding: 7px 15px;
+  align-self: center;
+}
+
+#event-error-message,
+#booth-error-message {
+  padding: 11px 10px 9px;
+  border-radius: 5px;
+  line-height: 1.35;
+  text-align: center;
+  width: 200px;
 }
