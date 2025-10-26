@@ -25,6 +25,9 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can
         # SESSION_COOKIE_SECURE should be True in production when using HTTPS
         # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
+
+        SESSION_ENFORCE_UA = True,
+        SESSION_ENFORCE_IP = False,
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -33,6 +36,12 @@ def create_app(test_config=None):
         app.config.from_pyfile('config.py')
     else:
         app.config.from_mapping(test_config)
+
+
+    @app.before_request
+    def simulate_slow_connection():
+        import time
+        time.sleep(0.5)
 
     
     @app.route('/temporary/config') # remove this
@@ -43,6 +52,15 @@ def create_app(test_config=None):
     
     from cashier_app import db
     db.init_app(app)
+
+    from cashier_app.pg_session import PgSessionInterface, delete_expired_sessions
+    from datetime import timedelta
+    app.permanent_session_lifetime = timedelta(days=7)
+
+    app.session_interface = PgSessionInterface(get_db_fn=db.get_db)
+
+    from cashier_app.pg_session import clear_sessions_command
+    app.cli.add_command(clear_sessions_command)
 
     from cashier_app import auth
     app.register_blueprint(auth.bp)

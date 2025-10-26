@@ -29,10 +29,10 @@ if (form) {
 
       if (data && data.error === 'invalid_credentials' && response.status === 401) {
         errorMessageElement.innerHTML = 'Neplatné uživatelské jméno nebo heslo.';
+        errorMessageElement.classList.add('show-error-message');
       } else {
-        errorMessageElement.innerHTML = 'Při přihlašování nastala chyba. Zkuste to později.';
+        throw 'unexpected_error';
       }
-      errorMessageElement.classList.add('show-error-message');
 
     } catch (error) {
       errorMessageElement.innerHTML = 'Při přihlašování nastala chyba. Zkuste to později.';

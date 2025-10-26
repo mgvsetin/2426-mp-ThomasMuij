@@ -22,12 +22,11 @@ def account_info():
     if not employee:
         return jsonify(logged_in=False, employee=None), 200
     
-    return_employee = {}
-    return_employee.update({
+    employee = {
         'id': employee['id'],
         'username': employee['username'],
         'email': employee['email'],
-    })
+    }
     
     return jsonify(logged_in=True, employee=employee), 200
 

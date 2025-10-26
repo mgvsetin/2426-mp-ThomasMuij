@@ -1,6 +1,6 @@
 # import functools
 from uuid import UUID
-from flask import Blueprint, request, session, g, jsonify, make_response
+from flask import Blueprint, request, session, g, jsonify, make_response, url_for
 from cashier_app.db import get_db
 from cashier_app.auth import load_logged_in_employee
 
@@ -12,7 +12,7 @@ def get_active_events_for_employee():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url='auth.login'), 401
+        return jsonify(redirect_url=url_for('auth.login')), 401
 
     conn = get_db()
 
@@ -44,7 +44,12 @@ def get_active_events_for_employee():
 
 @bp.route('/select', methods=('POST',))
 def select_event():
-    event_id_raw = request.form.get('event_id')
+    employee = load_logged_in_employee()
+
+    if employee is None:
+        return jsonify(redirect_url=url_for('auth.login')), 401
+
+    event_id_raw = request.form.get('event')
     try:
         event_id = str(UUID(event_id_raw))
     except (TypeError, ValueError):
@@ -62,10 +67,23 @@ def select_event():
                 AND (end_at IS NULL OR end_at > now())
                 AND deleted_at IS NULL''',
                 (event_id,)).fetchone()
+    
+    if not employee['is_admin']:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                role = cur.execute('''
+                    SELECT role
+                    FROM employee_event_booth_roles
+                    WHERE employee_id = %s
+                    AND event_id = %s''',
+                    (employee['id'], event_id)).fetchone()
+                
+        if role is None:
+            return jsonify(error='employee_not_linked_to_event'), 403
 
     if event:
-        session['event_id'] = event_id
-        return make_response(status=200)
+        session['event_id'] = str(event_id)
+        return jsonify(), 200
     else:
         return jsonify(error='event_not_found_or_inactive'), 404
         
@@ -109,12 +127,12 @@ def load_selected_event() -> dict | None:
 bp_booths = Blueprint('booths', __name__, url_prefix='/booths')
 
 
-@bp.route('/get-for-employee')
+@bp_booths.route('/get-for-employee')
 def get_event_booths_for_employee():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url='auth.login'), 401
+        return jsonify(redirect_url=url_for('auth.login')), 401
 
     event_id = session.get('event_id')
 
@@ -160,17 +178,24 @@ def get_event_booths_for_employee():
     return jsonify(booths), 200
 
 
-# check is in frontend storage, save to it
-@bp.route('/select', methods=('POST',))
-# @login_required
+@bp_booths.route('/select', methods=('POST',))
 def select_booth():
+    employee = load_logged_in_employee()
+
+    if employee is None:
+        return jsonify(redirect_url=url_for('auth.login')), 401
+
     event_id = session.get('event_id')
-    booth_id_raw = request.form.get('booth_id')
+
+    if event_id is None:
+        return jsonify(error='no_selected_event'), 400
+
+    booth_id_raw = request.form.get('booth')
 
     try:
         booth_id = str(UUID(booth_id_raw))
     except (TypeError, ValueError):
-        return jsonify(success=False, error='event_not_found'), 404
+        return jsonify(error='invalid_booth_id'), 400
 
     conn = get_db()
 
@@ -184,34 +209,42 @@ def select_booth():
                 AND deleted_at IS NULL''',
                 (booth_id, event_id)).fetchone()
             
-            if booth is None:
-                session['booth_id'] = None
-                return jsonify(success=False, error='booth_not_found'), 404
+    if booth is None:
+        return jsonify(error='booth_not_found'), 404
             
     is_allowed = not booth['auth_required']
     
     if not is_allowed:
-        employee = load_logged_in_employee()
         is_allowed = employee['is_admin']
 
-        if not is_allowed:
-            with conn.transaction():
-                with conn.cursor() as cur:
-                        role = cur.execute('''
-                            SELECT role
-                            FROM employee_event_booth_roles
-                            WHERE employee_id = %s
-                            AND event_id = %s
-                            AND booth_id IS NULL''',
-                            (employee['id'], event_id)).fetchone()
-                        
-                        if role == 'event_manager': # stejné jako if role:
-                            is_allowed = True
+    if not is_allowed:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                    role = cur.execute('''
+                        SELECT role
+                        FROM employee_event_booth_roles
+                        WHERE employee_id = %s
+                        AND event_id = %s
+                        AND booth_id IS NULL''',
+                        (employee['id'], event_id)).fetchone()
+                    
+                    if role is None:
+                        return jsonify(error='employee_not_linked_to_event'), 403
+                    
+                    if role['role'] == 'event_manager': # stejné jako if role:
+                        is_allowed = True
+
+    # if not is_allowed:
+    #     auth_username_or_email = request.form.get('username-email')
+    #     auth_password = request.form.get('password')
+    #     # split the authentication from the login func and use here
 
     if not is_allowed:
-        auth_username_or_email = request.form.get('username-email')
-        auth_password = request.form.get('password')
-        # split the authentication from the login func and use here
+        return jsonify(error='event_not_found_or_inactive'), 404
+    
+    session['booth_id'] = str(booth_id)
+    return jsonify(), 200
+
 
 
 def load_selected_booth():

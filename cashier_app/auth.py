@@ -58,7 +58,12 @@ def login():
 
         if employee_id:
             session.clear()
-            session['employee_id'] = employee_id
+            # request that the session cookie be replaced with a new sid when saved
+            session['_regenerate'] = True
+            session['employee_id'] = str(employee_id)
+
+            # session.permanent = True
+
             return jsonify(redirect_url=url_for('order.index')), 200
 
         session.clear()

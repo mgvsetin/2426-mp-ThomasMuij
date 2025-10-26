@@ -16,6 +16,47 @@ CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 
 -- add wallet expiration after some time if there is no owner
 
+
+
+-- -- enum for clarity (optional)
+-- CREATE TYPE account_type AS ENUM ('user','employee');
+
+-- CREATE TABLE accounts (
+--   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   account_type  account_type NOT NULL,
+--   username      text NOT NULL,
+--   email         citext NOT NULL,
+--   password_hash text NOT NULL,
+--   created_at    timestamptz NOT NULL DEFAULT now(),
+--   deleted_at    timestamptz
+-- );
+
+-- -- Unique constraints: choose global uniqueness or per-type.
+-- -- Global:
+-- CREATE UNIQUE INDEX unique_accounts_username_active ON accounts (LOWER(username)) WHERE deleted_at IS NULL;
+-- CREATE UNIQUE INDEX unique_accounts_email_active ON accounts (email) WHERE deleted_at IS NULL;
+
+-- -- If you prefer per-type uniqueness:
+-- -- CREATE UNIQUE INDEX unique_accounts_username_per_type_active ON accounts (account_type, LOWER(username)) WHERE deleted_at IS NULL;
+-- Employee-specific table:
+
+-- sql
+-- Copy code
+-- CREATE TABLE employee_profiles (
+--   account_id   uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+--   is_admin     boolean NOT NULL DEFAULT FALSE,
+--   created_by   uuid REFERENCES accounts(id), -- should reference an employee account
+--   created_at   timestamptz NOT NULL DEFAULT now()
+-- );
+-- -- optionally add CHECK to ensure associated account is employee
+-- ALTER TABLE employee_profiles
+--   ADD CONSTRAINT employee_profiles_only_for_employees
+--   CHECK (
+--     (SELECT account_type FROM accounts WHERE accounts.id = employee_profiles.account_id) = 'employee'
+--   );
+
+
+
 -- ======================== employees ========================
 CREATE TABLE IF NOT EXISTS employees (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -118,6 +159,21 @@ CREATE OR REPLACE TRIGGER trg_users_block_delete_limit_update_insert
   BEFORE UPDATE OR DELETE OR INSERT ON users
   FOR EACH ROW
   EXECUTE FUNCTION users_block_delete_limit_update_insert();
+
+
+
+-- currently only for employees
+CREATE TABLE IF NOT EXISTS sessions (
+  id            text PRIMARY KEY,        -- opaque session id
+  data          jsonb NOT NULL,          -- session data
+  employee_id   uuid,
+  ip            text,
+  ua_hash       text,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  modified_at   timestamptz NOT NULL DEFAULT now(),
+  expires_at    timestamptz
+);
+-- CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions (expires_at);
 
 
 
@@ -752,11 +808,12 @@ VALUES
 ('30000000000000000000000000000002', 'development_event2', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
 ('30000000000000000000000000000003', 'development_event3', '2025-12-16 20:40:55+02', '2026-12-16 20:40:55+02', '10000000000000000000000000000001');
 
-INSERT INTO booths (id, name, event_id, booth_type, created_by)
+INSERT INTO booths (id, name, event_id, booth_type, created_by, auth_required)
 VALUES
-('40000000000000000000000000000001', 'development_booth_cashier', '30000000000000000000000000000001', 'cashier', '10000000000000000000000000000001'),
-('40000000000000000000000000000002', 'development_booth_seller', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001'),
-('40000000000000000000000000000003', 'development_booth_seller2', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001');
+('40000000000000000000000000000001', 'development_booth_cashier', '30000000000000000000000000000001', 'cashier', '10000000000000000000000000000001', FALSE),
+('40000000000000000000000000000002', 'development_booth_seller', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001', FALSE),
+('40000000000000000000000000000003', 'development_booth_seller2', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001', FALSE),
+('40000000000000000000000000000004', 'development_booth_seller_event2', '30000000000000000000000000000002', 'seller', '10000000000000000000000000000001', FALSE);
 
 INSERT INTO employee_event_booth_roles (id, employee_id, event_id, booth_id)
 VALUES
