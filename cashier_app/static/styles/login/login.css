@@ -50,6 +50,16 @@
   background-color: rgb(252, 252, 252);
 }
 
+#remember-me-checkbox-label {
+  margin-bottom: 10px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+#remember-me-checkbox {
+  cursor: pointer;
+}
+
 .error-message {
   color: rgb(194, 14, 26);
   background-color: rgb(250, 219, 221);
@@ -59,7 +69,8 @@
   line-height: 1.35;
   text-align: center;
   width: 200px;
-  display: none
+  display: none;
+  margin-bottom: 10px;
 }
 
 .show-error-message {
@@ -72,5 +83,5 @@
   background-color: black;
   color: white;
   padding: 10px;
-  margin: 10px 0 30px 0;
+  margin-bottom: 30px;
 }

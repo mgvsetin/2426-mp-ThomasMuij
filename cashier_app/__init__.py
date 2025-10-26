@@ -23,11 +23,13 @@ def create_app(test_config=None):
         },
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
         SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can
+        SESSION_COOKIE_SECURE = False,
         # SESSION_COOKIE_SECURE should be True in production when using HTTPS
         # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
 
-        SESSION_ENFORCE_UA = True,
+        SESSION_ENFORCE_UA = False,
         SESSION_ENFORCE_IP = False,
+        SESSION_MAX_INACTIVE_DAYS = 0.0001
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -38,10 +40,10 @@ def create_app(test_config=None):
         app.config.from_mapping(test_config)
 
 
-    @app.before_request
-    def simulate_slow_connection():
-        import time
-        time.sleep(0.5)
+    # @app.before_request
+    # def simulate_slow_connection():
+    #     import time
+    #     time.sleep(1)
 
     
     @app.route('/temporary/config') # remove this
@@ -65,8 +67,8 @@ def create_app(test_config=None):
     from cashier_app import auth
     app.register_blueprint(auth.bp)
 
-    from cashier_app import session
-    app.register_blueprint(session.bp)
+    from cashier_app import session_api
+    app.register_blueprint(session_api.bp)
 
     from cashier_app import order
     app.register_blueprint(order.bp)

@@ -53,6 +53,7 @@ def login():
     if request.method == 'POST':
         username_or_email = request.form.get('username-email', '').strip()
         password = request.form.get('password', '')
+        remember_me = request.form.get('remember-me')
 
         employee_id = get_employee_id(username_or_email, password)
 
@@ -62,7 +63,8 @@ def login():
             session['_regenerate'] = True
             session['employee_id'] = str(employee_id)
 
-            # session.permanent = True
+            if remember_me:
+                session.permanent = True
 
             return jsonify(redirect_url=url_for('order.index')), 200
 

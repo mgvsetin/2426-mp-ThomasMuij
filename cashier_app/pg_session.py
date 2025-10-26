@@ -92,7 +92,7 @@ class PgSessionInterface(SessionInterface):
         with conn.transaction():
             with conn.cursor() as cur:
                 row = cur.execute(f'''
-                    SELECT data, expires_at, employee_id, ua_hash
+                    SELECT data, employee_id, ip, ua_hash, expires_at
                     FROM {self.table}
                     WHERE id = %s''',
                     (sid,)).fetchone()
@@ -137,6 +137,9 @@ class PgSessionInterface(SessionInterface):
         domain = self.get_cookie_domain(app)
         path = self.get_cookie_path(app)
 
+        # je zde, aby se regenerate vždy odstranilo
+        regenerate = session.pop('_regenerate', False)
+
         # if session is empty -> delete cookie and DB row
         if not session:
             if session.sid:
@@ -147,6 +150,7 @@ class PgSessionInterface(SessionInterface):
                             DELETE FROM {self.table}
                             WHERE id = %s''',
                             (session.sid,))
+
             response.delete_cookie(
                 app.config.get("SESSION_COOKIE_NAME", "session"),
                 domain=domain,
@@ -156,8 +160,10 @@ class PgSessionInterface(SessionInterface):
         
         # Decide if we need a new sid (new session or explicit regeneration)
         sid = session.sid
-        if session.new or not sid or session.pop('_regenerate', False):
-            sid = self.generate_sid()
+        if session.new or not sid or regenerate:
+            new_sid = self.generate_sid()
+        else:
+            new_sid = sid
 
         expires = self.get_expiration_time(app, session)
         data = dict(session) # JSON serializable items only
@@ -181,44 +187,82 @@ class PgSessionInterface(SessionInterface):
                     modified_at = now(),
                     expires_at = EXCLUDED.expires_at
                     """,
-                    (sid, Json(data), employee_id, ip, ua_hash, expires))
+                    (new_sid, Json(data), employee_id, ip, ua_hash, expires))
+
+                if (new_sid != sid) and sid:
+                    try:
+                        cur.execute(f"""
+                            DELETE FROM {self.table}
+                            WHERE id = %s""",
+                            (sid,))
+                    except Exception:
+                        # Ignore delete errors — not fatal; transaction still succeeds.
+                        pass
+
+        session.sid = new_sid
+        session.new = False
                 
         # set cookie (the cookie value is the opaque sid)
         response.set_cookie(
             app.config.get("SESSION_COOKIE_NAME", "session"),
-            sid,
+            new_sid,
             expires=expires,
             httponly=app.config.get('SESSION_COOKIE_HTTPONLY', True),
             samesite=app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
-            secure=app.config.get('SESSION_COOKIE_SECURE', True),
+            secure=app.config.get('SESSION_COOKIE_SECURE', False),
             domain=domain,
             path=path
         )
 
 
 # --- small helper to delete expired sessions (callable from CLI/cron) ------
-def delete_expired_sessions(conn=None):
-    """Delete expired sessions. Returns number deleted (int)."""
+def delete_expired_sessions(conn=None, max_inactive_days: int | None = None) -> int:
+    """
+    Delete expired sessions and optionally stale session-cookie rows (expires_at IS NULL).
+    Returns number of deleted rows.
+    If max_inactive_days is None, reads app.config['SESSION_MAX_INACTIVE_DAYS'] when run under app context,
+    otherwise uses provided value. If the final threshold is None, only deletes rows with a non-null expires_at.
+    """
     close_conn = False
     if conn is None:
         conn = get_db()
         close_conn = True
+
+    if max_inactive_days is None:
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context():
+                max_inactive_days = current_app.config.get('SESSION_MAX_INACTIVE_DAYS', None)
+        except Exception:
+            pass
+
+    deleted = 0
+
     with conn.transaction():
         with conn.cursor() as cur:
-            # RETURNING id to get accurate count
-            cur.execute('''
+            cur.execute("""
                 DELETE FROM sessions
-                WHERE expires_at IS NOT NULL
-                AND expires_at < now()
-                RETURNING id''')
-            deleted = len(cur.fetchall())
+                WHERE expires_at IS NOT NULL AND expires_at < now()
+                RETURNING id;
+                """)
+            deleted += len(cur.fetchall())
+
+            if max_inactive_days is not None:
+                days = float(max_inactive_days)
+                cur.execute(f"""
+                    DELETE FROM sessions
+                    WHERE expires_at IS NULL
+                      AND modified_at < now() - interval '{days} days'
+                    RETURNING id;
+                    """)
+                deleted += len(cur.fetchall())
+
     if close_conn:
         try:
             conn.close()
         except Exception:
             pass
     return deleted
-
 
 import click
 from flask import current_app

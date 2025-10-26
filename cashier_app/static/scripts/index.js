@@ -26,7 +26,7 @@ productSide.addEventListener('click', async (event) => {
   }
 })
 
-const newActionButton = document.querySelector('#header');
+const newActionButton = document.querySelector('#choose-new-event-button');
 newActionButton.addEventListener('click', () => {
   renderEventPicker();
 })

@@ -1,4 +1,480 @@
-with open(r'C:\Users\thoma\OneDrive\Dokumenty\code\2426-mp-ThomasMuij\prints.txt', 'w', encoding='utf-8') as f:
-            print(username_or_email, file=f)
-
-development_admin
+with open(r'C:\Users\thoma\OneDrive\Dokumenty\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
+            print(value, file=f)
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+False
+---HERE---
+<PgSession {}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+False
+---HERE2---
+[{'id': 'RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k', 'data': {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 10, 23, 149498, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 10, 23, 729538, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 10, 23, 729072, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+---HERE3---
+[{'id': 'RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k'}]
+---HERE2---
+[]
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> RXuHYosIiZ9NWj5I3bilIfOmuXiIj6uhOZqnXNcnm7k
+True
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+<PgSession {}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+False
+---HERE---
+<PgSession {}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+False
+---HERE2---
+[{'id': 'D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8', 'data': {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 12, 35, 386958, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 12, 36, 155973, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 12, 36, 148983, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8
+True
+---HERE3---
+[{'id': 'D_TGbE_9Mev0zDlon0YoG6BFsJ3aHS_Xxce34lk-MW8'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+True
+<PgSession {}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+False
+---HERE---
+<PgSession {}> jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE
+False
+---HERE2---
+[{'id': 'jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE', 'data': {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 19, 46, 823084, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 19, 52, 638104, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 19, 52, 637411, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+---HERE3---
+[{'id': 'jW3p7QBX8rAuMOXOoDCBPVWdD5K3k5XfqaHlcT1kgmE'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> None
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+<PgSession {}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+False
+---HERE---
+<PgSession {}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI
+True
+---HERE2---
+[{'id': 'YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI', 'data': {'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 20, 3, 454002, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 20, 3, 635029, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': None}]
+---HERE3---
+[{'id': 'YrfX7X9RuQpNHRnIuTpibPlBWvmdF63p2rOT_j8nilI'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+True
+<PgSession {}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+False
+---HERE---
+<PgSession {}> eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps
+False
+---HERE2---
+[{'id': 'eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps', 'data': {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 20, 23, 208770, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 20, 33, 565599, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 20, 33, 564803, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+---HERE3---
+[{'id': 'eYE3XAU8ERSVFOg9WSUfEtY86EuHZiqyatvsJEpF1ps'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> None
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', 'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', 'employee_id': '10000000-0000-0000-0000-000000000001'}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+True
+<PgSession {}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+False
+---HERE---
+<PgSession {}> fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw
+False
+---HERE2---
+[{'id': 'fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw', 'data': {'event_id': '30000000-0000-0000-0000-000000000001', 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 20, 43, 30015, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 20, 49, 963946, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': None}]
+---HERE3---
+[{'id': 'fpmSiC6wBT9ZQnMMIyYvaR3MHeSJ3aXtYiNV-_UwFyw'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> None
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001'}> QFo2-I8lBOjVc9DLae3fFFCm71KqtxD16JIvMKlv64o
+True
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001', 'booth_id': '40000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+True
+<PgSession {}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+False
+---HERE---
+<PgSession {}> f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds
+False
+---HERE2---
+[{'id': 'f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds', 'data': {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 23, 21, 335572, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 23, 48, 915226, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 23, 48, 914351, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+---HERE3---
+[{'id': 'f6h1XmHT3-PiLT8FPQUfgDGEUTNcYa1VCG6JjwoUWds'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+True
+<PgSession {}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+False
+---HERE---
+<PgSession {}> 6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o
+False
+---HERE2---
+[{'id': '6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o', 'data': {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}, 'employee_id': UUID('10000000-0000-0000-0000-000000000001'), 'ip': '127.0.0.1', 'ua_hash': '8d3a4310782ed116', 'created_at': datetime.datetime(2025, 10, 26, 23, 24, 8, 411865, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'modified_at': datetime.datetime(2025, 10, 26, 23, 24, 33, 514247, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest')), 'expires_at': datetime.datetime(2025, 11, 2, 23, 24, 33, 510160, tzinfo=zoneinfo.ZoneInfo(key='Europe/Budapest'))}]
+---HERE3---
+[{'id': '6-flRcaZcGMpy3RSG3XSpcjd3xs3XP2sEPvwT2ocV4o'}]
+---HERE4---
+[]
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {}> None
+False
+<PgSession {'employee_id': '10000000-0000-0000-0000-000000000001', '_permanent': True}> None
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001', 'booth_id': '40000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
+<PgSession {'booth_id': '40000000-0000-0000-0000-000000000001', 'event_id': '30000000-0000-0000-0000-000000000001', '_permanent': True, 'employee_id': '10000000-0000-0000-0000-000000000001'}> da3HsX7M7Px4LyKsX5c0FBJbyTJoTPargePMm8hSjIQ
+True
