@@ -3,7 +3,7 @@ from cashier_app.db import get_db
 from cashier_app.events_booths import load_selected_event, load_selected_booth
 from cashier_app.auth import load_logged_in_employee
 
-bp = Blueprint('session', __name__, url_prefix='/session')
+bp = Blueprint('session', __name__, url_prefix='/api/session')
 
 # {
 #   "sub": "user-id-uuid",
@@ -15,7 +15,7 @@ bp = Blueprint('session', __name__, url_prefix='/session')
 #   "exp": 169YYY
 # }
 
-@bp.route('/employee-info')
+@bp.route('/employee')
 def account_info():
     employee = load_logged_in_employee()
 
@@ -31,9 +31,14 @@ def account_info():
     return jsonify(logged_in=True, employee=employee), 200
 
 
-@bp.route('/booth-is-registered')
-def booth_is_registered():
-    event = load_selected_event()
-    booth = load_selected_booth()
+# @bp.route('/booth-is-registered')
+# def booth_is_registered():
+#     event = load_selected_event()
+#     booth = load_selected_booth()
 
-    return jsonify(event and booth and event['id'] == booth['event_id']), 200
+#     # return jsonify(event and booth and event['id'] == booth['event_id']), 200
+#     # nejde, protože to může být None
+#     if event and booth and event['id'] == booth['event_id']:
+#         return jsonify(True), 200
+#     else:
+#         return jsonify(False), 200

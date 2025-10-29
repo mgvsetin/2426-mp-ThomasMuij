@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tests</title>
+</head>
+
+<body>
+  <script>
+    try {
+    // throw 'my error';
+    const a = new Error('my error');
+    console.log(a.message)
+    console.log(a.name)
+    console.log(a.stack)
+    console.log(a)
+    } catch (error) {
+      console.log(error.message === 'my error')
+    }
+  </script>
+</body>
+
+</html>

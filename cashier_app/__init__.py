@@ -29,7 +29,7 @@ def create_app(test_config=None):
 
         SESSION_ENFORCE_UA = False,
         SESSION_ENFORCE_IP = False,
-        SESSION_MAX_INACTIVE_DAYS = 0.0001
+        SESSION_MAX_INACTIVE_DAYS = 7
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -70,8 +70,8 @@ def create_app(test_config=None):
     from cashier_app import session_api
     app.register_blueprint(session_api.bp)
 
-    from cashier_app import order
-    app.register_blueprint(order.bp)
+    from cashier_app import index
+    app.register_blueprint(index.bp)
     # aby fungovalo i url_for('index') (ne jenom url_for('order.index'))
     app.add_url_rule('/', endpoint='index') # maybe remove, make a general index for employees and users
 

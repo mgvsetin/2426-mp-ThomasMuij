@@ -14,32 +14,34 @@ if (form) {
 
     formData.set('username-email', formData.get('username-email').trim())
 
+    let data;
+
     try {
       const response = await fetch('/auth/login', {
         method: 'POST',
         body: formData
       });
+      data = await response.json();
 
-      const data = await response.json();
+      if (response.status === 401 && data.error === 'invalid_credentials') {
+        throw new Error('invalid_credentials')
+      }
     
-      if (response.ok) {
-        window.location.href = data.redirect_url;
-        return;
+      if (!response.ok) {
+        throw new Error('unexpected_error');
       }
-
-      if (data && data.error === 'invalid_credentials' && response.status === 401) {
-        errorMessageElement.innerHTML = 'Neplatné uživatelské jméno nebo heslo.';
-        errorMessageElement.classList.add('show-error-message');
-      } else {
-        throw 'unexpected_error';
-      }
-
     } catch (error) {
-      errorMessageElement.innerHTML = 'Při přihlašování nastala chyba. Zkuste to později.';
+      if (error.message === 'invalid_credentials') {
+        errorMessageElement.innerHTML = 'Neplatné uživatelské jméno nebo heslo.'
+      } else {
+        errorMessageElement.innerHTML = 'Při přihlašování nastala chyba. Zkuste to později.';
+      }
       errorMessageElement.classList.add('show-error-message');
+      return;
     } finally {
       submitButton.disabled = false;
     }
+    window.location.href = data.redirect_url;
   });
 }
 

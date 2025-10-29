@@ -66,13 +66,13 @@ def login():
             if remember_me:
                 session.permanent = True
 
-            return jsonify(redirect_url=url_for('order.index')), 200
+            return jsonify(redirect_url=url_for('order.index')), 201
 
         session.clear()
         return jsonify(error='invalid_credentials'), 401
 
     # letwebserver (nginx?) serve static files for performance; Flask can still send_static_file during development.
-    return current_app.send_static_file('login/login.html')
+    return current_app.send_static_file('html/login/login.html')
 
 
 def load_logged_in_employee() -> dict | None:

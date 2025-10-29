@@ -7,7 +7,7 @@
   <title>Objednávky</title>
 
   <link rel="stylesheet" href="/static/styles/general.css">
-  <link rel="stylesheet" href="/static/styles/index.css">
+  <link rel="stylesheet" href="/static/styles/index/index.css">
 </head>
 
 <body>
@@ -25,21 +25,15 @@
 
   <main id="order">
     <div id="product-side">
-      <div id="product-grid">
-        <div class="product-container">
-          <div class="image-container">
-            <img class="product-image" src="/static/images/product/hamburger1.png">
-          </div>
-          <div class="product-text">
-            <div class="product-name">Hamburger1</div>
-            <div class="product-price">100 Kč</div>
-          </div>
+      <div id="product-grid-container">
+        <div id="product-grid">
         </div>
       </div>
     </div>
 
     <div id="summary-side">
       summary side
+      you can delete the product/type the amount/use +/- here or in the productside
       <div id="order-summary"></div>
       <div id="payment-summary"></div>
     </div>
@@ -72,7 +66,7 @@
     </div> -->
   </main>
 
-  <script src="/static/scripts/index.js"></script>
+  <script src="/static/scripts/index/index.js" type="module"></script>
 </body>
 
 </html>
