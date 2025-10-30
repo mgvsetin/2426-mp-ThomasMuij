@@ -14,6 +14,7 @@
 // }
 
 import { renderEventPicker } from "./event_booth.js";
+import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
