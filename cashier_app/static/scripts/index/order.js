@@ -22,7 +22,16 @@ class Order {
   }
 
   _loadOrderFromStorage() {
-    this.items = JSON.parse(sessionStorage.getItem(this._key)) || [];
+    this.items = JSON.parse(sessionStorage.getItem(this._key)) || [
+      {
+        productId: '20000000000000000000000000000001',
+        quantity: 2
+      },
+      {
+        productId: '20000000000000000000000000000003',
+        quantity: 1
+      }
+    ];
   }
 
   _saveOrderToStorage() {
