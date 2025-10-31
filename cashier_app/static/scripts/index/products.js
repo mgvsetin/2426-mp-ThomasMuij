@@ -14,13 +14,25 @@
 // }
 
 import { renderEventPicker } from "./event_booth.js";
-import { order } from "./order.js";
+import { Order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
 
 
-async function getProducts() {
+const cache_time_ms = 60 * 1000; // 1 minuta
+// maybe figure out cache max time so that the slow doenst have to happen
+
+const _productsCache = {
+  products: null,
+  expiry: 0
+};
+
+export async function getProducts() {
+  if (_productsCache.products && _productsCache.expiry > Date.now()) {
+    return _productsCache.products;
+  }
+
   try {
     const response = await fetch('/api/employees/me/events/booths/products');
 
@@ -40,6 +52,9 @@ async function getProducts() {
       throw new Error('unexpected_error')
     }
 
+    _productsCache.products = data;
+    _productsCache.expiry = Date.now() + cache_time_ms;
+
     return data;
 
   } catch (error) {
@@ -47,8 +62,23 @@ async function getProducts() {
   }
 }
 
+
+export function findProduct(products, productId) {
+  for (const product of products) {
+    if (product.id === productId) {
+      return product;
+    }
+  }
+}
+
+
 export async function renderProducts() {
-  const products = await getProducts();
+  const products = await getProducts(); // combine awaits here and everywhere else
+  const order = await Order.getOrder();
+
+  if (products === false) {
+    return;
+  }
 
   if (products === 'event_or_booth_not_selected') {
     productGridContainer.innerHTML = `
@@ -78,32 +108,44 @@ export async function renderProducts() {
     return;
   }
 
+  const url = new URL(window.location);
+  const searchQuery = url.searchParams.get('search_query');
+
   let productsHTML = '';
 
   products.forEach((product) => {
+    if (searchQuery
+      && !product.name.toLowerCase().trim().includes(searchQuery)) {
+        return;
+    }
+
     let imageHTML;
 
-    if (product['image_path'] && product['filename']) {
+    if (product.image_path && product.filename) {
       imageHTML = `
         <div class="image-container">
-          <img class="product-image" src="${product['image_path']}/${product['filename']}">
+          <img class="product-image" src="${product.image_path}/${product.filename}">
         </div>
       `;
     } else {
       imageHTML = '';
     }
 
+    const orderItem = order.getItem(product.id)
+    const quantity = orderItem ? orderItem.quantity : 0;
+    const selectedClass = orderItem ? 'selected-product' : ''
+
     productsHTML += `
-      <div class="product-container">
+      <div class="product-container ${selectedClass}">
         ${imageHTML}
         <div class="product-info">
-          <div class="product-name">${product['name']}</div>
+          <div class="product-name">${product.name}</div>
           <div class="product-info-bottom-row">
-            <div class="product-price">${product['price']} Kč</div>
+            <div class="product-price">${product.price} Kč</div>
             <div class="number-selector">
-              <button class="minus-button">-</button>
-              <input type="number" min="0" max="999" class="number-of-products" value="0">
-              <button class="plus-button">+</button>
+              <button class="minus-button" data-product-id="${product.id}">-</button>
+              <input type="number" min="0" class="number-of-products" value="${quantity}">
+              <button class="plus-button" data-product-id="${product.id}">+</button>
             </div>
           </div>
         </div>

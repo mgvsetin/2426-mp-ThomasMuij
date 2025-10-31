@@ -15,20 +15,31 @@ bp = Blueprint('session', __name__, url_prefix='/api/session')
 #   "exp": 169YYY
 # }
 
-@bp.route('/employee')
+@bp.route('/')
 def account_info():
     employee = load_logged_in_employee()
-
-    if not employee:
-        return jsonify(logged_in=False, employee=None), 200
+    event = load_selected_event()
+    booth = load_selected_booth()
     
-    employee = {
-        'id': employee['id'],
-        'username': employee['username'],
-        'email': employee['email'],
-    }
+    if employee:
+        employee = {
+            'id': employee['id'],
+            'username': employee['username'],
+            'email': employee['email'],
+        }
+    if event:
+        event = {
+            'id': event['id'],
+            'name': event['name']
+        }
+    if booth:
+        booth = {
+            'id': booth['id'],
+            'name': booth['name'],
+            'booth_type': booth['booth_type']
+        }
     
-    return jsonify(logged_in=True, employee=employee), 200
+    return jsonify(employee=employee, event=event, booth=booth), 200
 
 
 # @bp.route('/booth-is-registered')

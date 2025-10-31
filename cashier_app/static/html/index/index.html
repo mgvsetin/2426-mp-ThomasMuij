@@ -25,45 +25,45 @@
 
   <main id="order">
     <div id="product-side">
-      <div id="product-grid-container">
-        <div id="product-grid">
+      <div id="search-div">
+        <div id="search-bar-container">
+          <input id="product-search-bar" placeholder="Vyhledávání">
+          <button id="search-button">
+            <img id="search-icon" src="/static/images/icons/search_icon.png">
+          </button>
         </div>
       </div>
+
+      <div id="product-grid-container"></div>
     </div>
 
     <div id="summary-side">
-      summary side
-      you can delete the product/type the amount/use +/- here or in the productside
+      <div id="customer-details">
+        <div id="customer-details-title">
+          Zákazník
+        </div>
+        <div id="tag-id">
+          Karta: 20000000-0000-0000-0000-000000000001
+        </div>
+        <div id="balance">
+          Zůstatek: 3456 Kč
+        </div>
+      </div>
       <div id="order-summary"></div>
-      <div id="payment-summary"></div>
+      <div id="payment-summary">
+        <div id="order-cost-row">
+          <div id="order-cost-message">
+            Celkem:
+          </div>
+          <div id="order-cost">
+            3405 Kč
+          </div>
+        </div>
+        <button id="pay-button">
+          Zaplatit
+        </button>
+      </div>
     </div>
-
-    <!-- <div id="event-selector-centerer">
-      <form id="event-selector-form" method="post">
-        <label for="event-selector" id="event-selector-label">Vyberte akci</label>
-        <select id="event-selector" name="events">
-          <option value="Zahradní slavnost id">Zahradní slavnost</option>
-          <option value="Nejlepší akce">Nejlepší akce</option>
-          <option value="Zahradní slavnost">Zahradní slavnost</option>
-          <option value="Nejlepší akce">Nejlepší akce</option>
-          <option value="Zahradní slavnost">Zahradní slavnost</option>
-        </select>
-        <input type="submit" value="Vybrat" id="submit-event-choice">
-      </form>
-    </div> -->
-
-    <!-- <div id="booth-selector-centerer">
-      <form id="booth-selector-form" method="post">
-        <label for="booth-selector" id="booth-selector-label">Vyberte stánek</label>
-        <select id="booth-selector" name="booths">
-          <option value="Vstup id">Vstup</option>
-          <option value="Východ">Východ</option>
-          <option value="Pod stromem">Pod stromem</option>
-          <option value="Stánek 3">Stánek 3</option>
-        </select>
-        <input type="submit" value="Vybrat" id="submit-booth-choice">
-      </form>
-    </div> -->
   </main>
 
   <script src="/static/scripts/index/index.js" type="module"></script>
