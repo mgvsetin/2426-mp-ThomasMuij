@@ -4,7 +4,7 @@
 //     const boothIsRegistered = await response.json();
 
 import { order } from "./order.js";
-import { resetProductsCache } from "./products.js";
+import { resetProductsCache, saveSelectedCategory } from "./products.js";
 
 //     if (!response.ok) {
 //       throw new Error('unexpected_error');
@@ -282,6 +282,7 @@ export async function pickBooth(formData) {
 export async function unselectEventBooth() {
   order.reset();
   resetProductsCache();
+  saveSelectedCategory(null);
   try {
     const response = await fetch('/api/employees/me/events/remove', {
       method: 'DELETE'

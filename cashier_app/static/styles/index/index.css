@@ -258,6 +258,45 @@ body {
   flex-direction: column;
 }
 
+#selectable-categories {
+  display: flex;
+  background-color: white;
+  overflow: auto;
+  column-gap: 10px;
+  border-radius: 5px;
+  margin: 5px 5px 0 5px;
+  height: 50px;
+  align-items: center;
+  padding: 0 15px;
+}
+
+.selectable-category {
+  flex: 0 0 auto;
+  min-width: 40px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: white;
+  border-radius: 5px;
+  padding: 4px 5px;
+  border: none;
+  font-size: 16px;
+}
+
+.selectable-category:hover {
+  background-color: rgb(236, 236, 236);
+}
+
+.selectable-category:active {
+  background-color: rgb(221, 221, 221);
+}
+
+.selectable-category.selected {
+  background-color: rgb(64, 64, 225);
+  color: white;
+}
+
 #product-grid-container {
   flex: 1;
   display: flex;

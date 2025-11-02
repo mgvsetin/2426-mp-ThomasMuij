@@ -1,5 +1,5 @@
 import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent } from "./event_booth.js";
-import { renderProducts } from "./products.js";
+import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
 
@@ -15,6 +15,7 @@ let listenersMade = false;
 
 renderProducts();
 renderSummary();
+renderSelectableCategories();
 makeEventListeners();
 searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
 
@@ -43,6 +44,7 @@ function makeEventListeners() {
       // jestli bude potřeba await tak se prní
       // musí zavolat preventDefault()
       order.reset();
+      saveSelectedCategory(null);
       // sessionStorage.clear();
       return;
     }
@@ -65,6 +67,21 @@ function makeEventListeners() {
 
     if (event.target.matches('#close-sidebar-button, #close-sidebar-icon')) {
       sidebar.removeAttribute('opened');
+      return;
+    }
+
+    if (event.target.matches('.selectable-category')) {
+      const categoryButton = event.target;
+      if (categoryButton.classList.contains('selected')) {
+        saveSelectedCategory(null);
+        renderSelectableCategories();
+        renderProducts();
+        return;
+      }
+
+      saveSelectedCategory(categoryButton.dataset.category)
+      renderSelectableCategories();
+      renderProducts();
       return;
     }
 
@@ -107,6 +124,7 @@ function makeEventListeners() {
       }
       await unselectEventBooth();
       await Promise.all([
+        renderSelectableCategories(),
         renderProducts(),
         renderSummary()
       ]);
@@ -166,6 +184,7 @@ function makeEventListeners() {
       if (ok) {
         renderProducts();
         renderSummary();
+        renderSelectableCategories();
       }
       return;
     }

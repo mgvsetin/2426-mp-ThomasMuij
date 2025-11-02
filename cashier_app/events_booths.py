@@ -293,8 +293,8 @@ def load_selected_booth():
     return g.booth
 
 
-@bp_booths.route('/products')
-def get_products():
+@bp_booths.route('/products+categories')
+def get_products_and_categories():
     employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()
@@ -313,15 +313,27 @@ def get_products():
     with conn.transaction():
         with conn.cursor() as cur:
             products = cur.execute('''
-                SELECT products.id, products.name, price.price, images.image_path, images.filename
+                SELECT products.id, products.name, products.categories, price.price, images.image_path, images.filename
                 FROM event_product_booth_link as link
                 JOIN product_event_prices as price ON link.product_event_prices_id = price.id
                 JOIN products ON products.id = price.product_id
                 LEFT JOIN product_images AS images ON images.product_id = products.id
-                WHERE link.booth_id = %s''', # group by products.id
+                WHERE link.booth_id = %s''', # group by products.id?
                 (booth['id'],)).fetchall()
+            
+    categories = set()
+    for product in products:
+        categories.update(product['categories'])
+
+    with conn.transaction():
+        with conn.cursor() as cur:
+            selectable_categories = cur.execute('''
+            SELECT name
+            FROM selectable_categories
+            WHERE name = ANY(%s::text[])''',
+            (list(categories),)).fetchall()
     
-    return jsonify(products), 200
+    return jsonify(products=products, selectable_categories=selectable_categories), 200
 
 
 bp.register_blueprint(bp_booths)

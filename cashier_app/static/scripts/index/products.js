@@ -18,6 +18,7 @@ import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
+const selectableCategoriesEl = productSide.querySelector('#selectable-categories')
 
 
 const cache_time_ms = 60 * 1000; // 1 minuta
@@ -28,13 +29,13 @@ const _productsCache = {
   expiry: 0
 };
 
-export async function getProducts() {
+export async function getProductsAndCategories() {
   if (_productsCache.products && _productsCache.expiry > Date.now()) {
     return _productsCache.products;
   }
 
   try {
-    const response = await fetch('/api/employees/me/events/booths/products');
+    const response = await fetch('/api/employees/me/events/booths/products+categories');
 
     if (response.status === 401) {
       const json = await response.json();
@@ -79,13 +80,13 @@ export function findProduct(products, productId) {
 
 
 export async function renderProducts() {
-  const products = await getProducts(); // combine awaits here and everywhere else
+  const result = await getProductsAndCategories(); // combine awaits here and everywhere else
 
-  if (products === false) {
+  if (result === false) {
     return;
   }
 
-  if (products === 'event_or_booth_not_selected') {
+  if (result === 'event_or_booth_not_selected') {
     productGridContainer.innerHTML = `
       <div id="no-products-message">
         K načtení produktů vyberte stánek.
@@ -95,7 +96,7 @@ export async function renderProducts() {
     return;
   }
 
-  if (products === 'unexpected_error') {
+  if (result === 'unexpected_error') {
     productGridContainer.innerHTML = `
       <div id="no-products-message">
         Nepovedlo se načíst produkty.
@@ -103,6 +104,8 @@ export async function renderProducts() {
     `;
     return;
   }
+
+  const products = result.products;
 
   if (products.length === 0) {
     productGridContainer.innerHTML = `
@@ -115,13 +118,13 @@ export async function renderProducts() {
 
   const url = new URL(window.location);
   const searchQuery = url.searchParams.get('search_query');
+  const selectedCategory = getSelectedCategory();
 
   let productsHTML = '';
 
   products.forEach((product) => {
-    if (searchQuery
-      && !product.name.toLowerCase().trim().includes(searchQuery)) {
-        return;
+    if (!isSearchedFor(product, searchQuery, selectedCategory)) {
+      return;
     }
 
     let imageHTML;
@@ -162,4 +165,78 @@ export async function renderProducts() {
       ${productsHTML}
     </div>
   `;
+}
+
+
+function isSearchedFor(product, searchQuery, selectedCategory) {
+  const productCategories = product.categories.map((category) => {
+    return category.toLowerCase().trim();
+  })
+
+  if (selectedCategory) {
+    if (!productCategories.includes(selectedCategory)) {
+      return false;
+    }
+  }
+
+  if (!searchQuery
+    || product.name.toLowerCase().trim().includes(searchQuery)) {
+    return true;
+  }
+
+  if (selectedCategory) {
+    return false;
+  }
+
+  for (let category of productCategories) {
+    if (category.includes(searchQuery)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+function getSelectedCategory() {
+  return sessionStorage.getItem('selectedCategory');
+}
+
+
+export function saveSelectedCategory(category) {
+  if (!category) {
+    sessionStorage.removeItem('selectedCategory');
+  } else {
+  sessionStorage.setItem('selectedCategory', category.toLowerCase().trim())
+  }
+}
+
+
+export async function renderSelectableCategories() {
+  const result = await getProductsAndCategories(); // combine awaits here and everywhere else
+
+  if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(result)) {
+    selectableCategoriesEl.innerHTML = '';
+    return;
+  }
+
+  const selectableCategories = result.selectable_categories;
+
+  let selectableCategoriesHTML = '';
+
+  selectableCategories.forEach((category) => {
+    selectableCategoriesHTML += `
+    <button class="selectable-category" data-category="${category.name.toLowerCase().trim()}">
+      ${category.name}
+    </button>
+    `;
+  })
+
+  selectableCategoriesEl.innerHTML = selectableCategoriesHTML;
+
+  const saved = getSelectedCategory();
+  if (saved) {
+    const btn = selectableCategoriesEl.querySelector(`.selectable-category[data-category="${saved}"]`);
+    if (btn) btn.classList.add('selected');
+  }
 }

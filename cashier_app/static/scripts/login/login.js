@@ -41,6 +41,7 @@ if (form) {
     } finally {
       submitButton.disabled = false;
     }
+    // sessionStorage.clear();
     window.location.href = data.redirect_url;
   });
 }

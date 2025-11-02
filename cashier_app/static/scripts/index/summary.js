@@ -1,5 +1,5 @@
 import { order } from "./order.js";
-import { getProducts, findProduct } from "./products.js";
+import { getProductsAndCategories, findProduct } from "./products.js";
 
 
 const orderSummary = document.querySelector('#order-summary');
@@ -10,9 +10,11 @@ export async function renderSummary() {
 
   // add the zustatek stuff, add zustatek po platbe nebo neco takoveho
 
-  const products = await getProducts();
+  const result = await getProductsAndCategories();
 
-  if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(products)
+  const products = result.products;
+
+  if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(result)
   || products.length === 0
   || order.items.length === 0) {
     orderSummary.innerHTML = '';
