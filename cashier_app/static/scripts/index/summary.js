@@ -1,4 +1,4 @@
-import { Order } from "./order.js";
+import { order } from "./order.js";
 import { getProducts, findProduct } from "./products.js";
 
 
@@ -10,7 +10,6 @@ export async function renderSummary() {
 
   // add the zustatek stuff, add zustatek po platbe nebo neco takoveho
 
-  const order = await Order.getOrder();
   const products = await getProducts();
 
   if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(products)
@@ -43,19 +42,25 @@ export async function renderSummary() {
     }
 
     orderSummaryHTML += `
-      <div class="summary-item-container">        
+      <div class="summary-item-container selected-product">        
         ${imageHTML}
         <div class="summary-product-info">
-          <div class="summary-product-name">
-            ${matchingProduct.name}
+          <div class="summary-product-info-top-row">
+            <div class="summary-product-name">
+              ${matchingProduct.name}
+            </div>
+            <button class="remove-item-button" data-product-id="${matchingProduct.id}">
+              <img class="remove-item-icon" src="/static/images/icons/trash_icon.png">
+            </button>
           </div>
+
           <div class="summary-product-info-bottom-row">
             <div class="summary-product-price">
               ${matchingProduct.price} Kč
             </div>
             <div class="summary-number-selector">
               <button class="summary-minus-button" data-product-id="${matchingProduct.id}">-</button>
-              <input class="summary-number-of-products" type="number" min="0" value="${item.quantity}">
+              <input class="summary-productQuantity" name="summary-productQuantity" type="number" min="0" value="${item.quantity}" data-product-id="${matchingProduct.id}">
               <button class="summary-plus-button" data-product-id="${matchingProduct.id}">+</button>
             </div>
           </div>

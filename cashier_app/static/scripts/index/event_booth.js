@@ -3,6 +3,9 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
+import { order } from "./order.js";
+import { resetProductsCache } from "./products.js";
+
 //     if (!response.ok) {
 //       throw new Error('unexpected_error');
 //     }
@@ -15,6 +18,8 @@
 // }
 
 const productSide = document.querySelector('#product-side');
+
+export let selectingEvent = false;
 
 function makeEventBoothOverlay(container) {
   const existing = container.querySelector(':scope > .event-booth-selector-centerer');
@@ -84,6 +89,8 @@ export async function renderEventPicker() {
           ${event.name}
         </option>`
     })
+
+    selectingEvent = true;
   }
 
   overlay.innerHTML = `
@@ -141,12 +148,13 @@ export async function pickEvent(formData) {
     errorMessageEl.classList.add('display-block');
     return false;
   }
+  selectingEvent = false;
   removeEventBoothOverlay();
   return true;
 }
 
 
-export async function renderBoothPicker(productSide) {
+export async function renderBoothPicker() {
   let data;
   try {
     const response = await fetch('/api/employees/me/events/booths/active');
@@ -268,4 +276,24 @@ export async function pickBooth(formData) {
   }
   removeEventBoothOverlay();
   return true;
+}
+
+
+export async function unselectEventBooth() {
+  order.reset();
+  resetProductsCache();
+  try {
+    const response = await fetch('/api/employees/me/events/remove', {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    return true;
+
+  } catch(error) {
+    return false;
+  }
 }

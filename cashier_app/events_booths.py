@@ -89,6 +89,13 @@ def select_event():
         return jsonify(), 200
     else:
         return jsonify(error='event_not_found_or_inactive'), 404
+
+
+@bp.route('/remove', methods=('DELETE',))
+def remove_event():
+    session.pop('event_id', None)
+    session.pop('booth_id', None)
+    return jsonify(), 200
         
 
 def load_selected_event() -> dict | None:

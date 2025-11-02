@@ -14,7 +14,7 @@
 // }
 
 import { renderEventPicker } from "./event_booth.js";
-import { Order } from "./order.js";
+import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
@@ -63,6 +63,12 @@ export async function getProducts() {
 }
 
 
+export function resetProductsCache() {
+  _productsCache.products = null;
+  _productsCache.expiry = 0;
+}
+
+
 export function findProduct(products, productId) {
   for (const product of products) {
     if (product.id === productId) {
@@ -74,7 +80,6 @@ export function findProduct(products, productId) {
 
 export async function renderProducts() {
   const products = await getProducts(); // combine awaits here and everywhere else
-  const order = await Order.getOrder();
 
   if (products === false) {
     return;
@@ -86,7 +91,7 @@ export async function renderProducts() {
         K načtení produktů vyberte stánek.
       </div>
     `;
-    renderEventPicker(productSide);
+    renderEventPicker();
     return;
   }
 
@@ -131,9 +136,8 @@ export async function renderProducts() {
       imageHTML = '';
     }
 
-    const orderItem = order.getItem(product.id)
-    const quantity = orderItem ? orderItem.quantity : 0;
-    const selectedClass = orderItem ? 'selected-product' : ''
+    const quantity = order.getQuantity(product.id);
+    const selectedClass = quantity ? 'selected-product' : ''
 
     productsHTML += `
       <div class="product-container ${selectedClass}">
@@ -144,7 +148,7 @@ export async function renderProducts() {
             <div class="product-price">${product.price} Kč</div>
             <div class="number-selector">
               <button class="minus-button" data-product-id="${product.id}">-</button>
-              <input type="number" min="0" class="number-of-products" value="${quantity}">
+              <input class="productQuantity" name="productQuantity" type="number" min="0" value="${quantity}" data-product-id="${product.id}">
               <button class="plus-button" data-product-id="${product.id}">+</button>
             </div>
           </div>

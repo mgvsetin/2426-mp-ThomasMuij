@@ -12,27 +12,59 @@
 
 <body>
   <div id="header">
-    <button id="choose-new-event-button">
-      Změnit akci
-    </button>
-    
-    <a href="/auth/logout">
-      <button id="logout-button">
-        Odhlásit
+    <div id="header-left">
+      <button id="open-sidebar-button">
+        <img id="open-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
       </button>
-    </a>
-  </div>
+    </div>
 
-  <main id="order">
-    <div id="product-side">
-      <div id="search-div">
+    <div id="header-middle">
+      <!-- <div id="search-div"> -->
         <div id="search-bar-container">
           <input id="product-search-bar" placeholder="Vyhledávání">
           <button id="search-button">
             <img id="search-icon" src="/static/images/icons/search_icon.png">
           </button>
         </div>
+      <!-- </div> -->
+    </div>
+
+    <div id="header-right">
+      <button id="account-button">
+        <img id="account-icon" src="/static/images/icons/account_icon.png">
+      </button>
+
+      <div id="account-dropdown">
+        <button id="choose-new-event-button">
+          Změnit akci
+        </button>
+        <a id="logout-link" href="/auth/logout">
+          Odhlásit
+        </a>
       </div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="sidebar-first-row">
+      <button id="close-sidebar-button">
+        <img id="close-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
+      </button>
+    </div>
+  </div>
+
+  <div id="sidebar-overlay-page"></div>
+
+  <main id="order">
+    <div id="product-side">
+      <!-- <div id="search-div">
+        <div id="search-bar-container">
+          <input id="product-search-bar" placeholder="Vyhledávání">
+          <button id="search-button">
+            <img id="search-icon" src="/static/images/icons/search_icon.png">
+          </button>
+        </div>
+      </div> -->
 
       <div id="product-grid-container"></div>
     </div>
@@ -49,7 +81,12 @@
           Zůstatek: 3456 Kč
         </div>
       </div>
-      <div id="order-summary"></div>
+      <div id="order-summary-container">
+        <div id="order-summary-title">
+          Objednávka
+        </div>
+        <div id="order-summary"></div>
+      </div>
       <div id="payment-summary">
         <div id="order-cost-row">
           <div id="order-cost-message">

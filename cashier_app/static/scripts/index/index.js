@@ -1,110 +1,187 @@
-import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker } from "./event_booth.js";
+import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent } from "./event_booth.js";
 import { renderProducts } from "./products.js";
-import { Order } from "./order.js";
+import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
 
-const productSide = document.querySelector('#product-side');
-const order = document.querySelector('#order')
 const header = document.querySelector('#header');
-const searchBar = document.querySelector('#product-search-bar');
+const searchBar = header.querySelector('#product-search-bar')
+const accountDropdown = header.querySelector('#account-dropdown')
+const sidebar = document.querySelector('#sidebar');
+const orderEl = document.querySelector('#order');
+const productSide = orderEl.querySelector('#product-side');
+const summarySide = orderEl.querySelector('#summary-side');
 
+let listenersMade = false;
 
 renderProducts();
 renderSummary();
+makeEventListeners();
 searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
 
 
-header.addEventListener('click', async (event) => {
-  const order = await Order.getOrder();
-
-  if (event.target.matches('#logout-button')) {
-    order.resetAndRemoveFromStorage();
+function makeEventListeners() {
+  if (listenersMade) {
+    throw new Error('Listeners should only be created once');
   }
-})
+  listenersMade = true;
 
-
-productSide.addEventListener('submit', async (event) => {
-  const eventForm = event.target.closest('#event-selector-form');
-  if (eventForm && productSide.contains(eventForm)) {
-    event.preventDefault();
-    const formData = new FormData(eventForm);
-
-    const ok = await pickEvent(formData);
-
-    if (ok) {
-      renderBoothPicker(productSide);
+  document.addEventListener('click', async (event) => {
+    if (!(event.target.matches('#account-button, #account-icon')
+      || (event.target.closest('#account-dropdown') && !event.target.closest('button, a')))) {
+      // kliknutí jinam než na dropdown nebo ikonu uživatele
+      // nebo na <button>/<a> v něm
+      accountDropdown.removeAttribute('opened');
     }
-    return;
-  }
 
+    if (!event.target.closest('#sidebar') && !event.target.matches('#open-sidebar-button, #open-sidebar-icon')) {
+      // kliknutí jinam než na sidebar nebo otevírání sidebar
+      sidebar.removeAttribute('opened');
+    }
 
-  const boothForm = event.target.closest('#booth-selector-form');
-  if (boothForm && productSide.contains(boothForm)) {
-    event.preventDefault();
-    const formData = new FormData(boothForm);
-    const ok = await pickBooth(formData);
+    if (event.target.matches('#logout-link')) {
+      // musí se zavolat před await
+      // jestli bude potřeba await tak se prní
+      // musí zavolat preventDefault()
+      order.reset();
+      // sessionStorage.clear();
+      return;
+    }
 
-    if (ok) {
+    if (event.target.matches('#open-sidebar-button, #open-sidebar-icon')) {
+      sidebar.setAttribute('opened', '');
+      return;
+    }
+
+    const searchButton = event.target.closest('#search-button');
+    if (searchButton && header.contains(searchButton)) {
+      addSearchParam();
+      return;
+    }
+
+    if (event.target.matches('#account-button, #account-icon')) {
+      accountDropdown.toggleAttribute('opened');
+      return;
+    }
+
+    if (event.target.matches('#close-sidebar-button, #close-sidebar-icon')) {
+      sidebar.removeAttribute('opened');
+      return;
+    }
+
+    if (event.target.matches('.plus-button, .summary-plus-button')) {
+      const plusButton = event.target;
+      const productId = plusButton.dataset.productId;
+      order.updateQuantity(productId, 1);
       renderProducts();
       renderSummary();
+      return;
     }
-    return;
-  }
-})
 
-searchBar.addEventListener('keydown', (event) => {
-  if (event.code === 'Enter') {
-    addSearchParam();
-    return;
-  }
-})
+    if (event.target.matches('.minus-button, .summary-minus-button')) {
+      const minusButton = event.target;
+      const productId = minusButton.dataset.productId;
+      order.updateQuantity(productId, -1);
+      renderProducts();
+      renderSummary();
+      return;
+    }
 
-order.addEventListener('click', async (event) => {
-  const searchButton = event.target.closest('#search-button');
-  if (searchButton && productSide.contains(searchButton)) {
-    addSearchParam();
-    return;
-  }
+    const removeItemButton = event.target.closest('.remove-item-button');
+    if (removeItemButton && summarySide.contains(removeItemButton)) {
+      const productId = removeItemButton.dataset.productId;
+      order.setQuantity(productId, 0);
+      renderProducts();
+      renderSummary();
+      return;
+    }
 
-  const returnButton = event.target.closest('#return-to-event-picker-button');
-  if (returnButton && productSide.contains(returnButton)) {
-    renderEventPicker(productSide);
-    // do i need to do more?
-    return;
-  }
+    const returnButton = event.target.closest('#return-to-event-picker-button');
+    if (returnButton && productSide.contains(returnButton)) {
+      renderEventPicker();
+      return;
+    }
 
-  const order = await Order.getOrder();
-  if (event.target.matches('.plus-button, .summary-plus-button')) {
-    const plusButton = event.target;
-    const productId = plusButton.dataset.productId;
-    order.updateQuantity(productId, 1);
-    renderProducts(); // make a cache or sum (maybe in the service worker? or maybe not for safety?)
-    // or rerender the specific value and not all the products
-    renderSummary();
-  }
+    if (event.target.matches('#choose-new-event-button')) {
+      if (selectingEvent) {
+        return;
+      }
+      await unselectEventBooth();
+      await Promise.all([
+        renderProducts(),
+        renderSummary()
+      ]);
+      return;
+    }
+  })
 
-  if (event.target.matches('.minus-button, .summary-minus-button')) {
-    const minusButton = event.target;
-    const productId = minusButton.dataset.productId;
-    order.updateQuantity(productId, -1);
-    renderProducts();
-    renderSummary();
-  }
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'Enter' && event.target.matches('#product-search-bar')) {
+      addSearchParam();
+      return;
+    }
 
-  if (event.target.matches('#pay-button')) {
-    console.log('pay');
-  }
-})
+    if (event.code === 'Enter' && event.target.matches('.productQuantity, .summary-productQuantity')) {
+      const quantityInput = event.target;
+      const newQuantity = Number(quantityInput.value.replace(/\s/g,''));
+      const productId = quantityInput.dataset.productId;
+      const currentQuantity = order.getQuantity(productId);
+
+      if (Number.isNaN(newQuantity)) {
+        quantityInput.value = currentQuantity;
+        return;
+      }
+
+      if (newQuantity === currentQuantity) {
+        return;
+      }
+
+      order.setQuantity(productId, newQuantity);
+      renderProducts();
+      renderSummary();
+      return;
+    }
+  })
+
+  productSide.addEventListener('submit', async (event) => {
+    const eventForm = event.target.closest('#event-selector-form');
+    if (eventForm && productSide.contains(eventForm)) {
+      event.preventDefault();
+      const formData = new FormData(eventForm);
+
+      const ok = await pickEvent(formData);
+
+      if (ok) {
+        renderBoothPicker();
+      }
+      return;
+    }
 
 
+    const boothForm = event.target.closest('#booth-selector-form');
+    if (boothForm && productSide.contains(boothForm)) {
+      event.preventDefault();
+      const formData = new FormData(boothForm);
+      const ok = await pickBooth(formData);
 
-const newActionButton = document.querySelector('#choose-new-event-button');
-newActionButton.addEventListener('click', () => {
-  // make sure this removes the event and booth to prevent having different booth/event (make sure to validate on backend too)
-  // make sure the zpět removes the booths/events too
-  renderEventPicker(productSide);
-  return;
-})
+      if (ok) {
+        renderProducts();
+        renderSummary();
+      }
+      return;
+    }
+  })
+
+  orderEl.addEventListener('focusout', (event) => {
+    if (event.target.matches('.productQuantity, .summary-productQuantity')) {
+      const quantityInput = event.target;
+      const productId = quantityInput.dataset.productId;
+      const currentQuantity = order.getQuantity(productId);
+
+      quantityInput.value = currentQuantity;
+      return;
+    }
+  })
+}
 
 
 function addSearchParam() {
