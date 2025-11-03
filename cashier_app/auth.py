@@ -1,3 +1,9 @@
+"""Modul pro autentizaci zaměstnanců.
+
+Obsahuje blueprint /auth s routami pro login, logout a pomocné funkce pro nahrání
+přihlášeného zaměstnance.
+"""
+
 import functools
 from urllib.parse import urlparse, urljoin
 from flask import Blueprint, request, render_template, current_app, session, redirect, url_for, g, jsonify
@@ -14,6 +20,28 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 def get_employee_id(username_or_email: str, password: str) -> str | None:
+    """Ověří zadané uživatelské jméno/e-mail a heslo, vrátí id zaměstnance.
+
+
+    Postup:
+    1. Najde záznam zaměstnance podle username nebo email (pokud existuje a není smazaný).
+    2. Ověří heslo pomocí Argon2.
+    3. Pokud je potřeba, přehashuje heslo a uloží nový hash.
+    
+    
+    Parametry
+    ---------
+    username_or_email: str
+    Uživatelské jméno nebo e-mail zadaný do přihlašovacího formuláře.
+    password: str
+    Nehashované heslo z formuláře.
+    
+    
+    Vrací
+    -----
+    str | None
+    ID zaměstnance (řetězec) pokud ověření proběhlo úspěšně, jinak None.
+    """
     conn = get_db()
 
     with conn.transaction():
@@ -50,6 +78,13 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
+    """View pro přihlášení zaměstnance.
+
+
+    Zpracovává oba způsoby:
+    - GET: vrátí statickou HTML stránku přihlášení (pro vývoj/produkci lze použít webserver)
+    - POST: zpracuje přihlašovací údaje, vytvoří session a vrátí JSON s redirect_url nebo chybu.
+    """
     if request.method == 'POST':
         username_or_email = request.form.get('username-email', '').strip()
         password = request.form.get('password', '')
@@ -76,6 +111,11 @@ def login():
 
 
 def load_logged_in_employee() -> dict | None:
+    """Načte aktuálně přihlášeného zaměstnance z session a ulož do `g`.
+
+
+    Vrátí slovník s informacemi o zaměstnanci nebo None pokud není přihlášen.
+    """
     employee_id = session.get('employee_id')
 
     if employee_id is None:
@@ -96,6 +136,8 @@ def load_logged_in_employee() -> dict | None:
 
 @bp.route('/logout')
 def logout():
+    """Odhlásí aktuálního uživatele clearnutím session a přesměrová na login.
+    """
     session.clear()
     return redirect(url_for('auth.login'))
 

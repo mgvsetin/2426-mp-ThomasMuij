@@ -166,7 +166,33 @@ body {
   display: flex;
 }
 
-#account-dropdown * {
+#session-info {
+  border-bottom: 1px solid rgb(230, 230, 230);
+  padding: 4px 5px;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  column-gap: 5px;
+}
+
+#username {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#event {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#booth {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#account-dropdown button,
+#account-dropdown a {
   border: none;
   border-bottom: 1px solid rgb(230, 230, 230);
   background-color: white;
@@ -182,11 +208,13 @@ body {
   border-bottom: none;
 }
 
-#account-dropdown *:hover {
+#account-dropdown button:hover,
+#account-dropdown a:hover {
   background-color: rgb(245, 245, 245);
 }
 
-#account-dropdown *:active {
+#account-dropdown button:active,
+#account-dropdown a:active {
   background-color: rgb(240, 240, 240);
 }
 
@@ -264,7 +292,7 @@ body {
   overflow: auto;
   column-gap: 10px;
   border-radius: 5px;
-  margin: 5px 5px 0 5px;
+  margin: 5px 5px 0 10px;
   height: 50px;
   align-items: center;
   padding: 0 15px;
@@ -589,6 +617,7 @@ body {
   overflow: auto;
   margin: 6px 6px 8px 0;
   background-color: white;
+  margin-left: 5px;
 }
 
 #customer-details {

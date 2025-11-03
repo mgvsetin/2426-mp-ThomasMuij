@@ -1,3 +1,9 @@
+"""Modul pro správu akcí, stánků a výběru událostí pro zaměstnance.
+
+
+Obsahuje dva blueprinty: 'events' (hlavní) a 'booths' (pod '/booths').
+"""
+
 # import functools
 from uuid import UUID
 from flask import Blueprint, request, session, g, jsonify, make_response, url_for
@@ -9,6 +15,18 @@ bp = Blueprint('events', __name__, url_prefix='/api/employees/me/events')
 
 @bp.route('/active')
 def get_active_events_for_employee():
+    """Vrátí aktivní (práve probíhající) události pro přihlášeného zaměstnance.
+
+
+    Pokud je zaměstnanec admin, vrátí se seznam všech aktivních akcí.
+    Jinak se vrátí pouze akce, ke kterým je zaměstnanec připojen.
+    
+    
+    Vrátí
+    ------
+    Response JSON
+    Seznam akcí nebo error redirect na login s odpověí 401.
+    """
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -45,6 +63,18 @@ def get_active_events_for_employee():
 
 @bp.route('/select', methods=('PUT',))
 def select_event():
+    """Vybere událost pro aktuální session zaměstnance.
+
+
+    Ošetřuje validitu event_id, kontroluje,
+    zda je událost aktivní a zda je zaměstnanec s akcí svázaný (pokud není admin).
+    Odstraní booth_id ze session pokud tam je.
+    
+    
+    Vrátí
+    ------
+    200 prázdný JSON pokud OK, jinak chybový kód a chybová zpráva.
+    """
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -93,12 +123,22 @@ def select_event():
 
 @bp.route('/remove', methods=('DELETE',))
 def remove_event():
+    """Odstraní vybranou událost a stánek z aktuální session.
+
+
+    Použito pro "odhlášení" vybrávání události (např. při přechodu mezi akcemi).
+    """
     session.pop('event_id', None)
     session.pop('booth_id', None)
     return jsonify(), 200
         
 
 def load_selected_event() -> dict | None:
+    """Načte vybranou událost ze session a uloží ji do `g`.
+
+
+    Vrátí slovník s informacemi o události nebo None pokud nic vybráno.
+    """
     event_id = session.get('event_id')
 
     if event_id is None:
@@ -139,6 +179,12 @@ bp_booths = Blueprint('booths', __name__, url_prefix='/booths')
 
 @bp_booths.route('/active')
 def get_event_booths_for_employee():
+    """Vrátí seznam stánků pro vybranou událost, které může zaměstnanec obsluhovat.
+
+
+    Pokud je zaměstnanec admin nebo event_manager vrátí se všechny stánky události.
+    Jinak pouze stánky, ke kterým je zaměstnanec explicitně prirazen.
+    """
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -190,6 +236,12 @@ def get_event_booths_for_employee():
 
 @bp_booths.route('/select', methods=('PUT',))
 def select_booth():
+    """Vybere stánek pro aktuální session.
+
+
+    Validuje vstup, kontroluje oprávňění zaměstnance (admin, event_manager nebo explicitně
+    prirazený ke stánku) a uloží booth_id do session.
+    """
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -271,6 +323,11 @@ def select_booth():
 
 
 def load_selected_booth():
+    """Načte vybraný stánek ze session a ulož do `g`.
+
+
+    Vrátí slovník s informacemi o stánku nebo None pokud nic vybráno.
+    """
     booth_id = session.get('booth_id')
     event = load_selected_event()
 
@@ -295,6 +352,12 @@ def load_selected_booth():
 
 @bp_booths.route('/products+categories')
 def get_products_and_categories():
+    """Vrátí produkty a kategorie dostupné pro vybraný stánek.
+
+
+    Sloučí informace z tabulek link, product_event_prices, products a product_images
+    a získá seznam vybraných kategorií (selectable_categories), které se vrátí.
+    """
     employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()

@@ -1,3 +1,14 @@
+"""Implementace session backendu ukládajícího sessiony do PostgreSQL.
+
+
+Tento modul definuje:
+- PgSession: objekt session kompatibilní s Flask-Sessions (SessionMixin).
+- PgSessionInterface: vlastní SessionInterface pro Flask, který ukládá
+session data do tabulky (defaultně `sessions`) jako jsonb.
+- Pomocné funkce pro zkrácení UA (hash), extrakci klientského IP a nástroje
+pro čištění/odstranění expirovaných session z databáze.
+"""
+
 import json
 import secrets
 import datetime
@@ -37,6 +48,21 @@ from cashier_app.db import get_db
 
 
 class PgSession(CallbackDict, SessionMixin):
+    """Reprezentuje jednu flaskovou session uloženou v Postgresu.
+
+
+    Dědí z CallbackDict, aby bylo možné detekovat změny (atribut `modified`).
+    
+    
+    Parametry
+    ---------
+    initial: dict | None
+    Počáteční data session.
+    sid: str | None
+    Session ID (opaque token uložený v cookie).
+    new: bool
+    True pokud jde o nově vytvořenou session.
+    """
     def __init__(self, initial=None, sid=None, new=False):
         def _on_update(self):
             self.modified = True
@@ -47,6 +73,12 @@ class PgSession(CallbackDict, SessionMixin):
 
 
 def short_ua_hash(user_agent: str) -> str:
+    """Vrátí zkrácený (16 hex znaků) SHA-256 hash user-agenta.
+
+
+    Používá se pro základní detekci změny user-agenta mezi požadavky
+    bez uložení celého stringu UA do tabulky.
+    """
     # return first 16 hex chars of sha256
     if not user_agent:
         return ''
@@ -54,6 +86,16 @@ def short_ua_hash(user_agent: str) -> str:
 
 
 def client_ip_from_request() -> str:
+    """Získej klientskou IP adresu z požadavku.
+
+
+    Nejprve se pokusí použít hlavičku X-Forwarded-For (první IP v seznamu),
+    pokud není nastavena, použije `request.remote_addr`.
+    
+    
+    POZOR: pokud přijímáte požadavky přes reverzní proxy, je nezbytné
+    zajistit, aby proxy správně předávala tuto hlavičku a aby jí bylo důvěřováno.
+    """
     # If you are behind a reverse proxy, ensure that Flask/your proxy
     # is configured to pass the correct header and that you trust it.
     xff = request.headers.get('X-Forwarder-For', '')
@@ -67,7 +109,21 @@ def client_ip_from_request() -> str:
 
 
 class PgSessionInterface(SessionInterface):
-    """SessionInterface that stores session data in Postgres (jsonb)."""
+    """SessionInterface ukládající sessiony do PostgreSQL tabulky.
+
+
+    Vlastní implementace metod:
+    - open_session: načte session z DB podle sid z cookie.
+    - save_session: uloží/aktualizuje session v DB a nastaví cookie.
+    
+    
+    Parametry
+    ---------
+    get_db_fn: callable
+    Funkce pro získání DB spojení (defaultně cashier_app.db.get_db).
+    table: str
+    Název DB tabulky, kam se session ukládají (výchozí 'sessions').
+    """
     serializer = json
     session_class = PgSession
 
@@ -76,14 +132,33 @@ class PgSessionInterface(SessionInterface):
         self.table = table
 
     def generate_sid(self):
+        """Vygeneruje náhodné SID použité jako hodnota cookie.
+
+
+        Používá secure token_urlsafe(32) pro dostatečnou entropii.
+        """
         return secrets.token_urlsafe(32)
 
     def get_expiration_time(self, app, session):
+        """Vrátí datetime expirace pro cookie nebo None.
+
+
+        Pokud je session označená jako `permanent`, použije se
+        `app.permanent_session_lifetime` a vrátí se UTC datetime.
+        Jinak vrací None (session-cookie bez expirace -> prohlížeč končí session při zavření).
+        """
         if session.permanent:
             return datetime.datetime.now(datetime.timezone.utc) + app.permanent_session_lifetime
         return None
     
     def open_session(self, app, request):
+        """Načte session z DB na základě cookie SID.
+
+
+        Kontroluje expiraci a -- volitelně -- UA/IP pokud je v konfiguraci
+        povoleno (SESSION_ENFORCE_UA / SESSION_ENFORCE_IP). Pokud session
+        neexistuje nebo je neplatná, vrátí novou prázdnou session.
+        """
         sid = request.cookies.get(app.config.get("SESSION_COOKIE_NAME", "session"))
         if not sid:
             return self.session_class(sid=None, new=True)
@@ -134,6 +209,13 @@ class PgSessionInterface(SessionInterface):
         return self.session_class(initial=data, sid=sid, new=False)
     
     def save_session(self, app, session, response):
+        """Uloží session do DB a nastaví cookie v odpovědi.
+
+
+        Pokud je session prázdná, smaže se z DB a cookie je odstraněna.
+        Pokud je session nová nebo pokud došlo k regeneraci SID, vygeneruje se
+        nový sid a starý (pokud existuje) se odstraní.
+        """
         domain = self.get_cookie_domain(app)
         path = self.get_cookie_path(app)
 
@@ -217,6 +299,23 @@ class PgSessionInterface(SessionInterface):
 
 # --- small helper to delete expired sessions (callable from CLI/cron) ------
 def delete_expired_sessions(conn=None, max_inactive_days: int | None = None) -> int:
+    """Smaže z DB expirované sessiony a (volitelně) staré řádky bez expires_at.
+
+
+    Parametry
+    ---------
+    conn: psycopg.Connection | None
+    Volitelné spojení k DB. Pokud None, použije se get_db().
+    max_inactive_days: int | None
+    Pokud je zadáno, smaže i řádky kde expires_at IS NULL a upraveno bylo
+    více než `max_inactive_days` dní.
+    
+    
+    Vrací
+    -----
+    int
+    Počet smazaných řádků.
+    """
     """
     Delete expired sessions and optionally stale session-cookie rows (expires_at IS NULL).
     Returns number of deleted rows.

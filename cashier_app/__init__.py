@@ -1,9 +1,29 @@
+"""Inicializačni modul aplikace Flask pro cashier_app.
+Obsahuje funkci create_app, ktera vytvori a nakonfiguruje Flask aplikaci,
+registruje blueprinty a nastavuje session interface.
+"""
+
 from flask import Flask
 import os
 
 
 # název funkce je důležitý, aby ji flask spustil
 def create_app(test_config=None):
+    """Vytvoří a nakonfiguruje Flask aplikaci.
+
+
+    Parametry
+    ---------
+    test_config: dict | None
+    Volitelný slovník konfigurace, který přepíše konfiguraci z config.py
+    (využívá se především pro testování).
+    
+    
+    Vrátí
+    ------
+    Flask
+    Nakonfigurovaná Flask aplikace.
+    """
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_mapping(
