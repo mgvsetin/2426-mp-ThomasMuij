@@ -306,9 +306,9 @@ body {
   min-height: 0;
 }
 
-#no-products-message {
+/* #no-products-message {
 
-}
+} */
 
 #product-grid {
   flex: 1;
