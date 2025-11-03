@@ -2,6 +2,7 @@ import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEve
 import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
+import { renderDropdownSessionInfo } from "../general/header.js";
 
 const header = document.querySelector('#header');
 const searchBar = header.querySelector('#product-search-bar')
@@ -14,12 +15,42 @@ const summarySide = orderEl.querySelector('#summary-side');
 
 let listenersMade = false;
 
-renderProducts();
-renderSummary();
-renderSelectableCategories();
-renderSessionInfo();
+loadPage({
+  products: true,
+  summary: true,
+  categories: true,
+  sessionInfo: true
+});
 makeEventListeners();
-searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
+
+
+async function loadPage({
+  products = false,
+  summary = false,
+  categories = false,
+  sessionInfo = false
+} = {}) {
+  
+  const toLoad = [];
+
+  if (products) {
+    toLoad.push(renderProducts());
+  }
+
+  if (summary) {
+    toLoad.push(renderSummary());
+  }
+
+  if (categories) {
+    toLoad.push(renderSelectableCategories());
+  }
+
+  if (sessionInfo) {
+    toLoad.push(renderDropdownSessionInfo());
+  }
+
+  await Promise.all(toLoad);
+}
 
 
 function makeEventListeners() {
@@ -76,14 +107,18 @@ function makeEventListeners() {
       const categoryButton = event.target;
       if (categoryButton.classList.contains('selected')) {
         saveSelectedCategory(null);
-        renderSelectableCategories();
-        renderProducts();
+        loadPage({
+          categories: true,
+          products: true
+        });
         return;
       }
 
       saveSelectedCategory(categoryButton.dataset.category)
-      renderSelectableCategories();
-      renderProducts();
+      loadPage({
+        categories: true,
+        products: true
+      });
       return;
     }
 
@@ -91,8 +126,10 @@ function makeEventListeners() {
       const plusButton = event.target;
       const productId = plusButton.dataset.productId;
       order.updateQuantity(productId, 1);
-      renderProducts();
-      renderSummary();
+      loadPage({
+        products: true,
+        summary: true
+      });
       return;
     }
 
@@ -100,8 +137,10 @@ function makeEventListeners() {
       const minusButton = event.target;
       const productId = minusButton.dataset.productId;
       order.updateQuantity(productId, -1);
-      renderProducts();
-      renderSummary();
+      loadPage({
+        products: true,
+        summary: true
+      });
       return;
     }
 
@@ -109,14 +148,16 @@ function makeEventListeners() {
     if (removeItemButton && summarySide.contains(removeItemButton)) {
       const productId = removeItemButton.dataset.productId;
       order.setQuantity(productId, 0);
-      renderProducts();
-      renderSummary();
+      loadPage({
+        products: true,
+        summary: true
+      });
       return;
     }
 
     const returnButton = event.target.closest('#return-to-event-picker-button');
     if (returnButton && productSide.contains(returnButton)) {
-      renderEventPicker();
+      await renderEventPicker();
       return;
     }
 
@@ -125,12 +166,12 @@ function makeEventListeners() {
         return;
       }
       await unselectEventBooth();
-      await Promise.all([
-        renderSelectableCategories(),
-        renderProducts(),
-        renderSummary(),
-        renderSessionInfo()
-      ]);
+      loadPage({
+        categories: true,
+        sessionInfo: true,
+        products: true,
+        summary: true
+      });
       return;
     }
   })
@@ -157,8 +198,10 @@ function makeEventListeners() {
       }
 
       order.setQuantity(productId, newQuantity);
-      renderProducts();
-      renderSummary();
+      loadPage({
+        products: true,
+        summary: true
+      });
       return;
     }
   })
@@ -185,10 +228,12 @@ function makeEventListeners() {
       const ok = await pickBooth(formData);
 
       if (ok) {
-        renderProducts();
-        renderSummary();
-        renderSelectableCategories();
-        renderSessionInfo();
+        loadPage({
+          categories: true,
+          sessionInfo: true,
+          products: true,
+          summary: true
+        });
       }
       return;
     }
@@ -226,37 +271,3 @@ function addSearchParam() {
   window.location.href = url;
 }
 
-
-async function getSessionInfo() {
-  try {
-    const response = await fetch('/api/session/');
-
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    const data = await response.json();
-
-    return data
-
-  } catch (error) {
-    return false;
-  }
-}
-
-
-export async function renderSessionInfo() {
-  const sessionInfo = await getSessionInfo();
-
-  if (!sessionInfo) {
-    return;
-  }
-
-  let sessionInfoHTML = '';
-
-  try { sessionInfoHTML += `<div id="username">${sessionInfo.employee.username}</div>`; } catch {}
-  try { sessionInfoHTML += `<div id="event">${sessionInfo.event.name}</div>`; } catch {}
-  try { sessionInfoHTML += `<div id="booth">${sessionInfo.booth.name}</div>`; } catch {}
-
-  sessionInfoEl.innerHTML = sessionInfoHTML;
-}

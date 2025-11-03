@@ -3,7 +3,7 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
-import { renderSessionInfo } from "./index.js";
+import { renderDropdownSessionInfo } from "../general/header.js";
 import { order } from "./order.js";
 import { resetProductsCache, saveSelectedCategory } from "./products.js";
 
@@ -151,7 +151,7 @@ export async function pickEvent(formData) {
   }
   selectingEvent = false;
   removeEventBoothOverlay();
-  renderSessionInfo();
+  renderDropdownSessionInfo();
   return true;
 }
 
@@ -277,7 +277,7 @@ export async function pickBooth(formData) {
     return false;
   }
   removeEventBoothOverlay();
-  renderSessionInfo();
+  renderDropdownSessionInfo();
   return true;
 }
 
