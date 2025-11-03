@@ -6,6 +6,7 @@ import { renderSummary } from "./summary.js";
 const header = document.querySelector('#header');
 const searchBar = header.querySelector('#product-search-bar')
 const accountDropdown = header.querySelector('#account-dropdown')
+const sessionInfoEl = accountDropdown.querySelector('#session-info')
 const sidebar = document.querySelector('#sidebar');
 const orderEl = document.querySelector('#order');
 const productSide = orderEl.querySelector('#product-side');
@@ -16,6 +17,7 @@ let listenersMade = false;
 renderProducts();
 renderSummary();
 renderSelectableCategories();
+renderSessionInfo();
 makeEventListeners();
 searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
 
@@ -126,7 +128,8 @@ function makeEventListeners() {
       await Promise.all([
         renderSelectableCategories(),
         renderProducts(),
-        renderSummary()
+        renderSummary(),
+        renderSessionInfo()
       ]);
       return;
     }
@@ -185,6 +188,7 @@ function makeEventListeners() {
         renderProducts();
         renderSummary();
         renderSelectableCategories();
+        renderSessionInfo();
       }
       return;
     }
@@ -220,4 +224,39 @@ function addSearchParam() {
 
   url.searchParams.set('search_query', searchQuery);
   window.location.href = url;
+}
+
+
+async function getSessionInfo() {
+  try {
+    const response = await fetch('/api/session/');
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    const data = await response.json();
+
+    return data
+
+  } catch (error) {
+    return false;
+  }
+}
+
+
+export async function renderSessionInfo() {
+  const sessionInfo = await getSessionInfo();
+
+  if (!sessionInfo) {
+    return;
+  }
+
+  let sessionInfoHTML = '';
+
+  try { sessionInfoHTML += `<div id="username">${sessionInfo.employee.username}</div>`; } catch {}
+  try { sessionInfoHTML += `<div id="event">${sessionInfo.event.name}</div>`; } catch {}
+  try { sessionInfoHTML += `<div id="booth">${sessionInfo.booth.name}</div>`; } catch {}
+
+  sessionInfoEl.innerHTML = sessionInfoHTML;
 }
