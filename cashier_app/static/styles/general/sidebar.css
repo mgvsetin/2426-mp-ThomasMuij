@@ -1,0 +1,103 @@
+#sidebar {
+  background-color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 3000;
+  width: 240px;
+  transform: translateX(-240px);
+  transition: transform 300ms cubic-bezier(.22,.9,.27,1);
+  will-change: transform;
+  overflow: auto; 
+  border-right: 1px solid rgb(232, 232, 232);
+}
+
+#sidebar[opened] {
+  transform: translateX(0);
+}
+
+#sidebar[opened] ~ #sidebar-overlay-page {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  z-index: 2500;
+}
+
+#sidebar a {
+  border: none;
+  background-color: white;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 16px;
+  text-decoration: none;
+  cursor: pointer;
+  color: black;
+}
+
+#sidebar a:hover {
+  background-color: rgb(240, 240, 240);
+}
+
+#sidebar a:active {
+  background-color: rgb(232, 232, 232);
+}
+
+#close-sidebar-container {
+  margin-top: 15px;
+}
+
+#close-sidebar-button {
+  flex: 0 0 auto;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  border-radius: 5px;
+  height: 30px;
+  width: 30px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 20px;
+}
+
+#close-sidebar-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+#close-sidebar-button:active {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+#close-sidebar-icon {
+  height: 20px;
+  object-fit: cover;
+  display: block;
+}
+
+#sidebar-links {
+  display: flex;
+  flex-direction: column;
+}
+
+#sidebar-links div:last-child {
+  border: none;
+}
+
+#seller-part,
+#cashier-part,
+#manager-part,
+#admin-part {
+  border-bottom: 1px solid rgb(230, 230, 230);
+  padding: 5px 0 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#admin-part-title,
+#manager-part-title {
+  font-weight: 700;
+  padding: 0 10px;
+}

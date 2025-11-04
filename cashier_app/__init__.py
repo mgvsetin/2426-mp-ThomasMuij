@@ -98,4 +98,7 @@ def create_app(test_config=None):
     from cashier_app import events_booths
     app.register_blueprint(events_booths.bp)
 
+    from cashier_app import user_manager
+    app.register_blueprint(user_manager.bp)
+
     return app

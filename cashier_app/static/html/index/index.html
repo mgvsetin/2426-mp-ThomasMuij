@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Objednávky</title>
 
-  <link rel="stylesheet" href="/static/styles/general.css">
+  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <link rel="stylesheet" href="/static/styles/general/header.css">
+  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
   <link rel="stylesheet" href="/static/styles/index/index.css">
 </head>
 
@@ -21,7 +23,7 @@
     <div id="header-middle">
       <!-- <div id="search-div"> -->
         <div id="search-bar-container">
-          <input id="product-search-bar" placeholder="Vyhledávání">
+          <input id="search-bar" placeholder="Vyhledávání">
           <button id="search-button">
             <img id="search-icon" src="/static/images/icons/search_icon.png">
           </button>
@@ -52,23 +54,7 @@
         <img id="close-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
       </button>
     </div>
-    <div id="seller-part">
-      seller-part
-      <!-- <div id="seller-part-title"></div> wont have? -->
-    </div>
-    <div id="cashier-part">
-      cashier-part
-      <!-- <div id="cashier-part-title"></div> wont have? -->
-    </div>
-    <div id="manager-part">
-      <div id="manager-part-title">Manažer</div>
-      <a href="">Spravovat akci</a>
-    </div>
-    <div id="admin-part">
-      <div id="admin-part-title">Admin</div>
-      <a href="">Spravovat uživatele</a>
-      <a href="">Spravovat akce</a>
-    </div>
+    <div id="sidebar-links"></div>
   </div>
 
   <div id="sidebar-overlay-page"></div>

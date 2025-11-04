@@ -21,11 +21,26 @@ def account_info():
     event = load_selected_event()
     booth = load_selected_booth()
     
+    is_manager = False
+    if event:
+        conn = get_db()
+        with conn.transaction():
+            with conn.cursor() as cur:
+                is_manager = bool(cur.execute('''
+                    SELECT 1
+                    FROM employee_event_booth_roles
+                    WHERE employee_id = %s
+                    AND event_id = %s
+                    AND booth_id IS NULL''',
+                    (employee['id'], event['id'])).fetchone())
+    
     if employee:
         employee = {
             'id': employee['id'],
             'username': employee['username'],
             'email': employee['email'],
+            'is_admin': employee['is_admin'],
+            'is_event_manager': is_manager
         }
     if event:
         event = {
