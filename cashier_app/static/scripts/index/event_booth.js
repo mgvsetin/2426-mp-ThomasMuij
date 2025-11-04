@@ -151,7 +151,6 @@ export async function pickEvent(formData) {
   }
   selectingEvent = false;
   removeEventBoothOverlay();
-  renderDropdownSessionInfo();
   return true;
 }
 
@@ -277,7 +276,6 @@ export async function pickBooth(formData) {
     return false;
   }
   removeEventBoothOverlay();
-  renderDropdownSessionInfo();
   return true;
 }
 

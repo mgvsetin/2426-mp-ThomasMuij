@@ -1,6 +1,7 @@
 import { getSessionInfo } from "./session.js";
 
 const sessionInfoEl = document.querySelector('#session-info');
+const searchBar = document.querySelector('#product-search-bar')
 
 
 export async function renderDropdownSessionInfo() {
@@ -21,6 +22,8 @@ export async function renderDropdownSessionInfo() {
 
 
 export async function renderHeader() {
-  searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
+  if (!searchBar.value) {
+    searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
+  }
   await renderDropdownSessionInfo();
 }

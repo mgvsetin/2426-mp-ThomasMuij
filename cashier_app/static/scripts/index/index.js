@@ -2,7 +2,7 @@ import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEve
 import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
-import { renderDropdownSessionInfo } from "../general/header.js";
+import { renderDropdownSessionInfo, renderHeader } from "../general/header.js";
 
 const header = document.querySelector('#header');
 const searchBar = header.querySelector('#product-search-bar')
@@ -19,7 +19,8 @@ loadPage({
   products: true,
   summary: true,
   categories: true,
-  sessionInfo: true
+  sessionInfo: true,
+  header: true
 });
 makeEventListeners();
 
@@ -28,7 +29,8 @@ async function loadPage({
   products = false,
   summary = false,
   categories = false,
-  sessionInfo = false
+  sessionInfo = false,
+  header = false
 } = {}) {
   
   const toLoad = [];
@@ -47,6 +49,10 @@ async function loadPage({
 
   if (sessionInfo) {
     toLoad.push(renderDropdownSessionInfo());
+  }
+
+  if (header) {
+    toLoad.push(renderHeader());
   }
 
   await Promise.all(toLoad);
@@ -170,7 +176,8 @@ function makeEventListeners() {
         categories: true,
         sessionInfo: true,
         products: true,
-        summary: true
+        summary: true,
+        header: true
       });
       return;
     }
@@ -215,6 +222,9 @@ function makeEventListeners() {
       const ok = await pickEvent(formData);
 
       if (ok) {
+        loadPage({
+          header: true
+        })
         renderBoothPicker();
       }
       return;
@@ -232,7 +242,8 @@ function makeEventListeners() {
           categories: true,
           sessionInfo: true,
           products: true,
-          summary: true
+          summary: true,
+          header: true
         });
       }
       return;
