@@ -90,112 +90,117 @@
 
 
 
-  <div class="container">
-    <header>
-      <div class="title">
-        <div class="logo">DB</div>
-        <div>
-          <h1>EMPLOYEES</h1>
-          <div class="subtitle">SQL-style table view — compact, monospace, grid lines</div>
-        </div>
-      </div>
-
-
-      <div class="controls">
-        <button class="btn" id="refreshBtn">REFRESH</button>
-        <button class="btn primary" id="addBtn">+ INSERT</button>
-      </div>
-    </header>
-
-
-    <div class="db-card">
-      <table aria-label="Employees SQL-style table">
-        <thead>
-          <tr>
-            <th class="pk">#</th>
-            <th>username <span class="col-type">VARCHAR(64)</span></th>
-            <th>email <span class="col-type">VARCHAR(128)</span></th>
-            <th>is_admin <span class="col-type">BOOLEAN</span></th>
-            <th>created_by <span class="col-type">VARCHAR(64)</span></th>
-            <th>created_at <span class="col-type">TIMESTAMP</span></th>
-            <th style="text-align:center">actions</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <!-- example rows (PK as first column) -->
-          <tr data-id="1" data-username="alice" data-email="alice@example.com" data-isadmin="true"
-            data-createdby="system" data-createdat="2024-11-01 09:12">
-            <td class="pk">1</td>
-            <td>
-              <div class="username">
-                <div class="avatar">A</div>
-                <div class="meta">
-                  <div class="name">alice</div>
-                  <div class="muted">Alice Johnson</div>
-                </div>
-              </div>
-            </td>
-            <td>alice@example.com</td>
-            <td><span class="badge yes">TRUE</span></td>
-            <td>system</td>
-            <td>2024-11-01 09:12:00</td>
-            <td style="text-align:center">
-              <div class="actions">
-                <button class="icon-btn edit" title="Edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M3 21v-3.75L14.06 6.19l3.75 3.75L6.75 21H3z" stroke="currentColor" stroke-width="1.2"
-                      stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-                <button class="icon-btn delete" title="Delete">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M3 6h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"
-                      stroke-linejoin="round" />
-                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" stroke-width="1.2"
-                      stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-
-
-          <tr data-id="2" data-username="bobby" data-email="bobby@company.com" data-isadmin="false"
-            data-createdby="alice" data-createdat="2025-02-14 15:40">
-            <td class="pk">2</td>
-            <td>
-              <div class="username">
-                <div class="avatar">B</div>
-                <div class="meta">
-                  <div class="name">bobby</div>
-                  <div class="muted">Bobby Chan</div>
-                </div>
-              </div>
-            </td>
-            <td>bobby@company.com</td>
-            <td><span class="badge no">FALSE</span></td>
-            <td>alice</td>
-            <td>2025-02-14 15:40:00</td>
-            <td style="text-align:center">
-              <div class="actions">
-                <button class="icon-btn edit" title="Edit"></button>
-                <button class="icon-btn delete" title="Delete"></button>
-              </div>
-            </td>
-          </tr>
-
-
-        </tbody>
-      </table>
-
-
-      <div class="table-footer">
-        <div>Showing <strong id="rowCount">2</strong> rows</div>
-        <div class="subtitle">Designed to look like a SQL result set — monospace, types in header, compact grid</div>
-      </div>
+  <div id="container">
+    <div id="topbar">
+      <!-- maybe it <a>  -->
+      <button id="add-employee-button">
+        + Přidat zaměstnance
+      </button>
     </div>
 
+    <div id="card">
+      <div id="table-wrap">
+        <table id="employee-table">
+          <thead>
+            <tr>
+              <th>Zaměstnanec</th>
+              <th>Email</th>
+              <th>Admin</th>
+              <th>Vytvořil</th>
+              <th>Vytvořen</th>
+              <th style="text-align:right; width:min-content;">Actions</th>
+            </tr>
+          </thead>
 
+          <tbody>
+            <tr>
+              <td class="username">jdoe</td>
+              <td class="muted">jdoe@example.com</td>
+              <td><span class="badge yes">YES</span></td>
+              <td class="muted">admin1</td>
+              <td class="muted">2024-02-18 10:22</td>
+              <td class="actions">
+                <button class="icon-btn edit" title="Edit (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  </svg>
+                </button>
+                <button class="icon-btn delete" title="Delete (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="username">asmith</td>
+              <td class="muted">asmith@example.com</td>
+              <td><span class="badge no">NO</span></td>
+              <td class="muted">jdoe</td>
+              <td class="muted">2023-08-12 14:05</td>
+              <td class="actions">
+                <button class="icon-btn edit" title="Edit (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </button>
+                <button class="icon-btn delete" title="Delete (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="username">bking</td>
+              <td class="muted">bking@example.com</td>
+              <td><span class="badge no">NO</span></td>
+              <td class="muted">asmith</td>
+              <td class="muted">2022-11-03 09:12</td>
+              <td class="actions">
+                <button class="icon-btn edit" title="Edit (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </button>
+                <button class="icon-btn delete" title="Delete (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="username">jane</td>
+              <td class="muted">jane@example.com</td>
+              <td><span class="badge yes">YES</span></td>
+              <td class="muted">admin1</td>
+              <td class="muted">2024-06-01 08:30</td>
+              <td class="actions">
+                <button class="icon-btn edit" title="Edit (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </button>
+                <button class="icon-btn delete" title="Delete (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="username">noemi</td>
+              <td class="muted">noemi@example.com</td>
+              <td><span class="badge yes">YES</span></td>
+              <td class="muted">recruiter2</td>
+              <td class="muted">2024-08-10 11:15</td>
+              <td class="actions">
+                <button class="icon-btn edit" title="Edit (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                </button>
+                <button class="icon-btn delete" title="Delete (no JS)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 
