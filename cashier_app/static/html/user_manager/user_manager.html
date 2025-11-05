@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Objednávky</title>
+  <title>Správa uživatelů</title>
 
   <link rel="stylesheet" href="/static/styles/general/general.css">
   <link rel="stylesheet" href="/static/styles/general/header.css">
   <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/index/index.css">
+  <link rel="stylesheet" href="/static/styles/user_manager/user_manager.css">
 </head>
 
 <body>
@@ -59,48 +59,7 @@
 
   <div id="sidebar-overlay-page"></div>
 
-  <main id="order">
-    <div id="product-side">
-      <div id="selectable-categories"></div>
-
-      <div id="product-grid-container"></div>
-    </div>
-
-    <div id="summary-side">
-      <div id="customer-details">
-        <div id="customer-details-title">
-          Zákazník
-        </div>
-        <div id="tag-id">
-          Karta: 20000000-0000-0000-0000-000000000001
-        </div>
-        <div id="balance">
-          Zůstatek: 3456 Kč
-        </div>
-      </div>
-      <div id="order-summary-container">
-        <div id="order-summary-title">
-          Objednávka
-        </div>
-        <div id="order-summary"></div>
-      </div>
-      <div id="payment-summary">
-        <div id="order-cost-row">
-          <div id="order-cost-message">
-            Celkem:
-          </div>
-          <div id="order-cost">
-            3405 Kč
-          </div>
-        </div>
-        <button id="pay-button">
-          Zaplatit
-        </button>
-      </div>
-    </div>
-  </main>
-
-  <script src="/static/scripts/index/index.js" type="module"></script>
+  <script src="/static/scripts/user_manager/user_manager.js" type="module"></script>
 </body>
 
 </html>
