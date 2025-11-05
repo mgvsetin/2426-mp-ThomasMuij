@@ -4,7 +4,7 @@ const sidebar = document.querySelector('#sidebar');
 const sidebarLinks = sidebar.querySelector('#sidebar-links');
 
 
-export async function renderSidebar() {
+export async function renderSidebar(selectedId) {
   const sessionInfo = await getSessionInfo();
 
   if (!sessionInfo || !sessionInfo.employee) {
@@ -21,8 +21,8 @@ export async function renderSidebar() {
   if (boothType === 'seller') {
     sidebarLinksHTML += `
       <div id="seller-part">
-        seller-part
         <!-- <div id="seller-part-title"></div> wont have? -->
+        <a id="seller-link" href="/">Prodej</a>
       </div>
     `;
   }
@@ -40,7 +40,7 @@ export async function renderSidebar() {
     sidebarLinksHTML += `
       <div id="manager-part">
         <div id="manager-part-title">Manažer</div>
-        <a href="">Spravovat akci</a>
+        <a id="event-manager-link" href="">Spravovat akci</a>
       </div>
     `;
   }
@@ -49,13 +49,16 @@ export async function renderSidebar() {
     sidebarLinksHTML += `
       <div id="admin-part">
         <div id="admin-part-title">Admin</div>
-        <a href="/admin/employees/manager">Spravovat uživatele</a>
-        <a href="">Spravovat akce</a>
+        <a id="employee-manager-link" href="/admin/employees/manager">Spravovat zaměstnance</a>
+        <a id="events-manager-link" href="">Spravovat akce</a>
       </div>
     `;
   }
 
   sidebarLinks.innerHTML = sidebarLinksHTML;
+
+  const selected = document.querySelector(selectedId);
+  selected.classList.add('selected');
 }
 
 

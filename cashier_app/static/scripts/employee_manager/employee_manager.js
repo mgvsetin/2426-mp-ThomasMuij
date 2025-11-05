@@ -17,7 +17,7 @@ async function loadPage({
   const toLoad = [];
 
   if (sidebar) {
-    toLoad.push(renderSidebar());
+    toLoad.push(renderSidebar('#employee-manager-link'));
   }
 
   if (header) {

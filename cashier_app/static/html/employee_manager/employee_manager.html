@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Správa zaměstnanců</title>
+
+  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <link rel="stylesheet" href="/static/styles/general/header.css">
+  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
+  <link rel="stylesheet" href="/static/styles/employee_manager/employee_manager.css">
+</head>
+
+<body>
+  <div id="header">
+    <div id="header-left">
+      <button id="open-sidebar-button">
+        <img id="open-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
+      </button>
+    </div>
+
+    <div id="header-middle">
+      <!-- <div id="search-div"> -->
+      <div id="search-bar-container">
+        <input id="search-bar" placeholder="Vyhledávání">
+        <button id="search-button">
+          <img id="search-icon" src="/static/images/icons/search_icon.png">
+        </button>
+      </div>
+      <!-- </div> -->
+    </div>
+
+    <div id="header-right">
+      <button id="account-button">
+        <img id="account-icon" src="/static/images/icons/account_icon.png">
+      </button>
+
+      <div id="account-dropdown">
+        <div id="session-info"></div>
+        <button id="choose-new-event-button">
+          Změnit akci
+        </button>
+        <a id="logout-link" href="/auth/logout">
+          Odhlásit
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="close-sidebar-container">
+      <button id="close-sidebar-button">
+        <img id="close-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
+      </button>
+    </div>
+    <div id="sidebar-links"></div>
+  </div>
+
+  <div id="sidebar-overlay-page"></div>
+
+  <!-- <div id="user-table-container">
+    <main id="employee-table">
+      <div id="column-names">
+        <div id="username-column-title">Uživatelské jméno</div>
+        <div id="email-column-title">Email</div>
+        <div id="is-admin-column-title">Admin</div>
+        <div id="created-by-column-title">Vytvořen adminem</div>
+        <div id="created-at-column-title">Čas vytvoření</div>
+      </div>
+      <div id="employee-grid">
+        <div class="employee-row">
+          <div class="username">development_admin1</div>
+          <div class="email">development_admin1@gmai.com</div>
+          <div class="is-admin">Ano</div>
+          <div class="created-by">a</div>
+          <div class="created-at">"2025-11-03 13:43:34"</div>
+        </div>
+
+        <div class="employee-row">
+          <div class="username">development_admin1</div>
+          <div class="email">development_admin1@gmai.com</div>
+          <div class="is-admin">Ano</div>
+          <div class="created-by">a</div>
+          <div class="created-at">"2025-11-03 13:43:34"</div>
+        </div>
+      </div>
+    </main>
+  </div> -->
+
+
+
+  <div class="container">
+    <header>
+      <div class="title">
+        <div class="logo">DB</div>
+        <div>
+          <h1>EMPLOYEES</h1>
+          <div class="subtitle">SQL-style table view — compact, monospace, grid lines</div>
+        </div>
+      </div>
+
+
+      <div class="controls">
+        <button class="btn" id="refreshBtn">REFRESH</button>
+        <button class="btn primary" id="addBtn">+ INSERT</button>
+      </div>
+    </header>
+
+
+    <div class="db-card">
+      <table aria-label="Employees SQL-style table">
+        <thead>
+          <tr>
+            <th class="pk">#</th>
+            <th>username <span class="col-type">VARCHAR(64)</span></th>
+            <th>email <span class="col-type">VARCHAR(128)</span></th>
+            <th>is_admin <span class="col-type">BOOLEAN</span></th>
+            <th>created_by <span class="col-type">VARCHAR(64)</span></th>
+            <th>created_at <span class="col-type">TIMESTAMP</span></th>
+            <th style="text-align:center">actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- example rows (PK as first column) -->
+          <tr data-id="1" data-username="alice" data-email="alice@example.com" data-isadmin="true"
+            data-createdby="system" data-createdat="2024-11-01 09:12">
+            <td class="pk">1</td>
+            <td>
+              <div class="username">
+                <div class="avatar">A</div>
+                <div class="meta">
+                  <div class="name">alice</div>
+                  <div class="muted">Alice Johnson</div>
+                </div>
+              </div>
+            </td>
+            <td>alice@example.com</td>
+            <td><span class="badge yes">TRUE</span></td>
+            <td>system</td>
+            <td>2024-11-01 09:12:00</td>
+            <td style="text-align:center">
+              <div class="actions">
+                <button class="icon-btn edit" title="Edit">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3 21v-3.75L14.06 6.19l3.75 3.75L6.75 21H3z" stroke="currentColor" stroke-width="1.2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <button class="icon-btn delete" title="Delete">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M3 6h18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" stroke-width="1.2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+
+
+          <tr data-id="2" data-username="bobby" data-email="bobby@company.com" data-isadmin="false"
+            data-createdby="alice" data-createdat="2025-02-14 15:40">
+            <td class="pk">2</td>
+            <td>
+              <div class="username">
+                <div class="avatar">B</div>
+                <div class="meta">
+                  <div class="name">bobby</div>
+                  <div class="muted">Bobby Chan</div>
+                </div>
+              </div>
+            </td>
+            <td>bobby@company.com</td>
+            <td><span class="badge no">FALSE</span></td>
+            <td>alice</td>
+            <td>2025-02-14 15:40:00</td>
+            <td style="text-align:center">
+              <div class="actions">
+                <button class="icon-btn edit" title="Edit"></button>
+                <button class="icon-btn delete" title="Delete"></button>
+              </div>
+            </td>
+          </tr>
+
+
+        </tbody>
+      </table>
+
+
+      <div class="table-footer">
+        <div>Showing <strong id="rowCount">2</strong> rows</div>
+        <div class="subtitle">Designed to look like a SQL result set — monospace, types in header, compact grid</div>
+      </div>
+    </div>
+
+
+  </div>
+
+
+
+  <script src="/static/scripts/employee_manager/employee_manager.js" type="module"></script>
+</body>
+
+</html>

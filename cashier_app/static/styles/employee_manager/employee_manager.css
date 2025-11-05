@@ -1,0 +1,268 @@
+/* #user-table-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+#employee-table {
+  display: grid;
+  grid-template-rows: 100px 1fr;
+  width: 100%;
+}
+
+#column-names,
+.employee-row {
+  display: grid;
+  grid-template-columns: 20fr 30fr 10fr 20fr 20fr;
+}
+
+#employee-grid {
+  display: flex;
+  flex-direction: column;
+  row-gap: 5px;
+} */
+
+
+
+:root {
+  --bg: #0b1220;
+  --panel: #08101a;
+  --muted: #93a0ad;
+  --accent: #7c3aed;
+  --grid: #22303b;
+  --cell: #0d1620;
+  --danger: #ef4444;
+  --success: #10b981;
+  --radius: 8px;
+  color-scheme: dark;
+}
+
+body {
+  background: linear-gradient(180deg, #06111a 0%, #071428 100%);
+  -webkit-font-smoothing: antialiased;
+  padding: 88px 28px 28px 28px;
+}
+
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px
+}
+
+.title {
+  display: flex;
+  gap: 12px;
+  align-items: center
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #3b82f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 13px
+}
+
+
+.controls {
+  display: flex;
+  gap: 8px
+}
+
+.btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer
+}
+
+.btn.primary {
+  background: linear-gradient(90deg, var(--accent), #5b21b6);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.09)
+}
+
+
+/* SQL-style table */
+.db-card {
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid var(--grid);
+  overflow: auto
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 13px
+}
+
+
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.00));
+  border-bottom: 2px solid var(--grid);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: #cfe8ff;
+  font-weight: 700;
+  font-size: 12px
+}
+
+
+thead th .col-type {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 6px
+}
+
+
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--grid);
+  vertical-align: middle;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.00), rgba(255, 255, 255, 0.005))
+}
+
+
+/* row-number / PK column */
+.pk {
+  width: 56px;
+  color: var(--muted);
+  text-align: right;
+  padding-right: 16px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0.02));
+  border-right: 1px solid var(--grid);
+  font-weight: 600
+}
+
+
+/* avatars as small circles */
+.username {
+  display: flex;
+  gap: 10px;
+  align-items: center
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #0f1724;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700
+}
+
+.meta .name {
+  font-weight: 700
+}
+
+.meta .muted {
+  color: var(--muted);
+  font-size: 12px
+}
+
+
+/* badges */
+.badge {
+  display: inline-block;
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700
+}
+
+.badge.yes {
+  background: linear-gradient(90deg, #065f46, #059669);
+  color: white
+}
+
+.badge.no {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.02)
+}
+
+
+/* actions */
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer
+}
+
+
+/* compact, SQL grid feel */
+tbody tr:hover td {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.02), rgba(255, 255, 255, 0.01))
+}
+
+
+/* footer-like info row (optional) */
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 2px;
+  color: var(--muted);
+  font-size: 13px
+}
+
+
+@media (max-width:720px) {
+  table {
+    min-width: 700px
+  }
+
+  .pk {
+    display: none
+  }
+}

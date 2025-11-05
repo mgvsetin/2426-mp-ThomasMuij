@@ -49,7 +49,7 @@ async function loadPage({
   }
 
   if (sidebar) {
-    toLoad.push(renderSidebar());
+    toLoad.push(renderSidebar('#seller-link'));
   }
 
   if (header) {

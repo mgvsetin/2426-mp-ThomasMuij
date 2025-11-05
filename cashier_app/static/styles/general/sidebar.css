@@ -45,6 +45,12 @@
   background-color: rgb(232, 232, 232);
 }
 
+#sidebar a.selected {
+  background-color: rgb(245, 245, 245);
+  pointer-events: none;
+  cursor: default;
+}
+
 #close-sidebar-container {
   margin-top: 15px;
 }

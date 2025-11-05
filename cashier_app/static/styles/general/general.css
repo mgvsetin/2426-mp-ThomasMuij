@@ -5,6 +5,10 @@ html, body {
 
 body {
   font-family: Arial;
+  padding-top: 60px;
+}
+
+* {
   box-sizing: border-box;
 }
 
