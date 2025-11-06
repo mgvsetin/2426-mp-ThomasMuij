@@ -14,3 +14,4 @@ def is_manager(employee, event):
                 (employee['id'], event['id'])).fetchone())
             
     return is_manager
+
