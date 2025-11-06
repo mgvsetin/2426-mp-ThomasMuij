@@ -24,6 +24,7 @@ export async function renderDropdownSessionInfo() {
 
 
 export async function renderHeader() {
+  // make the change event only appear sometimes
   if (!searchBar.value) {
     searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
   }

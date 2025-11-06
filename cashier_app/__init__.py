@@ -101,4 +101,7 @@ def create_app(test_config=None):
     from cashier_app import employee_manager
     app.register_blueprint(employee_manager.bp)
 
+    from cashier_app import employees
+    app.register_blueprint(employees.bp)
+
     return app

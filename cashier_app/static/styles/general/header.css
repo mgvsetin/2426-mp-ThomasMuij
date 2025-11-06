@@ -146,12 +146,13 @@
 
 #account-dropdown {
   position: absolute;
-  top: 55px;
+  top: 50px;
   right: 10px;
-  background-color: rgb(255, 255, 255);
+  background-color: rgb(248, 248, 248);
   width: 200px;
-  border: 1px solid rgb(230, 230, 230);
-  border-radius: 5px;
+  /* border: 1px solid rgb(230, 230, 230); */
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.18);
+  border-radius: 2px;
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -190,7 +191,7 @@
 #account-dropdown a {
   border: none;
   border-bottom: 1px solid rgb(230, 230, 230);
-  background-color: white;
+  background-color: inherit;
   padding: 4px 5px;
   text-align: left;
   font-size: 16px;
@@ -205,12 +206,12 @@
 
 #account-dropdown button:hover,
 #account-dropdown a:hover {
-  background-color: rgb(245, 245, 245);
+  background-color: rgb(238, 238, 238);
 }
 
 #account-dropdown button:active,
 #account-dropdown a:active {
-  background-color: rgb(240, 240, 240);
+  background-color: rgb(233, 233, 233);
 }
 
 /* #choose-new-event-button {

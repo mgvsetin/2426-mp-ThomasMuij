@@ -9,6 +9,7 @@ from uuid import UUID
 from flask import Blueprint, request, session, g, jsonify, make_response, url_for
 from cashier_app.db import get_db
 from cashier_app.auth import load_logged_in_employee
+from cashier_app.utils.employees import is_manager
 
 bp = Blueprint('events', __name__, url_prefix='/api/employees/me/events')
 
@@ -210,16 +211,8 @@ def get_event_booths_for_employee():
             if employee['is_admin']:
                 booths = cur.execute(all_event_booths_sql,
                     (event['id'],)).fetchall()
-            else:
-                is_manager = cur.execute('''
-                    SELECT 1
-                    FROM employee_event_booth_roles
-                    WHERE employee_id = %s
-                    AND event_id = %s
-                    AND role = 'event_manager' ''',
-                    (employee['id'], event['id'])).fetchone()
-                
-                if is_manager:
+            else:                
+                if is_manager(employee, event):
                     booths = cur.execute(all_event_booths_sql,
                     (event['id'],)).fetchall()
                 else:
