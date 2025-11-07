@@ -129,6 +129,12 @@ tbody tr:hover {
   font-size: 10px;
 }
 
+.created-by a {
+  padding: 2px 0;
+  text-decoration: none;
+  color: #6b7280;
+}
+
 .actions {
   min-width: 120px;
 }

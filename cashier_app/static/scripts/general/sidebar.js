@@ -17,24 +17,30 @@ export async function renderSidebar(selectedId) {
   const boothType = sessionInfo.booth ? sessionInfo.booth.booth_type : null;
 
   let sidebarLinksHTML = '';
-  
-  if (boothType === 'seller') {
-    sidebarLinksHTML += `
-      <div id="seller-part">
-        <!-- <div id="seller-part-title"></div> wont have? -->
-        <a id="seller-link" href="/">Prodej</a>
-      </div>
-    `;
-  }
 
-  if (boothType === 'cashier') {
-    sidebarLinksHTML += `
-      <div id="cashier-part">
-        cashier-part
-        <!-- <div id="cashier-part-title"></div> wont have? -->
-      </div>
-    `;
-  }
+  sidebarLinksHTML += `
+    <div id="general-part">
+      <a id="index-link" href="/">Domů</a>
+    </div>
+  `;
+  
+  // if (boothType === 'seller') {
+  //   sidebarLinksHTML += `
+  //     <div id="seller-part">
+  //       <!-- <div id="seller-part-title"></div> wont have? -->
+  //       <a id="seller-link" href="/">Prodej</a>
+  //     </div>
+  //   `;
+  // }
+
+  // if (boothType === 'cashier') {
+  //   sidebarLinksHTML += `
+  //     <div id="cashier-part">
+  //       cashier-part
+  //       <!-- <div id="cashier-part-title"></div> wont have? -->
+  //     </div>
+  //   `;
+  // }
 
   if (isManager || (sessionInfo.event && isAdmin)) {
     sidebarLinksHTML += `

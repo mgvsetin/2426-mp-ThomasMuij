@@ -95,12 +95,14 @@ async function renderTableRows() {
       ${createdAt.getDate()}. ${createdAt.getMonth()}. ${createdAt.getFullYear()}
     `;
 
+    const createdByHTML = employee.created_by ? `<a href="#${employee.created_by}">${employee.created_by}</a>` : '-'
+
     rowsHTML += `
-      <tr data-employee='${JSON.stringify(employee)}'>
+      <tr id="${employee.id}" data-employee='${JSON.stringify(employee)}'>
         <td class="username">${employee.username} <span class="id muted">(${employee.id})</span></td>
         <td class="email">${employee.email}</td>
         <td>${isAdminHTML}</td>
-        <td class="created-by muted">${employee.created_by}</td>
+        <td class="created-by muted">${createdByHTML}</td>
         <td class="created-at muted">${createdAtHTML}</td>
         <td class="actions">
           <button class="icon-btn edit">
@@ -147,12 +149,12 @@ function openEditOverlay(row) {
         <form id="edit-form">
           <div class="form-row">
             <label for="edit-username">Uživatelské jméno</label>
-            <input id="edit-username" name="username" type="text" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
+            <input id="edit-username" name="username" type="text" placeholder="Nechte prázdné nebo stejné, pokud neměníte jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
           </div>
 
           <div class="form-row">
             <label for="edit-email">Email</label>
-            <input id="edit-email" name="email" type="email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
+            <input id="edit-email" name="email" type="email" placeholder="Nechte prázdné nebo stejné, pokud neměníte email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
           </div>
 
           <div class="form-row">
