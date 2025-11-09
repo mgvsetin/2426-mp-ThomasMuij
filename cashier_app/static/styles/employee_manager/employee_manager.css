@@ -1,4 +1,3 @@
-
 body {
   padding: 80px 20px 20px 20px;
   background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
@@ -23,10 +22,18 @@ body {
   font-size: 14px;
   border-radius: 10px;
   border: none;
-  box-shadow: 0 6px 18px rgba(41, 56, 76, 0.1);
-  background: rgb(39, 65, 85);
+  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.1);
+  background: #0f766e;
   color: white;
   white-space: nowrap;
+}
+
+#add-employee-button:hover {
+  background: #0f7068;
+}
+
+#add-employee-button:active {
+  background: #0f6d66;
 }
 
 #card {
@@ -41,7 +48,7 @@ body {
   overflow: auto;
   border-radius: 8px;
   max-height: calc(100vh - 152px);
-  min-height: 150px;
+  min-height: 120px;
   min-width: 100px;
 }
 
@@ -81,6 +88,10 @@ tbody tr:nth-child(even) {
 
 tbody tr:hover {
   background: #eef6fb;
+}
+
+tbody tr[selected] {
+  background: #e8f2ff;
 }
 
 .username {
@@ -129,10 +140,10 @@ tbody tr:hover {
   font-size: 10px;
 }
 
-.created-by a {
+.created-by div {
   padding: 2px 0;
-  text-decoration: none;
   color: #6b7280;
+  cursor: pointer;
 }
 
 .actions {
@@ -175,6 +186,7 @@ tbody tr:hover {
 
 
 @media (max-width: 767px) {
+
   thead th,
   tbody td {
     padding: 8px 10px;
@@ -182,6 +194,7 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
+
   thead th,
   tbody td {
     padding: 6px 8px;
@@ -189,8 +202,9 @@ tbody tr:hover {
 }
 
 
-
-#edit-overlay {
+#add-overlay,
+#edit-overlay,
+#delete-overlay {
   position: fixed;
   inset: 0;
   background: rgba(10, 12, 14, 0.55);
@@ -198,47 +212,75 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   z-index: 1200;
-  padding: 24px;
+  padding: 5px;
   animation: overlay-fade .14s ease-out;
+  padding-top: 65px;
 }
 
 @keyframes overlay-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
-#edit-modal {
+#add-modal,
+#edit-modal,
+#delete-modal {
   width: 100%;
   max-width: 560px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(10,10,10,0.24);
-  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(10, 10, 10, 0.24);
   transform-origin: center;
-  animation: modal-pop .16s cubic-bezier(.2,.8,.2,1);
+  animation: modal-pop .16s cubic-bezier(.2, .8, .2, 1);
   font-family: inherit;
+  color: black;
+
+  max-height: 100%;
+  overflow: auto;
 }
 
 @keyframes modal-pop {
-  from { transform: translateY(6px) scale(.995); opacity: 0; }
-  to   { transform: translateY(0) scale(1); opacity: 1; }
+  from {
+    transform: translateY(6px) scale(.995);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
-#edit-modal-header {
+#add-modal-header,
+#edit-modal-header,
+#delete-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(10,10,10,0.06);
+  border-bottom: 1px solid rgba(10, 10, 10, 0.06);
 }
 
-#edit-overlay-title {
+#add-overlay-title,
+#edit-overlay-title,
+#delete-overlay-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
 }
 
-#edit-modal-close {
+#delete-overlay-title {
+  color: #991b1b;
+}
+
+#add-modal-close,
+#edit-modal-close,
+#delete-modal-close {
   background: transparent;
   border: none;
   height: 22px;
@@ -251,11 +293,15 @@ tbody tr:hover {
   padding: 0;
 }
 
-#edit-modal-close:hover {
+#add-modal-close:hover,
+#edit-modal-close:hover,
+#delete-modal-close:hover {
   background-color: rgb(245, 245, 245);
 }
 
-#edit-form {
+#add-form,
+#edit-form,
+#delete-form {
   padding: 18px 20px;
   display: grid;
   gap: 12px;
@@ -265,6 +311,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  position: relative;
 }
 
 .form-row label {
@@ -278,27 +325,127 @@ tbody tr:hover {
 .form-row input[type="password"] {
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(10,10,10,0.12);
+  border: 1px solid rgba(10, 10, 10, 0.12);
   font-size: 0.95rem;
   font-family: inherit;
   outline: none;
   transition: box-shadow .12s, border-color .12s;
 }
 
-.form-row input:focus {
-  border-color: rgba(34, 197, 94, 0.3);
-  box-shadow: 0 6px 18px rgba(34,197,94,0.08);
+
+.pw-eye {
+  position: absolute;
+  top: 30px;
+  right: 8px;
+  cursor: pointer;
 }
 
-#edit-form-actions {
+:root {
+  --fg: #585858;
+  --contrast: #fff;
+}
+
+.eye-shape {
+  fill: var(--fg);
+  vector-effect: non-scaling-stroke;
+}
+
+.g-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.g-hide {
+  opacity: 0;
+  transform: scale(.98);
+  pointer-events: none;
+}
+
+:root .pw-eye.state-hide .g-show {
+  opacity: 0;
+  transform: scale(.98);
+  pointer-events: none;
+}
+
+:root .pw-eye.state-hide .g-hide {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.slash,
+.ring-stroke {
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+.add-error,
+.edit-error,
+.delete-error {
+  color: rgb(194, 14, 26);
+  font-size: 14px;
+  line-height: 1.35;
+  display: none;
+}
+
+#general-add-error,
+#general-edit-error,
+#general-delete-error {
+  margin-top: 4px;
+}
+
+.show-add-error,
+.show-edit-error,
+.show-delete-error {
+  display: block;
+}
+
+.form-row input:focus {
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
+}
+
+#delete-id-label,
+#delete-username-label,
+#delete-email-label {
+  font-weight: 600;
+}
+
+#delete-id,
+#delete-username,
+#delete-email {
+  margin-left: 7px;
+  cursor: default;
+}
+
+#add-id,
+#edit-id,
+#delete-id {
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  box-shadow: none;
+  outline: none;
+}
+
+#add-form-actions,
+#edit-form-actions,
+#delete-form-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   padding-top: 6px;
 }
 
+#add-save,
+#add-cancel,
 #edit-cancel,
-#edit-save {
+#edit-save,
+#delete-confirm,
+#delete-cancel {
   padding: 9px 14px;
   border-radius: 8px;
   font-weight: 600;
@@ -307,22 +454,62 @@ tbody tr:hover {
   font-size: 0.95rem;
 }
 
-#edit-cancel {
+#delete-confirm {
+  background: #c53737;
+  color: #fff;
+  box-shadow: 0 6px 10px rgba(197, 55, 55, 0.12);
+}
+
+#delete-confirm:hover {
+  box-shadow: 3px 3px 8px rgba(185, 47, 47, 0.3);
+  background-color: #b92f2f;
+}
+
+#add-cancel,
+#edit-cancel,
+#delete-cancel {
   background: transparent;
-  border: 1px solid rgba(10,10,10,0.08);
+  border: 1px solid rgba(10, 10, 10, 0.08);
   color: #111827;
 }
 
-#edit-cancel:hover {
+#add-cancel:hover,
+#edit-cancel:hover,
+#delete-cancel:hover {
   box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+#add-save {
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 6px 10px rgba(15, 118, 110, 0.12);
+}
+
+#add-save:hover {
+  box-shadow: 3px 3px 8px rgba(15, 118, 110, 0.3);
 }
 
 #edit-save {
   background: #0f766e;
   color: #fff;
-  box-shadow: 0 6px 10px rgba(15,118,110,0.12);
+  box-shadow: 0 6px 10px rgba(15, 118, 110, 0.12);
 }
 
 #edit-save:hover {
   box-shadow: 3px 3px 8px rgba(15, 118, 110, 0.3);
+}
+
+.employee-summary .username {
+  font-weight: 700;
+  color: #153040;
+}
+
+.employee-summary .email {
+  color: #153040;
+  font-weight: 600;
+}
+
+.employee-summary .muted {
+  color: #6b7280;
+  font-size: 13px;
 }

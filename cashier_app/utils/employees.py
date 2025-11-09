@@ -23,7 +23,7 @@ def is_manager(employee, event):
 def validate_username(
     username: str,
     min_len: int = 3,
-    max_len: int = 30,
+    max_len: int = 40,
     allow_chars: str = '._-',
     forbid_all_numeric: bool = False,
     forbidden_substrings: List[str] | None = None
@@ -41,6 +41,15 @@ def validate_username(
 
     Returns:
       (is_valid, errors)
+
+    Possible error messages (one or more may be returned):
+    - "username must be a string"
+    - "username must be at least {min_len} characters"
+    - "username must be at most {max_len} characters"
+    - "username must start and end with a letter or digit, and may only contain letters, digits, and these characters: {allow_chars}"
+    - "username must not contain consecutive characters from '{allow_chars}'"
+    - "username must not be all numeric"
+    - "username must not contain the reserved words: {substring}"
     """
 
     errors: List[str] = []
@@ -86,6 +95,11 @@ def validate_email(email: str) -> Tuple[bool, List[str]]:
 
     Returns:
       (is_valid, errors)
+
+    Possible error messages (one or more may be returned):
+    - "email must be a string"
+    - "email is empty"
+    - error messages raised by email_validator.EmailNotValidError
     """
     errors: List[str] = []
     if not isinstance(email, str):
@@ -127,6 +141,20 @@ def validate_password(
 
     Returns:
       (is_valid, errors)
+
+    Possible error messages (one or more may be returned):
+    - "password must be a string"
+    - "password is empty"
+    - "password must be at least {min_len} characters long"
+    - "password must not contain spaces or tabs"
+    - "password must contain at least one uppercase letter"
+    - "password must contain at least one lowercase letter"
+    - "password must contain at least one digit"
+    - "password must contain at least one special character (e.g. !@#$%)"
+    - "password is too common or easily guessed"
+    - "password must not contain the username"
+    - "password must not contain the email local-part"
+    - "password contains too many repeated characters in sequence"
     """
     errors: List[str] = []
     if not isinstance(password, str):

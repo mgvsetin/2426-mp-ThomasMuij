@@ -1,3 +1,11 @@
+#sidebar-overlay-page[opened] {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  z-index: 2500;
+}
+
+
 #sidebar {
   background-color: white;
   position: fixed;
@@ -15,15 +23,8 @@
   border-right: 1px solid rgb(232, 232, 232);
 }
 
-#sidebar[opened] {
+#sidebar-overlay-page[opened] #sidebar {
   transform: translateX(0);
-}
-
-#sidebar[opened] ~ #sidebar-overlay-page {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.25);
-  z-index: 2500;
 }
 
 #sidebar a {
@@ -46,7 +47,7 @@
 }
 
 #sidebar a.selected {
-  background-color: rgb(245, 245, 245);
+  background-color: rgb(242, 242, 242);
   pointer-events: none;
   cursor: default;
 }

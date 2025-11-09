@@ -3,7 +3,6 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
-import { renderDropdownSessionInfo } from "../general/header.js";
 import { order } from "./order.js";
 import { resetProductsCache, saveSelectedCategory } from "./products.js";
 

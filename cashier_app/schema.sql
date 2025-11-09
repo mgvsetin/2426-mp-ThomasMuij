@@ -797,7 +797,7 @@ VALUES
 ('10000000000000000000000000000002', 'development_admin2', 'email_admin2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, NULL),
 
 ('10000000000000000000000000000003', 'development_event1_manager1', 'email_event_manager@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
-('10000000000000000000000000000004', 'development_event1_manager2', 'email_event_manager2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000004', 'development_event1_manager2', 'email_event_manager2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000002', NULL),
 ('10000000000000000000000000000005', 'development_event3_manager1', 'email_event3_manager@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
 
 ('10000000000000000000000000000006', 'development_event1_booth1_cashier1', 'email_event_cashier@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),

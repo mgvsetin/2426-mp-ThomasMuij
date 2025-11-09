@@ -1,7 +1,8 @@
 const form = document.querySelector('#login-form');
 const errorMessageElement = document.querySelector('.error-message');
 const submitButton = document.querySelector('#submit-button');
-// make required
+const showPassword = document.querySelector('.pw-eye');
+const passwordInput = document.querySelector('#password')
 
 if (form) {
   form.addEventListener('submit', async (event) => {
@@ -45,6 +46,18 @@ if (form) {
     window.location.href = data.redirect_url;
   });
 }
+
+showPassword.addEventListener('click', () => {
+  if (showPassword.classList.contains('state-show')) {
+    passwordInput.setAttribute('type', 'password');
+  } else {
+    passwordInput.setAttribute('type', 'text');
+  }
+
+  const isShow = showPassword.classList.toggle('state-hide');
+  showPassword.classList.toggle('state-show', !isShow);
+  showPassword.classList.toggle('state-hide', isShow);
+})
 
 // if ('serviceWorker' in navigator) {
 //   navigator.serviceWorker

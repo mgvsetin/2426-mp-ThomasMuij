@@ -1,10 +1,39 @@
 import { getSessionInfo } from "./session.js";
 
-const sidebar = document.querySelector('#sidebar');
-const sidebarLinks = sidebar.querySelector('#sidebar-links');
+
+let sidebar, sidebarLinks, overlay;
 
 
-export async function renderSidebar(selectedId) {
+function initSidebar() {
+  if (document.getElementById('sidebar')) return;
+
+  const sidebarHTML = `
+    <div id="sidebar">
+      <div id="close-sidebar-container">
+        <button id="close-sidebar-button">
+          <img id="close-sidebar-icon" src="/static/images/icons/sidebar_icon.png">
+        </button>
+      </div>
+      <div id="sidebar-links"></div>
+    </div>
+  `;
+
+  overlay = document.createElement('div');
+  overlay.id = 'sidebar-overlay-page';
+  overlay.innerHTML = sidebarHTML;
+  document.body.prepend(overlay);
+
+  sidebar = overlay.querySelector('#sidebar');
+  sidebarLinks = sidebar.querySelector('#sidebar-links');
+}
+
+
+initSidebar();
+
+
+export async function renderSidebar() {
+  if (!sidebarLinks) initSidebar();
+
   const sessionInfo = await getSessionInfo();
 
   if (!sessionInfo || !sessionInfo.employee) {
@@ -55,7 +84,7 @@ export async function renderSidebar(selectedId) {
     sidebarLinksHTML += `
       <div id="admin-part">
         <div id="admin-part-title">Admin</div>
-        <a id="employee-manager-link" href="/admin/employees/manager">Spravovat zaměstnance</a>
+        <a id="employee-manager-link" href="/admin/employee_manager/">Spravovat zaměstnance</a>
         <a id="events-manager-link" href="">Spravovat akce</a>
       </div>
     `;
@@ -63,19 +92,31 @@ export async function renderSidebar(selectedId) {
 
   sidebarLinks.innerHTML = sidebarLinksHTML;
 
-  const selected = document.querySelector(selectedId);
-  selected.classList.add('selected');
+  let selected = sidebarLinks.querySelector(`a[href="${location.pathname}"]`);
+
+  // jestli href nekončí /
+  if (!selected) {
+    let path = location.pathname;
+    if (path.endsWith('/')) {
+      path = path.slice(0, path.length - 1);
+      selected = sidebarLinks.querySelector(`a[href="${path}"]`);
+    }
+  }
+
+  if (selected) selected.classList.add('selected');
 }
 
 
 export function sidebarClickListeners(event) {
+  if (!overlay) initSidebar();
+
   if (!event.target.closest('#sidebar') && !event.target.matches('#open-sidebar-button, #open-sidebar-icon')) {
     // kliknutí jinam než na sidebar nebo otevírání sidebar
-    sidebar.removeAttribute('opened');
+    overlay.removeAttribute('opened');
   }
 
   if (event.target.matches('#close-sidebar-button, #close-sidebar-icon')) {
-    sidebar.removeAttribute('opened');
+    overlay.removeAttribute('opened');
     return true;
   }
 

@@ -2,7 +2,7 @@ import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEve
 import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
-import { headerClickListeners, headerKeydownListeners, renderDropdownSessionInfo, renderHeader } from "../general/header.js";
+import { headerClickListeners, headerKeydownListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
 const orderEl = document.querySelector('#order');
@@ -15,7 +15,6 @@ loadPage({
   products: true,
   summary: true,
   categories: true,
-  sessionInfo: true,
   sidebar: true,
   header: true
 });
@@ -25,7 +24,6 @@ async function loadPage({
   products = false,
   summary = false,
   categories = false,
-  sessionInfo = false,
   sidebar = false,
   header = false
 } = {}) {
@@ -44,12 +42,8 @@ async function loadPage({
     toLoad.push(renderSelectableCategories());
   }
 
-  if (sessionInfo) {
-    toLoad.push(renderDropdownSessionInfo());
-  }
-
   if (sidebar) {
-    toLoad.push(renderSidebar('#index-link'));
+    toLoad.push(renderSidebar());
   }
 
   if (header) {
@@ -127,7 +121,6 @@ document.addEventListener('click', async (event) => {
     await unselectEventBooth();
     loadPage({
       categories: true,
-      sessionInfo: true,
       products: true,
       summary: true,
       sidebar: true,
@@ -144,7 +137,6 @@ document.addEventListener('click', async (event) => {
     await unselectEventBooth();
     loadPage({
       categories: true,
-      sessionInfo: true,
       products: true,
       summary: true,
       sidebar: true,
@@ -209,7 +201,6 @@ productSide.addEventListener('submit', async (event) => {
     if (ok) {
       loadPage({
         categories: true,
-        sessionInfo: true,
         products: true,
         summary: true,
         sidebar: true,

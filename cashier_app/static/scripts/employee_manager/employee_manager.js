@@ -2,7 +2,9 @@ import { getEmployees } from "../general/employees.js";
 import { headerClickListeners, headerKeydownListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
+
 const employeeTableBody = document.querySelector('#employee-table-body');
+const tableWrap = document.querySelector('#table-wrap');
 
 loadPage({
   table: true,
@@ -16,7 +18,7 @@ async function loadPage({
   sidebar = false,
   header = false
 } = {}) {
-  
+
   const toLoad = [];
 
   if (table) {
@@ -24,7 +26,7 @@ async function loadPage({
   }
 
   if (sidebar) {
-    toLoad.push(renderSidebar('#employee-manager-link'));
+    toLoad.push(renderSidebar());
   }
 
   if (header) {
@@ -39,19 +41,108 @@ document.addEventListener('click', (event) => {
   headerClickListeners(event);
   sidebarClickListeners(event);
 
+  if (event.target.matches('#add-employee-button')) {
+    openAddEmployeeOverlay();
+    return;
+  }
+
+  const cancelAddButton = event.target.closest('#add-cancel');
+  const AddModalClose = event.target.closest('#add-modal-close')
+  if (cancelAddButton || AddModalClose) {
+    const overlayEl = document.querySelector('#add-overlay');
+    if (overlayEl) overlayEl.remove();
+    return;
+  }
+
   const editButton = event.target.closest('.edit.icon-btn');
   if (editButton) {
     const row = editButton.closest('tr[data-employee]');
     openEditOverlay(row);
+    return;
   }
 
-
-  const cancelButton = event.target.closest('#edit-cancel');
+  const cancelEditButton = event.target.closest('#edit-cancel');
   const editModalClose = event.target.closest('#edit-modal-close')
-  if (cancelButton || editModalClose) {
+  if (cancelEditButton || editModalClose) {
     const overlayEl = document.querySelector('#edit-overlay');
-    overlayEl.remove();
+    if (overlayEl) overlayEl.remove();
+    return;
   }
+
+  const deleteButton = event.target.closest('.delete.icon-btn');
+  if (deleteButton) {
+    const row = deleteButton.closest('tr[data-employee]');
+    openDeleteOverlay(row);
+    return;
+  }
+
+  const cancelDeleteButton = event.target.closest('#delete-cancel');
+  const deleteModalClose = event.target.closest('#delete-modal-close')
+  if (cancelDeleteButton || deleteModalClose) {
+    const overlayEl = document.querySelector('#delete-overlay');
+    if (overlayEl) overlayEl.remove();
+    return;
+  }
+
+  const showPassword = event.target.closest('.pw-eye');
+  if (showPassword) {
+    const passwordInput = showPassword.parentElement.querySelector('input[name="password"]');
+    if (showPassword.classList.contains('state-show')) {
+      passwordInput.setAttribute('type', 'password');
+    } else {
+      passwordInput.setAttribute('type', 'text');
+    }
+
+    const isShow = showPassword.classList.toggle('state-hide');
+    showPassword.classList.toggle('state-show', !isShow);
+    showPassword.classList.toggle('state-hide', isShow);
+  }
+
+  const directToEl = event.target.closest('div[data-direct-to]');
+  if (directToEl && employeeTableBody.contains(directToEl)) {
+    const selectedId = employeeTableBody.dataset.selected;
+
+    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
+    if (selectedRow) selectedRow.removeAttribute('selected');
+
+    const directToId = directToEl.dataset.directTo;
+    employeeTableBody.dataset.selected = directToId;
+
+    const directToRow = employeeTableBody.querySelector(`[id="${directToId}"]`);
+    if (!directToRow) return;
+    directToRow.setAttribute('selected', '');
+
+    directToRow.scrollIntoView({behavior: "smooth", block: "center"});
+    return;
+  }
+
+  const row = event.target.closest('tr');
+  if (row && employeeTableBody.contains(row)) {
+    const selectedId = employeeTableBody.dataset.selected;
+
+    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
+    if (selectedRow) selectedRow.removeAttribute('selected');
+
+    row.setAttribute('selected', '');
+    employeeTableBody.dataset.selected = row.id;
+    return;
+  }
+
+  // do prevent default on the a element and add the attribute
+  // then scroll to the row
+  // the row with the attribute will be in data of the body
+  // make sure to alway remove the selected attribute
+  // maybe add something like enter opens edit for selected attr
+  // maybe add arrows moving the selected attr
+  // ??
+
+  // když nebylo kliknuto na nic jiného:
+  const selectedId = employeeTableBody.dataset.selected;
+
+  const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
+  if (selectedRow) selectedRow.removeAttribute('selected');
+  employeeTableBody.dataset.selected = '';
+  return;
 });
 
 document.addEventListener('dblclick', (event) => {
@@ -64,6 +155,188 @@ document.addEventListener('dblclick', (event) => {
 document.addEventListener('keydown', (event) => {
   headerKeydownListeners(event);
 })
+
+document.addEventListener('submit', async (event) => {
+  const addForm = event.target.closest('#add-form');
+  if (addForm) {
+    event.preventDefault();
+    const saveButton = addForm.querySelector('#add-save');
+    saveButton.disabled = true;
+
+    clearAddErrors();
+
+    const formData = new FormData(addForm);
+
+    formData.set('username', formData.get('username').trim());
+    formData.set('email', formData.get('email').trim());
+
+    const result = await addEmployee(formData);
+
+    saveButton.disabled = false;
+
+    if (result === true) {
+      const overlayEl = document.querySelector('#add-overlay');
+      if (overlayEl) overlayEl.remove();
+      loadPage({
+        table: true
+      });
+      return;
+    }
+
+    showAddErrors(result);
+    return;
+  }
+
+  const editFrom = event.target.closest('#edit-form');
+  if (editFrom) {
+    event.preventDefault();
+    const saveButton = editFrom.querySelector('#edit-save');
+    saveButton.disabled = true;
+
+    clearEditErrors();
+
+    const formData = new FormData(editFrom);
+
+    formData.set('username', formData.get('username').trim());
+    formData.set('email', formData.get('email').trim());
+
+    const result = await editEmployee(formData);
+
+    saveButton.disabled = false;
+
+    if (result === true) {
+      const overlayEl = document.querySelector('#edit-overlay');
+      if (overlayEl) overlayEl.remove();
+      loadPage({
+        table: true,
+        header: true
+      });
+      return;
+    }
+
+    showEditErrors(result);
+    return;
+  }
+
+  const deleteForm = event.target.closest('#delete-form');
+  if (deleteForm) {
+    event.preventDefault();
+    const deleteButton = deleteForm.querySelector('#delete-confirm');
+    deleteButton.disabled = true;
+
+    clearDeleteErrors();
+
+    const formData = new FormData(deleteForm);
+
+    const result = await deleteEmployee(formData);
+
+    deleteButton.disabled = false;
+
+    if (result === true) {
+      const overlayEl = document.querySelector('#delete-overlay');
+      if (overlayEl) overlayEl.remove();
+      loadPage({
+        table: true
+      });
+      return;
+    }
+
+    showDeleteErrors(result);
+    return;
+  }
+})
+
+
+function isSearchedFor(employee, searchQuery) {
+  if (!searchQuery) {
+    return true;
+  }
+
+  const searchQueries = searchQuery.split(' ');
+
+  const id = employee.id.toLowerCase();
+  const username = employee.username.toLowerCase();
+  const email = employee.email.toLowerCase();
+  const isAdmin = employee.is_admin ? 'ano' : 'ne';
+  const createdBy = employee.created_by ? employee.created_by.toLowerCase() : '-'
+  const createdAtDate = new Date(employee.created_at);
+  const createdAt = `
+    ${createdAtDate.getDate()}.${createdAtDate.getMonth() + 1}.${createdAtDate.getFullYear()}${createdAtDate.getHours()}:${createdAtDate.getMinutes()}:${createdAtDate.getSeconds()}
+  `;
+
+  const employeeInfo = `
+    ${id}
+    ${username}
+    ${email}
+    ${isAdmin}
+    ${createdBy}
+    ${createdAt}
+  `;
+
+  let isSearched = true;
+
+  for (const query of searchQueries) {
+    if (!query.includes('=')) {
+      if (!employeeInfo.includes(query)) isSearched = false;
+    }
+    else {
+      const searchKeyWord = query.split('=')[0];
+      const search = query.split('=')[1];
+
+      if (['id',
+          'identifier']
+          .includes(searchKeyWord)
+          && !id.includes(search)) {
+            isSearched = false;
+          }
+      if (['username',
+          'zaměstnanec',
+          'zamestnanec',
+          'jméno',
+          'jmeno',
+          'uživatel',
+          'uzivatel',
+          'uživatelské_jméno',
+          'uzivatelske_jmeno',
+          'uživatelskéjméno',
+          'uzivatelskejmeno']
+          .includes(searchKeyWord)
+          && !username.includes(search)) {
+            isSearched = false;
+          }
+      if (['email',
+          'e-mail',
+          'mail']
+          .includes(searchKeyWord)
+          && !email.includes(search)) {
+            isSearched = false;
+          }
+      if (['admin']
+          .includes(searchKeyWord)
+          && !isAdmin.includes(search)) {
+            isSearched = false;
+          }
+      if (['vytvořil',
+          'vytvoril',
+          'created_by',
+          'createdby']
+          .includes(searchKeyWord)
+          && !createdBy.includes(search)) {
+            isSearched = false;
+          }
+      if (['vytvořen',
+          'vytvoren',
+          'created_at',
+          'createdat']
+          .includes(searchKeyWord)
+          && !createdAt.includes(search)) {
+            isSearched = false;
+          }
+    }
+    
+  }
+  return isSearched;
+}
 
 
 async function renderTableRows() {
@@ -79,8 +352,11 @@ async function renderTableRows() {
     `;
     return;
   }
-  
 
+  const url = new URL(location);
+  const searchQuery = url.searchParams.get('search_query');
+
+  let rowNumber = 1;
   employees.forEach((employee) => {
     let isAdminHTML;
 
@@ -92,13 +368,18 @@ async function renderTableRows() {
 
     const createdAt = new Date(employee.created_at);
     const createdAtHTML = `
-      ${createdAt.getDate()}. ${createdAt.getMonth()}. ${createdAt.getFullYear()}
+      ${createdAt.getDate()}. ${createdAt.getMonth() + 1}. ${createdAt.getFullYear()} ${createdAt.getHours()}:${createdAt.getMinutes()}:${createdAt.getSeconds()}
     `;
 
-    const createdByHTML = employee.created_by ? `<a href="#${employee.created_by}">${employee.created_by}</a>` : '-'
+    const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
+
+    if (!isSearchedFor(employee, searchQuery)) {
+      return;
+    }
 
     rowsHTML += `
-      <tr id="${employee.id}" data-employee='${JSON.stringify(employee)}'>
+      <tr id="${employee.id}" data-employee='${escapeHTML(JSON.stringify(employee))}'>
+        <td>${rowNumber}</td>
         <td class="username">${employee.username} <span class="id muted">(${employee.id})</span></td>
         <td class="email">${employee.email}</td>
         <td>${isAdminHTML}</td>
@@ -118,9 +399,89 @@ async function renderTableRows() {
         </td>
       </tr>
     `;
+    rowNumber += 1;
   })
 
   employeeTableBody.innerHTML = rowsHTML;
+}
+
+
+function openAddEmployeeOverlay() {
+  const overlayHTML = `
+    <div id="add-overlay">
+      <div id="add-modal">
+        <header id="add-modal-header">
+          <h2 id="add-overlay-title">Přidat zaměstnance</h2>
+          <button id="add-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+
+        <form id="add-form">
+          <div class="form-row">
+            <label for="add-username">Uživatelské jméno</label>
+            <input id="add-username" name="username" type="text" placeholder="Uživatelské jméno" required/>
+            <div id="username-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="add-email">Email</label>
+            <input id="add-email" name="email" type="email" placeholder="Email" required />
+            <div id="email-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="add-password">Heslo</label>
+            <input id="add-password" name="password" type="password" placeholder="Heslo" required/>
+
+            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
+              Přepíná se změnou třídy mezi "state-show" a "state-hide".
+              Výchozí: state-hide -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
+              role="img" aria-hidden="true" focusable="false">
+              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
+              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
+
+              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
+              <g class="g-show" aria-hidden="true">
+                <!-- bílý kruh duhovky -->
+                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+                <!-- tmavý zorník -->
+                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+              </g>
+
+              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
+              <g class="g-hide" aria-hidden="true">
+                <!-- bílý kruh duhovky -->
+                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+                <!-- tmavý zorník (s kruhem) -->
+                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+
+                <!-- diagonální čára -->
+                <line class="slash" x1="4.2" y1="3.2" x2="21.8" y2="20.8" stroke="var(--contrast)" stroke-width="2" />
+                <line class="slash" x1="2.2" y1="3.2" x2="19.8" y2="20.8" stroke="var(--fg)" stroke-width="2" />
+              </g>
+            </svg>
+
+            <div id="password-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <div id="general-add-error" class="add-error"></div>
+          </div>
+
+          <div id="add-form-actions">
+            <button type="button" id="add-cancel">Zrušit</button>
+            <button type="submit" id="add-save">Vytvořit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', overlayHTML);
 }
 
 
@@ -148,23 +509,66 @@ function openEditOverlay(row) {
 
         <form id="edit-form">
           <div class="form-row">
+            <label for="edit-id">Id:</label>
+            <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
+            <div id="id-edit-error" class="edit-error"></div>
+          </div>
+
+          <div class="form-row">
             <label for="edit-username">Uživatelské jméno</label>
             <input id="edit-username" name="username" type="text" placeholder="Nechte prázdné nebo stejné, pokud neměníte jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
+            <div id="username-edit-error" class="edit-error"></div>
           </div>
 
           <div class="form-row">
             <label for="edit-email">Email</label>
             <input id="edit-email" name="email" type="email" placeholder="Nechte prázdné nebo stejné, pokud neměníte email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
+            <div id="email-edit-error" class="edit-error"></div>
           </div>
 
           <div class="form-row">
             <label for="edit-password">Heslo</label>
             <input id="edit-password" name="password" type="password" placeholder="Nechte prázdné, pokud neměníte heslo" />
+
+            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
+              Přepíná se změnou třídy mezi "state-show" a "state-hide".
+              Výchozí: state-hide -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
+              role="img" aria-hidden="true" focusable="false">
+              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
+              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
+
+              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
+              <g class="g-show" aria-hidden="true">
+                <!-- bílý kruh duhovky -->
+                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+                <!-- tmavý zorník -->
+                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+              </g>
+
+              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
+              <g class="g-hide" aria-hidden="true">
+                <!-- bílý kruh duhovky -->
+                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+                <!-- tmavý zorník (s kruhem) -->
+                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+
+                <!-- diagonální čára -->
+                <line class="slash" x1="4.2" y1="3.2" x2="21.8" y2="20.8" stroke="var(--contrast)" stroke-width="2" />
+                <line class="slash" x1="2.2" y1="3.2" x2="19.8" y2="20.8" stroke="var(--fg)" stroke-width="2" />
+              </g>
+            </svg>
+
+            <div id="password-edit-error" class="edit-error"></div>
+          </div>
+
+          <div class="form-row">
+            <div id="general-edit-error" class="edit-error"></div>
           </div>
 
           <div id="edit-form-actions">
             <button type="button" id="edit-cancel">Zrušit</button>
-            <button type="button" id="edit-save" data-employee-id="${employee.id}">Uložit</button>
+            <button type="submit" id="edit-save">Uložit</button>
           </div>
         </form>
       </div>
@@ -172,6 +576,502 @@ function openEditOverlay(row) {
   `;
 
   document.body.insertAdjacentHTML('beforeend', overlayHTML);
+}
+
+function clearAddErrors() {
+  const errorMessages = document.querySelectorAll('.add-error');
+  errorMessages.forEach((error) => {
+    error.innerHTML = '';
+    error.classList.remove('show-edit-error');
+  });
+}
+
+
+function clearEditErrors() {
+  const errorMessages = document.querySelectorAll('.edit-error');
+  errorMessages.forEach((error) => {
+    error.innerHTML = '';
+    error.classList.remove('show-edit-error');
+  });
+}
+
+
+function clearDeleteErrors() {
+  const errorMessages = document.querySelectorAll('.delete-error');
+  errorMessages.forEach((error) => {
+    error.innerHTML = '';
+    error.classList.remove('show-delete-error');
+  });
+}
+
+
+function showAddErrors(error) {
+  const idError = document.querySelector('#id-add-error');
+  const usernameError = document.querySelector('#username-add-error');
+  const emailError = document.querySelector('#email-add-error');
+  const passwordError = document.querySelector('#password-add-error');
+  const generalError = document.querySelector('#general-add-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-add-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const resStr = String(error);
+
+  switch (resStr) {
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění provést změnu.');
+      return;
+    case 'db_integrity_error':
+      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
+      return;
+    case 'invalid_email':
+      setErr(emailError, 'Neplatný e-mail.');
+      return;
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    default:
+      break;
+  }
+
+  const low = resStr.toLowerCase();
+
+  if (low.includes('username must be at least')) {
+    let limit = low.split('username must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
+    return;
+  }
+  if (low.includes('username must be at most')) {
+    let limit = low.split('username must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
+    return;
+  }
+  if (low.includes('username must start and end with')) {
+    const allowedChars = low.split('characters: ')[1];
+    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (low.includes('username must not contain')) {
+    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (low.includes('username must not be all numeric')) {
+    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (low.includes('username must not contain the reserved words')) {
+    const reservedWords = low.split('reserved words: ')[1];
+    setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  if (low.includes('invalid_email')) {
+    setErr(emailError, 'Email není platný');
+    return;
+  }
+
+  if (low.includes('password must be at least')) {
+    let limit = low.split('password must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(passwordError, `Minimální délka hesla je ${limit}.`);
+    return;
+  }
+  if (low.includes('password must not contain spaces or tabs')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
+    return;
+  }
+  if (low.includes('uppercase')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
+    return;
+  }
+  if (low.includes('lowercase')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
+    return;
+  }
+  if (low.includes('digit')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
+    return;
+  }
+  if (low.includes('special character')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
+    return;
+  }
+  if (low.includes('too common')) {
+    setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
+    return;
+  }
+  if (low.includes('must not contain the username')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
+    return;
+  }
+  if (low.includes('must not contain the email local-part')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
+    return;
+  }
+  if (low.includes('repeated characters')) {
+    setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
+    return;
+  }
+
+  setErr(generalError, resStr);
+}
+
+
+function showEditErrors(error) {
+  const idError = document.querySelector('#id-edit-error');
+  const usernameError = document.querySelector('#username-edit-error');
+  const emailError = document.querySelector('#email-edit-error');
+  const passwordError = document.querySelector('#password-edit-error');
+  const generalError = document.querySelector('#general-edit-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-edit-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const resStr = String(error);
+
+  switch (resStr) {
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění provést změnu.');
+      return;
+    case 'employee_not_found':
+      setErr(idError, 'Uživatel nenalezen.');
+      return;
+    case 'missing_id':
+      setErr(idError, 'Chybí id zaměstnance.');
+      return;
+    case 'invalid_id':
+      setErr(idError, 'Id zaměstnance není validní.');
+      return;
+    case 'no_column_updated':
+      setErr(generalError, 'Nebyla provedena žádná změna.');
+      return;
+    case 'db_integrity_error':
+      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
+      return;
+    case 'invalid_email':
+      setErr(emailError, 'Neplatný e-mail.');
+      return;
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    default:
+      break;
+  }
+
+  const low = resStr.toLowerCase();
+
+  if (low.includes('username must be at least')) {
+    let limit = low.split('username must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
+    return;
+  }
+  if (low.includes('username must be at most')) {
+    let limit = low.split('username must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}..`);
+    return;
+  }
+  if (low.includes('username must start and end with')) {
+    const allowedChars = low.split('characters: ')[1];
+    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (low.includes('username must not contain')) {
+    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (low.includes('username must not be all numeric')) {
+    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (low.includes('username must not contain the reserved words')) {
+    const reservedWords = low.split('reserved words: ')[1];
+    setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  if (low.includes('invalid_email')) {
+    setErr(emailError, 'Email není platný');
+    return;
+  }
+
+  if (low.includes('password must be at least')) {
+    let limit = low.split('password must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(passwordError, `Minimální délka hesla je ${limit}.`);
+    return;
+  }
+  if (low.includes('password must not contain spaces or tabs')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
+    return;
+  }
+  if (low.includes('uppercase')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
+    return;
+  }
+  if (low.includes('lowercase')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
+    return;
+  }
+  if (low.includes('digit')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
+    return;
+  }
+  if (low.includes('special character')) {
+    setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
+    return;
+  }
+  if (low.includes('too common')) {
+    setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
+    return;
+  }
+  if (low.includes('must not contain the username')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
+    return;
+  }
+  if (low.includes('must not contain the email local-part')) {
+    setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
+    return;
+  }
+  if (low.includes('repeated characters')) {
+    setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
+    return;
+  }
+
+  setErr(generalError, resStr);
+}
+
+
+function showDeleteErrors(error) {
+  const generalError = document.querySelector('#general-delete-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-delete-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const resStr = String(error);
+  switch (resStr) {
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění provést změnu.');
+      return;
+    case 'employee_not_found':
+      setErr(generalError, 'Uživatel nenalezen.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí id zaměstnance.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'Id zaměstnance není validní.');
+      return;
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, resStr);
+}
+
+
+function openDeleteOverlay(row) {
+  if (!row) return;
+  let employee;
+  try {
+    employee = JSON.parse(row.getAttribute('data-employee'));
+  } catch (err) {
+    console.error('Failed to parse employee data:', err);
+    return;
+  }
+
+  const overlayHTML = `
+    <div id="delete-overlay">
+      <div id="delete-modal">
+        <header id="delete-modal-header">
+          <h2 id="delete-overlay-title">Smazat zaměstnance</h2>
+          <button id="delete-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+
+        <form id="delete-form">
+          <div class="form-row">
+            <div id="delete-id-label">Id:</div>
+            <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" readonly required/>
+          </div>
+          <div class="form-row">
+            <div id="delete-username-label">Uživatelské jméno:</div>
+            <div id="delete-username">${escapeHTML(employee.username || '-')}</div>
+          </div>
+          <div class="form-row">
+            <div id="delete-email-label">Email:</div>
+            <div id="delete-email">${escapeHTML(employee.email || '-')}</div>
+          </div>
+
+          <div class="form-row">
+            <div id="general-delete-error" class="delete-error"></div>
+          </div>
+
+          <div id="delete-form-actions" style="display:flex; gap:8px; justify-content:flex-end; padding-top:12px;">
+            <button type="button" id="delete-cancel">Zrušit</button>
+            <button type="submit" id="delete-confirm">Smazat</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+}
+
+
+async function addEmployee(formData) {
+  try {
+    const response = await fetch('/api/employees/create', {
+      method: 'post',
+      body: formData
+    });
+
+    if (response.status === 401) {
+      const json = await response.json();
+      window.location.href = json.redirect_url;
+      return;
+    }
+
+    const data = await response.json();
+
+    if (response.status === 403 && data.error === 'insufficient_priviliges') {
+      return 'insufficient_priviliges';
+    }
+
+    if (response.status === 400) {
+      return data.error
+    }
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    return true;
+
+  } catch (error) {
+    return 'unexpected_error';
+  }
+}
+
+
+async function editEmployee(formData) {
+  try {
+    const response = await fetch('/api/employees/edit', {
+      method: 'post',
+      body: formData
+    });
+
+    if (response.status === 401) {
+      const json = await response.json();
+      window.location.href = json.redirect_url;
+      return;
+    }
+
+    const data = await response.json();
+
+    if (response.status === 403 && data.error === 'insufficient_priviliges') {
+      return 'insufficient_priviliges';
+    }
+
+    if (response.status === 400) {
+      return data.error
+    }
+
+    if (response.status === 404 && data.error === 'employee_not_found') {
+      return 'employee_not_found'
+    }
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    return true;
+
+  } catch (error) {
+    return 'unexpected_error';
+  }
+}
+
+
+async function deleteEmployee(formData) {
+  try {
+    const response = await fetch('/api/employees/delete', {
+      method: 'delete',
+      body: formData
+    });
+
+    if (response.status === 401) {
+      const json = await response.json();
+      window.location.href = json.redirect_url;
+      return;
+    }
+
+    const data = await response.json();
+
+    if (response.status === 403 && data.error === 'insufficient_priviliges') {
+      return 'insufficient_priviliges';
+    }
+
+    if (response.status === 400) {
+      return data.error // invalid_id, missing_id
+    }
+
+    if (response.status === 404 && data.error === 'employee_not_found') {
+      return 'employee_not_found'
+    }
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    return true;
+
+  } catch (error) {
+    return 'unexpected_error';
+  }
 }
 
 
