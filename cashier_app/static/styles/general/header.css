@@ -163,28 +163,35 @@
 }
 
 #session-info {
-  border-bottom: 1px solid rgb(230, 230, 230);
+  border-bottom: 2px solid rgb(230, 230, 230);
   padding: 4px 5px;
   font-size: 16px;
   display: flex;
   flex-direction: column;
-  column-gap: 7px;
+  row-gap: 2px;
+}
+
+#session-info div {
+  border-bottom: 1px solid rgb(237, 237, 237);;
+}
+
+#session-info div:last-child {
+  border: none;
 }
 
 #username {
   font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-#event {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+#username,
+#event,
 #booth {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 #account-dropdown button,

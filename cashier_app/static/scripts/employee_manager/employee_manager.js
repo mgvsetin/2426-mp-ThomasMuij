@@ -460,8 +460,8 @@ function openAddEmployeeOverlay() {
                 <circle cx="12" cy="12" r="2" fill="var(--fg)" />
 
                 <!-- diagonální čára -->
-                <line class="slash" x1="4.2" y1="3.2" x2="21.8" y2="20.8" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="2.2" y1="3.2" x2="19.8" y2="20.8" stroke="var(--fg)" stroke-width="2" />
+                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
+                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
               </g>
             </svg>
 
@@ -554,8 +554,8 @@ function openEditOverlay(row) {
                 <circle cx="12" cy="12" r="2" fill="var(--fg)" />
 
                 <!-- diagonální čára -->
-                <line class="slash" x1="4.2" y1="3.2" x2="21.8" y2="20.8" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="2.2" y1="3.2" x2="19.8" y2="20.8" stroke="var(--fg)" stroke-width="2" />
+                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
+                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
               </g>
             </svg>
 
