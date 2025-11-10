@@ -75,7 +75,7 @@ export async function renderSidebar() {
     sidebarLinksHTML += `
       <div id="manager-part">
         <div id="manager-part-title">Manažer</div>
-        <a id="event-manager-link" href="">Spravovat akci</a>
+        <a id="event-manager-link" href="/events/event_manager/">Spravovat akci</a>
       </div>
     `;
   }
