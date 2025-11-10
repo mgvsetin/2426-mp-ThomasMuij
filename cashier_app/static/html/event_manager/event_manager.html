@@ -1,11 +1,48 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Správa akce</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Správa zaměstnanců</title>
+
+  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <link rel="stylesheet" href="/static/styles/general/header.css">
+  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
+  <link rel="stylesheet" href="/static/styles/event_manager/event_manager.css">
 </head>
+
 <body>
-    
+  <div id="container">
+    <div id="topbar">
+      <button id="add-employee-button">
+        + Přidat zaměstnance
+      </button>
+    </div>
+
+    <div id="card">
+      <div id="table-wrap">
+        <table id="employee-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Zaměstnanec</th>
+              <th>Email</th>
+              <th>Admin</th>
+              <th>Vytvořil</th>
+              <th>Vytvořen</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="employee-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="/static/scripts/event_manager/event_manager.js" type="module"></script>
 </body>
+
 </html>

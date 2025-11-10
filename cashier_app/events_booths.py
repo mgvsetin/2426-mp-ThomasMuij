@@ -386,8 +386,9 @@ def get_products_and_categories():
             selectable_categories = cur.execute('''
             SELECT name
             FROM selectable_categories
-            WHERE name = ANY(%s::text[])''',
-            (list(categories),)).fetchall()
+            WHERE booth_id = %s
+            AND name = ANY(%s::text[])''',
+            (booth['id'], list(categories))).fetchall()
     
     return jsonify(products=products, selectable_categories=selectable_categories), 200
 

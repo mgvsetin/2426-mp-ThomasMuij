@@ -233,6 +233,11 @@ export async function renderSelectableCategories() {
   })
 
   selectableCategoriesEl.innerHTML = selectableCategoriesHTML;
+  if (selectableCategoriesHTML === '') {
+    selectableCategoriesEl.classList.remove('show');
+  } else {
+    selectableCategoriesEl.classList.add('show');
+  }
 
   const saved = getSelectedCategory();
   if (saved) {

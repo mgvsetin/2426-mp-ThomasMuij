@@ -18,5 +18,4 @@ def get_event_manager_page():
     if not employee['is_admin'] and not is_manager(employee, event):
         return jsonify(error='insufficient_priviliges'), 403
 
-    return 'a'
     return current_app.send_static_file('html/event_manager/event_manager.html')
