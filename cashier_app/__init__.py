@@ -53,6 +53,8 @@ def create_app(test_config=None):
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
+    with open(os.path.join(app.instance_path, 'config.py'), 'a') as f:
+        pass
 
     if test_config is None:
         app.config.from_pyfile('config.py')
