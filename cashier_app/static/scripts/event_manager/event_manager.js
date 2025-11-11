@@ -1,1081 +1,311 @@
-import { getEmployees } from "../general/employees.js";
-import { headerClickListeners, headerKeydownListeners, renderHeader } from "../general/header.js";
-import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
+// event_manager.js
+// Minimal scaffold. Replace /api/... endpoints with your own.
+// Hooks: #event-id-val, #event-name, #event-start, #event-end, #event-created-by, #event-created-at
+// Tables: #employees-table-body, #products-table-body, #booths-table-body
+// Charts: #profit-chart, #products-chart
 
+import { renderHeader } from "../general/header.js";
+import { renderSidebar } from "../general/sidebar.js";
 
-const employeeTableBody = document.querySelector('#employee-table-body');
-const tableWrap = document.querySelector('#table-wrap');
+const employeesTbody = document.querySelector('#employees-table-body');
+const productsTbody = document.querySelector('#products-table-body');
+const boothsTbody = document.querySelector('#booths-table-body');
 
-loadPage({
-  table: true,
-  header: true,
-  sidebar: true
-});
+loadPage({ header: true, sidebar: true, data: true });
 
-
-async function loadPage({
-  table = false,
-  sidebar = false,
-  header = false
-} = {}) {
-
-  const toLoad = [];
-
-  if (table) {
-    toLoad.push(renderTableRows());
-  }
-
-  if (sidebar) {
-    toLoad.push(renderSidebar());
-  }
-
-  if (header) {
-    toLoad.push(renderHeader());
-  }
-
-  await Promise.all(toLoad);
+async function loadPage({ header = false, sidebar = false, data = false } = {}) {
+  const tasks = [];
+  if (header) tasks.push(renderHeader());
+  if (sidebar) tasks.push(renderSidebar());
+  if (data) tasks.push(loadEventData());
+  await Promise.all(tasks);
 }
 
-
-document.addEventListener('click', (event) => {
-  headerClickListeners(event);
-  sidebarClickListeners(event);
-
-  if (event.target.matches('#add-employee-button')) {
-    openAddEmployeeOverlay();
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#refresh-event')) {
+    loadEventData();
     return;
   }
-
-  const cancelAddButton = event.target.closest('#add-cancel');
-  const AddModalClose = event.target.closest('#add-modal-close')
-  if (cancelAddButton || AddModalClose) {
-    const overlayEl = document.querySelector('#add-overlay');
-    if (overlayEl) overlayEl.remove();
+  if (e.target.closest('#add-employee-to-event')) {
+    openAddEmployeeToEventOverlay();
     return;
   }
-
-  const editButton = event.target.closest('.edit.icon-btn');
-  if (editButton) {
-    const row = editButton.closest('tr[data-employee]');
-    openEditOverlay(row);
-    return;
+  if (e.target.closest('.employee-link')) {
+    // sample handler for employee row click
+    const id = e.target.closest('tr')?.id;
+    if (id) openEditEmployeeRoleOverlay(id);
   }
-
-  const cancelEditButton = event.target.closest('#edit-cancel');
-  const editModalClose = event.target.closest('#edit-modal-close')
-  if (cancelEditButton || editModalClose) {
-    const overlayEl = document.querySelector('#edit-overlay');
-    if (overlayEl) overlayEl.remove();
-    return;
+  if (e.target.closest('#open-graph-modal')) {
+    openGraphModal();
   }
-
-  const deleteButton = event.target.closest('.delete.icon-btn');
-  if (deleteButton) {
-    const row = deleteButton.closest('tr[data-employee]');
-    openDeleteOverlay(row);
-    return;
-  }
-
-  const cancelDeleteButton = event.target.closest('#delete-cancel');
-  const deleteModalClose = event.target.closest('#delete-modal-close')
-  if (cancelDeleteButton || deleteModalClose) {
-    const overlayEl = document.querySelector('#delete-overlay');
-    if (overlayEl) overlayEl.remove();
-    return;
-  }
-
-  const showPassword = event.target.closest('.pw-eye');
-  if (showPassword) {
-    const passwordInput = showPassword.parentElement.querySelector('input[name="password"]');
-    if (showPassword.classList.contains('state-show')) {
-      passwordInput.setAttribute('type', 'password');
-    } else {
-      passwordInput.setAttribute('type', 'text');
-    }
-
-    const isShow = showPassword.classList.toggle('state-hide');
-    showPassword.classList.toggle('state-show', !isShow);
-    showPassword.classList.toggle('state-hide', isShow);
-  }
-
-  const directToEl = event.target.closest('div[data-direct-to]');
-  if (directToEl && employeeTableBody.contains(directToEl)) {
-    const selectedId = employeeTableBody.dataset.selected;
-
-    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-    if (selectedRow) selectedRow.removeAttribute('selected');
-
-    const directToId = directToEl.dataset.directTo;
-    employeeTableBody.dataset.selected = directToId;
-
-    const directToRow = employeeTableBody.querySelector(`[id="${directToId}"]`);
-    if (!directToRow) return;
-    directToRow.setAttribute('selected', '');
-
-    directToRow.scrollIntoView({behavior: "smooth", block: "center"});
-    return;
-  }
-
-  const row = event.target.closest('tr');
-  if (row && employeeTableBody.contains(row)) {
-    const selectedId = employeeTableBody.dataset.selected;
-
-    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-    if (selectedRow) selectedRow.removeAttribute('selected');
-
-    row.setAttribute('selected', '');
-    employeeTableBody.dataset.selected = row.id;
-    return;
-  }
-
-  // do prevent default on the a element and add the attribute
-  // then scroll to the row
-  // the row with the attribute will be in data of the body
-  // make sure to alway remove the selected attribute
-  // maybe add something like enter opens edit for selected attr
-  // maybe add arrows moving the selected attr
-  // ??
-
-  // když nebylo kliknuto na nic jiného:
-  const selectedId = employeeTableBody.dataset.selected;
-
-  const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-  if (selectedRow) selectedRow.removeAttribute('selected');
-  employeeTableBody.dataset.selected = '';
-  return;
 });
 
-document.addEventListener('dblclick', (event) => {
-  const row = event.target.closest('tr[data-employee]');
-  if (row) {
-    openEditOverlay(row);
-  }
-})
+/* ---------- Data loading ---------- */
 
-document.addEventListener('keydown', (event) => {
-  headerKeydownListeners(event);
-})
-
-document.addEventListener('submit', async (event) => {
-  const addForm = event.target.closest('#add-form');
-  if (addForm) {
-    event.preventDefault();
-    const saveButton = addForm.querySelector('#add-save');
-    saveButton.disabled = true;
-
-    clearAddErrors();
-
-    const formData = new FormData(addForm);
-
-    formData.set('username', formData.get('username').trim());
-    formData.set('email', formData.get('email').trim());
-
-    const result = await addEmployee(formData);
-
-    saveButton.disabled = false;
-
-    if (result === true) {
-      const overlayEl = document.querySelector('#add-overlay');
-      if (overlayEl) overlayEl.remove();
-      loadPage({
-        table: true
-      });
+async function loadEventData() {
+  // Placeholder: your server should provide event + employees + products + booths endpoints.
+  // Example: GET /api/events/selected -> { event: {...}, employees: [...], products: [...], booths: [...] }
+  try {
+    const res = await fetch('/api/events/selected');
+    if (res.status === 401) {
+      const json = await res.json();
+      window.location.href = json.redirect_url;
       return;
     }
+    if (!res.ok) throw new Error('failed_to_load_event');
 
-    showAddErrors(result);
-    return;
+    const data = await res.json();
+    // expected structure:
+    // data.event, data.employees (array), data.products (array), data.booths (array)
+    renderEventHeader(data.event);
+    renderEmployeesTable(data.employees || []);
+    renderProductsTable(data.products || []);
+    renderBoothsTable(data.booths || []);
+    renderCharts(data.metrics || {}); // optional metrics: profit, products_sold...
+  } catch (err) {
+    console.error('loadEventData:', err);
+    // show minimal error in tables
+    employeesTbody.innerHTML = `<tr><td colspan="7" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
+    productsTbody.innerHTML = `<tr><td colspan="6" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
+    boothsTbody.innerHTML = `<tr><td colspan="7" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
   }
-
-  const editFrom = event.target.closest('#edit-form');
-  if (editFrom) {
-    event.preventDefault();
-    const saveButton = editFrom.querySelector('#edit-save');
-    saveButton.disabled = true;
-
-    clearEditErrors();
-
-    const formData = new FormData(editFrom);
-
-    formData.set('username', formData.get('username').trim());
-    formData.set('email', formData.get('email').trim());
-
-    const result = await editEmployee(formData);
-
-    saveButton.disabled = false;
-
-    if (result === true) {
-      const overlayEl = document.querySelector('#edit-overlay');
-      if (overlayEl) overlayEl.remove();
-      loadPage({
-        table: true,
-        header: true
-      });
-      return;
-    }
-
-    showEditErrors(result);
-    return;
-  }
-
-  const deleteForm = event.target.closest('#delete-form');
-  if (deleteForm) {
-    event.preventDefault();
-    const deleteButton = deleteForm.querySelector('#delete-confirm');
-    deleteButton.disabled = true;
-
-    clearDeleteErrors();
-
-    const formData = new FormData(deleteForm);
-
-    const result = await deleteEmployee(formData);
-
-    deleteButton.disabled = false;
-
-    if (result === true) {
-      const overlayEl = document.querySelector('#delete-overlay');
-      if (overlayEl) overlayEl.remove();
-      loadPage({
-        table: true
-      });
-      return;
-    }
-
-    showDeleteErrors(result);
-    return;
-  }
-})
-
-
-function isSearchedFor(employee, searchQuery) {
-  if (!searchQuery) {
-    return true;
-  }
-
-  const searchQueries = searchQuery.split(' ');
-
-  const id = employee.id.toLowerCase();
-  const username = employee.username.toLowerCase();
-  const email = employee.email.toLowerCase();
-  const isAdmin = employee.is_admin ? 'ano' : 'ne';
-  const createdBy = employee.created_by ? employee.created_by.toLowerCase() : '-'
-  const createdAtDate = new Date(employee.created_at);
-  const createdAt = `
-    ${createdAtDate.getDate()}.${createdAtDate.getMonth() + 1}.${createdAtDate.getFullYear()}${createdAtDate.getHours()}:${createdAtDate.getMinutes()}:${createdAtDate.getSeconds()}
-  `;
-
-  const employeeInfo = `
-    ${id}
-    ${username}
-    ${email}
-    ${isAdmin}
-    ${createdBy}
-    ${createdAt}
-  `;
-
-  let isSearched = true;
-
-  for (const query of searchQueries) {
-    if (!query.includes('=')) {
-      if (!employeeInfo.includes(query)) isSearched = false;
-    }
-    else {
-      const searchKeyWord = query.split('=')[0];
-      const search = query.split('=')[1];
-
-      if (['id',
-          'identifier']
-          .includes(searchKeyWord)
-          && !id.includes(search)) {
-            isSearched = false;
-          }
-      if (['username',
-          'zaměstnanec',
-          'zamestnanec',
-          'jméno',
-          'jmeno',
-          'uživatel',
-          'uzivatel',
-          'uživatelské_jméno',
-          'uzivatelske_jmeno',
-          'uživatelskéjméno',
-          'uzivatelskejmeno']
-          .includes(searchKeyWord)
-          && !username.includes(search)) {
-            isSearched = false;
-          }
-      if (['email',
-          'e-mail',
-          'mail']
-          .includes(searchKeyWord)
-          && !email.includes(search)) {
-            isSearched = false;
-          }
-      if (['admin']
-          .includes(searchKeyWord)
-          && !isAdmin.includes(search)) {
-            isSearched = false;
-          }
-      if (['vytvořil',
-          'vytvoril',
-          'created_by',
-          'createdby']
-          .includes(searchKeyWord)
-          && !createdBy.includes(search)) {
-            isSearched = false;
-          }
-      if (['vytvořen',
-          'vytvoren',
-          'created_at',
-          'createdat']
-          .includes(searchKeyWord)
-          && !createdAt.includes(search)) {
-            isSearched = false;
-          }
-    }
-    
-  }
-  return isSearched;
 }
 
+/* ---------- Renderers ---------- */
 
-async function renderTableRows() {
-  const employees = await getEmployees();
+function renderEventHeader(event = {}) {
+  document.getElementById('event-id-val').textContent = event.id || '—';
+  document.getElementById('event-name').textContent = event.name || '—';
+  document.getElementById('event-start').textContent = event.start_at ? formatDateTime(event.start_at) : '—';
+  document.getElementById('event-end').textContent = event.end_at ? formatDateTime(event.end_at) : '—';
+  document.getElementById('event-created-by').textContent = event.created_by || '—';
+  document.getElementById('event-created-at').textContent = event.created_at ? formatDateTime(event.created_at) : '—';
+}
 
-  let rowsHTML = '';
-
-  if (employees === 'unexpected_error' || employees === 'insufficient_priviliges') {
-    employeeTableBody.innerHTML = `
-      <th class="error-message" colspan="10">
-        Nepovedlo se načíst zaměstnance.
-      </th>
-    `;
+function renderEmployeesTable(employees = []) {
+  // employees: { id, username, email, role, booths: [{id, name}, ...], created_by, created_at }
+  if (!employees.length) {
+    employeesTbody.innerHTML = `<tr><td class="error-message" colspan="7">Žádní zaměstnanci přiřazení k této akci.</td></tr>`;
     return;
   }
 
-  const url = new URL(location);
-  const searchQuery = url.searchParams.get('search_query');
-
-  let rowNumber = 1;
-  employees.forEach((employee) => {
-    let isAdminHTML;
-
-    if (employee.is_admin) {
-      isAdminHTML = '<span class="badge yes">ANO</span>';
-    } else {
-      isAdminHTML = '<span class="badge no">NE</span>';
-    }
-
-    const createdAt = new Date(employee.created_at);
-    const createdAtHTML = `
-      ${createdAt.getDate()}. ${createdAt.getMonth() + 1}. ${createdAt.getFullYear()} ${createdAt.getHours()}:${createdAt.getMinutes()}:${createdAt.getSeconds()}
-    `;
-
-    const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
-
-    if (!isSearchedFor(employee, searchQuery)) {
-      return;
-    }
-
-    rowsHTML += `
-      <tr id="${employee.id}" data-employee='${escapeHTML(JSON.stringify(employee))}'>
-        <td>${rowNumber}</td>
-        <td class="username">${employee.username} <span class="id muted">(${employee.id})</span></td>
-        <td class="email">${employee.email}</td>
-        <td>${isAdminHTML}</td>
-        <td class="created-by muted">${createdByHTML}</td>
-        <td class="created-at muted">${createdAtHTML}</td>
+  let html = '';
+  let n = 1;
+  for (const emp of employees) {
+    const boothsHtml = (emp.booths || []).map(b => `<span class="small-chip" title="${escapeHtml(b.name)}">${escapeHtml(b.name)}</span>`).join(' ');
+    const createdAt = emp.created_at ? formatDateTime(emp.created_at) : '-';
+    const role = emp.role || '—';
+    html += `
+      <tr id="${emp.id}" data-employee='${escapeHtml(JSON.stringify(emp))}'>
+        <td>${n}</td>
+        <td class="username">${escapeHtml(emp.username || '-')} <span class="id muted">(${escapeHtml(emp.id || '-')})</span></td>
+        <td>${escapeHtml(role)}</td>
+        <td><div class="small-list">${boothsHtml || '-'}</div></td>
+        <td class="muted">${escapeHtml(emp.created_by || '-')}</td>
+        <td class="muted">${createdAt}</td>
         <td class="actions">
-          <button class="icon-btn edit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            </svg>
-          </button>
-          <button class="icon-btn delete">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <button class="icon-btn edit employee-link" title="Upravit roli/stánky">
+            ✎
           </button>
         </td>
       </tr>
     `;
-    rowNumber += 1;
-  })
-
-  employeeTableBody.innerHTML = rowsHTML;
+    n++;
+  }
+  employeesTbody.innerHTML = html;
 }
 
+function renderProductsTable(products = []) {
+  // products: { id, name, price_czk, booths: [{id,name}], created_at }
+  if (!products.length) {
+    productsTbody.innerHTML = `<tr><td class="error-message" colspan="6">Žádné produkty pro tuto akci.</td></tr>`;
+    return;
+  }
 
-function openAddEmployeeOverlay() {
-  const overlayHTML = `
-    <div id="add-overlay">
-      <div id="add-modal">
-        <header id="add-modal-header">
-          <h2 id="add-overlay-title">Přidat zaměstnance</h2>
-          <button id="add-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+  let html = '';
+  let n = 1;
+  for (const p of products) {
+    const boothsHtml = (p.booths || []).map(b => `<span class="small-chip">${escapeHtml(b.name)}</span>`).join(' ');
+    const createdAt = p.created_at ? formatDateTime(p.created_at) : '-';
+    html += `
+      <tr id="${p.id}" data-product='${escapeHtml(JSON.stringify(p))}'>
+        <td>${n}</td>
+        <td class="username">${escapeHtml(p.name || '-')} <span class="id muted">(${escapeHtml(p.id || '-')})</span></td>
+        <td>${typeof p.price_czk === 'number' ? p.price_czk : '-'}</td>
+        <td><div class="small-list">${boothsHtml || '-'}</div></td>
+        <td class="muted">${createdAt}</td>
+        <td class="actions">
+          <button class="icon-btn edit" data-product-edit="${p.id}">✎</button>
+        </td>
+      </tr>
+    `;
+    n++;
+  }
+  productsTbody.innerHTML = html;
+}
+
+function renderBoothsTable(booths = []) {
+  // booths: { id, name, booth_type, auth_required, created_by, created_at }
+  if (!booths.length) {
+    boothsTbody.innerHTML = `<tr><td class="error-message" colspan="7">Žádné stánky pro tuto akci.</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  let n = 1;
+  for (const b of booths) {
+    const createdAt = b.created_at ? formatDateTime(b.created_at) : '-';
+    html += `
+      <tr id="${b.id}" data-booth='${escapeHtml(JSON.stringify(b))}'>
+        <td>${n}</td>
+        <td class="username">${escapeHtml(b.name || '-')} <span class="id muted">(${escapeHtml(b.id || '-')})</span></td>
+        <td>${escapeHtml(b.booth_type || '-')}</td>
+        <td>${b.auth_required ? 'ano' : 'ne'}</td>
+        <td class="muted">${escapeHtml(b.created_by || '-')}</td>
+        <td class="muted">${createdAt}</td>
+        <td class="actions">
+          <button class="icon-btn edit" data-booth-edit="${b.id}">✎</button>
+        </td>
+      </tr>
+    `;
+    n++;
+  }
+  boothsTbody.innerHTML = html;
+}
+
+/* ---------- Charts (placeholders) ---------- */
+
+function renderCharts(metrics = {}) {
+  // metrics could be: { profit_timeseries: [...], products_sold: [...], total_profit, transactions_count }
+  document.getElementById('total-profit').textContent = metrics.total_profit ?? '—';
+  document.getElementById('transactions-count').textContent = metrics.transactions_count ?? '—';
+
+  // Simple placeholder drawing without external libs:
+  drawPlaceholderChart('profit-chart', metrics.profit_timeseries || []);
+  drawPlaceholderChart('products-chart', metrics.products_sold || []);
+}
+
+function drawPlaceholderChart(canvasId, series = []) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width;
+  const h = c.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#f3f7fb';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#1f6feb';
+  ctx.font = '12px sans-serif';
+  if (!series.length) {
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText('Žádná data', 10, 20);
+    return;
+  }
+  // draw simple bars/line
+  const max = Math.max(...series.map(s => s.value || s));
+  const step = w / series.length;
+  series.forEach((s, i) => {
+    const val = s.value ?? s;
+    const hval = (val / max) * (h - 30);
+    ctx.fillRect(i * step + 6, h - hval - 10, Math.max(6, step - 8), hval);
+  });
+}
+
+/* ---------- Overlays (basic, you can expand) ---------- */
+
+function openAddEmployeeToEventOverlay() {
+  const overlay = `
+    <div id="add-employee-overlay">
+      <div id="add-modal" class="modal-small">
+        <header>
+          <h3>Přidat zaměstnance k akci</h3>
+          <button id="add-employee-close">✖</button>
         </header>
-
-        <form id="add-form">
-          <div class="form-row">
-            <label for="add-username">Uživatelské jméno</label>
-            <input id="add-username" name="username" type="text" placeholder="Uživatelské jméno" required/>
-            <div id="username-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-email">Email</label>
-            <input id="add-email" name="email" type="email" placeholder="Email" required />
-            <div id="email-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-password">Heslo</label>
-            <input id="add-password" name="password" type="password" placeholder="Heslo" required/>
-
-            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
-              Přepíná se změnou třídy mezi "state-show" a "state-hide".
-              Výchozí: state-hide -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
-              role="img" aria-hidden="true" focusable="false">
-              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
-              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
-
-              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
-              <g class="g-show" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-              </g>
-
-              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
-              <g class="g-hide" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník (s kruhem) -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-
-                <!-- diagonální čára -->
-                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
-              </g>
-            </svg>
-
-            <div id="password-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-add-error" class="add-error"></div>
-          </div>
-
-          <div id="add-form-actions">
-            <button type="button" id="add-cancel">Zrušit</button>
-            <button type="submit" id="add-save">Vytvořit</button>
+        <form id="add-employee-form" style="padding:12px;">
+          <label>Employee ID nebo uživatelské jméno<input name="employee_identifier" type="text" required /></label>
+          <label>Role
+            <select name="role">
+              <option value="event_manager">event_manager</option>
+              <option value="seller">seller</option>
+              <option value="cashier">cashier</option>
+            </select>
+          </label>
+          <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:10px;">
+            <button type="button" id="add-employee-cancel">Zrušit</button>
+            <button type="submit" id="add-employee-save">Přidat</button>
           </div>
         </form>
       </div>
     </div>
   `;
+  document.body.insertAdjacentHTML('beforeend', overlay);
 
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+  document.getElementById('add-employee-close').addEventListener('click', closeAddEmployeeOverlay);
+  document.getElementById('add-employee-cancel').addEventListener('click', closeAddEmployeeOverlay);
+  document.getElementById('add-employee-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    // collect and POST to /api/employee_event_booth_roles/create or similar
+    // after success: reload data
+    closeAddEmployeeOverlay();
+    await loadEventData();
+  });
 }
 
+function closeAddEmployeeOverlay() {
+  const el = document.getElementById('add-employee-overlay');
+  if (el) el.remove();
+}
 
-function openEditOverlay(row) {
+function openEditEmployeeRoleOverlay(employeeId) {
+  // read row data
+  const row = document.getElementById(employeeId);
   if (!row) return;
-  let employee;
-  try {
-    employee = JSON.parse(row.getAttribute('data-employee'));
-  } catch (err) {
-    console.error('Failed to parse employee data:', err);
-    return;
-  }
-
-  const overlayHTML = `
-    <div id="edit-overlay">
-      <div id="edit-modal">
-        <header id="edit-modal-header">
-          <h2 id="edit-overlay-title">Upravit zaměstnance</h2>
-          <button id="edit-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+  const emp = JSON.parse(row.getAttribute('data-employee'));
+  // build overlay (left as simple example)
+  const overlay = `
+    <div id="edit-role-overlay">
+      <div id="edit-modal" class="modal-small">
+        <header>
+          <h3>Upravit přiřazení — ${escapeHtml(emp.username)}</h3>
+          <button id="edit-role-close">✖</button>
         </header>
-
-        <form id="edit-form">
-          <div class="form-row">
-            <label for="edit-id">Id:</label>
-            <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
-            <div id="id-edit-error" class="edit-error"></div>
+        <div style="padding:12px;">
+          <p><strong>Role:</strong> ${escapeHtml(emp.role || '')}</p>
+          <p><strong>Stánky:</strong> ${(emp.booths || []).map(b => escapeHtml(b.name)).join(', ') || '-'}</p>
+          <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:10px;">
+            <button id="edit-role-cancel">Zavřít</button>
           </div>
-
-          <div class="form-row">
-            <label for="edit-username">Uživatelské jméno</label>
-            <input id="edit-username" name="username" type="text" placeholder="Nechte prázdné nebo stejné, pokud neměníte jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
-            <div id="username-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="edit-email">Email</label>
-            <input id="edit-email" name="email" type="email" placeholder="Nechte prázdné nebo stejné, pokud neměníte email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
-            <div id="email-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="edit-password">Heslo</label>
-            <input id="edit-password" name="password" type="password" placeholder="Nechte prázdné, pokud neměníte heslo" />
-
-            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
-              Přepíná se změnou třídy mezi "state-show" a "state-hide".
-              Výchozí: state-hide -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
-              role="img" aria-hidden="true" focusable="false">
-              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
-              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
-
-              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
-              <g class="g-show" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-              </g>
-
-              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
-              <g class="g-hide" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník (s kruhem) -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-
-                <!-- diagonální čára -->
-                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
-              </g>
-            </svg>
-
-            <div id="password-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-edit-error" class="edit-error"></div>
-          </div>
-
-          <div id="edit-form-actions">
-            <button type="button" id="edit-cancel">Zrušit</button>
-            <button type="submit" id="edit-save">Uložit</button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   `;
-
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+  document.body.insertAdjacentHTML('beforeend', overlay);
+  document.getElementById('edit-role-close').addEventListener('click', closeEditRoleOverlay);
+  document.getElementById('edit-role-cancel').addEventListener('click', closeEditRoleOverlay);
 }
 
-function clearAddErrors() {
-  const errorMessages = document.querySelectorAll('.add-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-edit-error');
-  });
+function closeEditRoleOverlay() {
+  const el = document.getElementById('edit-role-overlay');
+  if (el) el.remove();
 }
 
-
-function clearEditErrors() {
-  const errorMessages = document.querySelectorAll('.edit-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-edit-error');
-  });
+function openGraphModal() {
+  // Expand charts to fullscreen — quick placeholder
+  alert('Tady můžete otevřít fullscreen grafy (implementace dle preferencí).');
 }
 
+/* ---------- Utilities ---------- */
 
-function clearDeleteErrors() {
-  const errorMessages = document.querySelectorAll('.delete-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-delete-error');
-  });
-}
-
-
-function showAddErrors(error) {
-  const idError = document.querySelector('#id-add-error');
-  const usernameError = document.querySelector('#username-add-error');
-  const emailError = document.querySelector('#email-add-error');
-  const passwordError = document.querySelector('#password-add-error');
-  const generalError = document.querySelector('#general-add-error');
-
-  const setErr = (el, text) => {
-    if (!el) return;
-    el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-add-error');
-  };
-
-  if (!error) {
-    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-    return;
-  }
-
-  const resStr = String(error);
-
-  switch (resStr) {
-    case 'insufficient_priviliges':
-      setErr(generalError, 'Nemáte oprávnění provést změnu.');
-      return;
-    case 'db_integrity_error':
-      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
-      return;
-    case 'invalid_email':
-      setErr(emailError, 'Neplatný e-mail.');
-      return;
-    case 'internal_server_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    case 'unexpected_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    default:
-      break;
-  }
-
-  const low = resStr.toLowerCase();
-
-  if (low.includes('username must be at least')) {
-    let limit = low.split('username must be at least ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
-    return;
-  }
-  if (low.includes('username must be at most')) {
-    let limit = low.split('username must be at most ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
-    return;
-  }
-  if (low.includes('username must start and end with')) {
-    const allowedChars = low.split('characters: ')[1];
-    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
-    return;
-  }
-  if (low.includes('username must not contain')) {
-    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
-  if (low.includes('username must not be all numeric')) {
-    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
-    return;
-  }
-  if (low.includes('username must not contain the reserved words')) {
-    const reservedWords = low.split('reserved words: ')[1];
-    setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
-    return;
-  }
-
-  if (low.includes('invalid_email')) {
-    setErr(emailError, 'Email není platný');
-    return;
-  }
-
-  if (low.includes('password must be at least')) {
-    let limit = low.split('password must be at least ');
-    limit = limit[1].split(' characters')[0];
-    setErr(passwordError, `Minimální délka hesla je ${limit}.`);
-    return;
-  }
-  if (low.includes('password must not contain spaces or tabs')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
-    return;
-  }
-  if (low.includes('uppercase')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
-    return;
-  }
-  if (low.includes('lowercase')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
-    return;
-  }
-  if (low.includes('digit')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
-    return;
-  }
-  if (low.includes('special character')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
-    return;
-  }
-  if (low.includes('too common')) {
-    setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
-    return;
-  }
-  if (low.includes('must not contain the username')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
-    return;
-  }
-  if (low.includes('must not contain the email local-part')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
-    return;
-  }
-  if (low.includes('repeated characters')) {
-    setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
-    return;
-  }
-
-  setErr(generalError, resStr);
-}
-
-
-function showEditErrors(error) {
-  const idError = document.querySelector('#id-edit-error');
-  const usernameError = document.querySelector('#username-edit-error');
-  const emailError = document.querySelector('#email-edit-error');
-  const passwordError = document.querySelector('#password-edit-error');
-  const generalError = document.querySelector('#general-edit-error');
-
-  const setErr = (el, text) => {
-    if (!el) return;
-    el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-edit-error');
-  };
-
-  if (!error) {
-    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-    return;
-  }
-
-  const resStr = String(error);
-
-  switch (resStr) {
-    case 'insufficient_priviliges':
-      setErr(generalError, 'Nemáte oprávnění provést změnu.');
-      return;
-    case 'employee_not_found':
-      setErr(idError, 'Uživatel nenalezen.');
-      return;
-    case 'missing_id':
-      setErr(idError, 'Chybí id zaměstnance.');
-      return;
-    case 'invalid_id':
-      setErr(idError, 'Id zaměstnance není validní.');
-      return;
-    case 'no_column_updated':
-      setErr(generalError, 'Nebyla provedena žádná změna.');
-      return;
-    case 'db_integrity_error':
-      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
-      return;
-    case 'invalid_email':
-      setErr(emailError, 'Neplatný e-mail.');
-      return;
-    case 'internal_server_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    case 'unexpected_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    default:
-      break;
-  }
-
-  const low = resStr.toLowerCase();
-
-  if (low.includes('username must be at least')) {
-    let limit = low.split('username must be at least ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
-    return;
-  }
-  if (low.includes('username must be at most')) {
-    let limit = low.split('username must be at most ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}..`);
-    return;
-  }
-  if (low.includes('username must start and end with')) {
-    const allowedChars = low.split('characters: ')[1];
-    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
-    return;
-  }
-  if (low.includes('username must not contain')) {
-    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
-  if (low.includes('username must not be all numeric')) {
-    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
-    return;
-  }
-  if (low.includes('username must not contain the reserved words')) {
-    const reservedWords = low.split('reserved words: ')[1];
-    setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
-    return;
-  }
-
-  if (low.includes('invalid_email')) {
-    setErr(emailError, 'Email není platný');
-    return;
-  }
-
-  if (low.includes('password must be at least')) {
-    let limit = low.split('password must be at least ');
-    limit = limit[1].split(' characters')[0];
-    setErr(passwordError, `Minimální délka hesla je ${limit}.`);
-    return;
-  }
-  if (low.includes('password must not contain spaces or tabs')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
-    return;
-  }
-  if (low.includes('uppercase')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
-    return;
-  }
-  if (low.includes('lowercase')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
-    return;
-  }
-  if (low.includes('digit')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
-    return;
-  }
-  if (low.includes('special character')) {
-    setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
-    return;
-  }
-  if (low.includes('too common')) {
-    setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
-    return;
-  }
-  if (low.includes('must not contain the username')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
-    return;
-  }
-  if (low.includes('must not contain the email local-part')) {
-    setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
-    return;
-  }
-  if (low.includes('repeated characters')) {
-    setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
-    return;
-  }
-
-  setErr(generalError, resStr);
-}
-
-
-function showDeleteErrors(error) {
-  const generalError = document.querySelector('#general-delete-error');
-
-  const setErr = (el, text) => {
-    if (!el) return;
-    el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-delete-error');
-  };
-
-  if (!error) {
-    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-    return;
-  }
-
-  const resStr = String(error);
-  switch (resStr) {
-    case 'insufficient_priviliges':
-      setErr(generalError, 'Nemáte oprávnění provést změnu.');
-      return;
-    case 'employee_not_found':
-      setErr(generalError, 'Uživatel nenalezen.');
-      return;
-    case 'missing_id':
-      setErr(generalError, 'Chybí id zaměstnance.');
-      return;
-    case 'invalid_id':
-      setErr(generalError, 'Id zaměstnance není validní.');
-      return;
-    case 'internal_server_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    case 'unexpected_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    default:
-      break;
-  }
-
-  setErr(generalError, resStr);
-}
-
-
-function openDeleteOverlay(row) {
-  if (!row) return;
-  let employee;
+function formatDateTime(iso) {
   try {
-    employee = JSON.parse(row.getAttribute('data-employee'));
-  } catch (err) {
-    console.error('Failed to parse employee data:', err);
-    return;
-  }
-
-  const overlayHTML = `
-    <div id="delete-overlay">
-      <div id="delete-modal">
-        <header id="delete-modal-header">
-          <h2 id="delete-overlay-title">Smazat zaměstnance</h2>
-          <button id="delete-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-
-        <form id="delete-form">
-          <div class="form-row">
-            <div id="delete-id-label">Id:</div>
-            <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" readonly required/>
-          </div>
-          <div class="form-row">
-            <div id="delete-username-label">Uživatelské jméno:</div>
-            <div id="delete-username">${escapeHTML(employee.username || '-')}</div>
-          </div>
-          <div class="form-row">
-            <div id="delete-email-label">Email:</div>
-            <div id="delete-email">${escapeHTML(employee.email || '-')}</div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-delete-error" class="delete-error"></div>
-          </div>
-
-          <div id="delete-form-actions" style="display:flex; gap:8px; justify-content:flex-end; padding-top:12px;">
-            <button type="button" id="delete-cancel">Zrušit</button>
-            <button type="submit" id="delete-confirm">Smazat</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
-}
-
-
-async function addEmployee(formData) {
-  try {
-    const response = await fetch('/api/employees/create', {
-      method: 'post',
-      body: formData
-    });
-
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
-
-    const data = await response.json();
-
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
-    }
-
-    if (response.status === 400) {
-      return data.error
-    }
-
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    return true;
-
-  } catch (error) {
-    return 'unexpected_error';
+    const d = new Date(iso);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch (e) {
+    return iso;
   }
 }
 
-
-async function editEmployee(formData) {
-  try {
-    const response = await fetch('/api/employees/edit', {
-      method: 'post',
-      body: formData
-    });
-
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
-
-    const data = await response.json();
-
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
-    }
-
-    if (response.status === 400) {
-      return data.error
-    }
-
-    if (response.status === 404 && data.error === 'employee_not_found') {
-      return 'employee_not_found'
-    }
-
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    return true;
-
-  } catch (error) {
-    return 'unexpected_error';
-  }
-}
-
-
-async function deleteEmployee(formData) {
-  try {
-    const response = await fetch('/api/employees/delete', {
-      method: 'delete',
-      body: formData
-    });
-
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
-
-    const data = await response.json();
-
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
-    }
-
-    if (response.status === 400) {
-      return data.error // invalid_id, missing_id
-    }
-
-    if (response.status === 404 && data.error === 'employee_not_found') {
-      return 'employee_not_found'
-    }
-
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    return true;
-
-  } catch (error) {
-    return 'unexpected_error';
-  }
-}
-
-
-function escapeHTML(str) {
+function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
