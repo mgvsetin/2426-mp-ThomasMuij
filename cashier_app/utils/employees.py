@@ -4,7 +4,7 @@ import string
 from typing import List, Tuple
 from email_validator import validate_email as _validate_email, EmailNotValidError
 
-def is_manager(employee, event):
+def is_manager(employee_id, event_id):
     conn = get_db()
     is_manager = False
     with conn.transaction():
@@ -15,7 +15,7 @@ def is_manager(employee, event):
                 WHERE employee_id = %s
                 AND event_id = %s
                 AND booth_id IS NULL''',
-                (employee['id'], event['id'])).fetchone())
+                (employee_id, event_id)).fetchone())
             
     return is_manager
 

@@ -71,11 +71,11 @@ export async function renderSidebar() {
   //   `;
   // }
 
-  if (isManager || (sessionInfo.event && isAdmin)) {
+  if (sessionInfo.event && (isManager || isAdmin)) {
     sidebarLinksHTML += `
       <div id="manager-part">
         <div id="manager-part-title">Manažer</div>
-        <a id="event-manager-link" href="/events/event_manager/">Spravovat akci</a>
+        <a id="event-manager-link" href="/events/${sessionInfo.event.id}/manager/">Spravovat akci</a>
       </div>
     `;
   }

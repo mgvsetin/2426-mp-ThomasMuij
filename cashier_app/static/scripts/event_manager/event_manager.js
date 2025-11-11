@@ -4,16 +4,23 @@
 // Tables: #employees-table-body, #products-table-body, #booths-table-body
 // Charts: #profit-chart, #products-chart
 
-import { renderHeader } from "../general/header.js";
-import { renderSidebar } from "../general/sidebar.js";
+import { headerClickListeners, renderHeader } from "../general/header.js";
+import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
 const employeesTbody = document.querySelector('#employees-table-body');
 const productsTbody = document.querySelector('#products-table-body');
 const boothsTbody = document.querySelector('#booths-table-body');
 
-loadPage({ header: true, sidebar: true, data: true });
+loadPage({ 
+  header: true,
+  sidebar: true,
+  data: true });
 
-async function loadPage({ header = false, sidebar = false, data = false } = {}) {
+async function loadPage({
+  header = false,
+  sidebar = false,
+  data = false } = {}
+) {
   const tasks = [];
   if (header) tasks.push(renderHeader());
   if (sidebar) tasks.push(renderSidebar());
@@ -21,21 +28,24 @@ async function loadPage({ header = false, sidebar = false, data = false } = {}) 
   await Promise.all(tasks);
 }
 
-document.addEventListener('click', (e) => {
-  if (e.target.closest('#refresh-event')) {
+document.addEventListener('click', (event) => {
+  headerClickListeners(event);
+  sidebarClickListeners(event);
+
+  if (event.target.closest('#refresh-event')) {
     loadEventData();
     return;
   }
-  if (e.target.closest('#add-employee-to-event')) {
+  if (event.target.closest('#add-employee-to-event')) {
     openAddEmployeeToEventOverlay();
     return;
   }
-  if (e.target.closest('.employee-link')) {
+  if (event.target.closest('.employee-link')) {
     // sample handler for employee row click
-    const id = e.target.closest('tr')?.id;
+    const id = event.target.closest('tr')?.id;
     if (id) openEditEmployeeRoleOverlay(id);
   }
-  if (e.target.closest('#open-graph-modal')) {
+  if (event.target.closest('#open-graph-modal')) {
     openGraphModal();
   }
 });
@@ -46,7 +56,8 @@ async function loadEventData() {
   // Placeholder: your server should provide event + employees + products + booths endpoints.
   // Example: GET /api/events/selected -> { event: {...}, employees: [...], products: [...], booths: [...] }
   try {
-    const res = await fetch('/api/events/selected');
+    const eventId = location.pathname.split('/')[2];
+    const res = await fetch(`/api/events/${eventId}`);
     if (res.status === 401) {
       const json = await res.json();
       window.location.href = json.redirect_url;

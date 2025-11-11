@@ -22,7 +22,7 @@ def get_employees():
     if not employee['is_admin']:
         event = load_selected_event()
 
-        if not event or not is_manager(employee, event):
+        if not event or not is_manager(employee['id'], event['id']):
             return jsonify(error='admin_or_manager_required'), 403
 
     with conn.transaction():

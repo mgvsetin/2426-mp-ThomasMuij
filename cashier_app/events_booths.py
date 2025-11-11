@@ -11,7 +11,7 @@ from cashier_app.db import get_db
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.employees import is_manager
 
-bp = Blueprint('events', __name__, url_prefix='/api/employees/me/events')
+bp = Blueprint('employee_events', __name__, url_prefix='/api/employees/me/events')
 
 
 @bp.route('/active')
@@ -212,7 +212,7 @@ def get_event_booths_for_employee():
                 booths = cur.execute(all_event_booths_sql,
                     (event['id'],)).fetchall()
             else:                
-                if is_manager(employee, event):
+                if is_manager(employee['id'], event['id']):
                     booths = cur.execute(all_event_booths_sql,
                     (event['id'],)).fetchall()
                 else:

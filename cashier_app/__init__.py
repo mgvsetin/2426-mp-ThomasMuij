@@ -109,4 +109,7 @@ def create_app(test_config=None):
     from cashier_app import event_manager
     app.register_blueprint(event_manager.bp)
 
+    from cashier_app import events
+    app.register_blueprint(events.bp)
+
     return app
