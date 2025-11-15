@@ -186,6 +186,24 @@ CREATE TABLE IF NOT EXISTS products (
   categories    jsonb DEFAULT '[]'::jsonb
   -- description   text
 );
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (LOWER(name));
+
+
+-- odendá mezery na začátku a konci u name
+CREATE OR REPLACE FUNCTION products_edit_insert_update()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    NEW.name := TRIM(New.name);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_products_edit_insert_update
+  BEFORE UPDATE OR INSERT ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION products_edit_insert_update();
 
 
 
@@ -240,9 +258,11 @@ CREATE TABLE IF NOT EXISTS events (
   -- deletion? (through deleted_at or actually delete it and all (or some) related stuff but make sure there is a big warning or no deletion allowed)
   -- or only allow deletion for events with nothing import referencing it or stuff that references it
 );
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_events_name_active ON events (LOWER(name)) WHERE deleted_at IS NULL;
 
 -- blokuje delete a změnu created_at, created_by
 -- zajistí že end_at jde pouze nastavit po now()
+-- odendá mezery na začátku a konci u name
 CREATE OR REPLACE FUNCTION events_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
@@ -269,6 +289,8 @@ BEGIN
     IF NEW.end_at <= now() THEN
       RAISE EXCEPTION 'end_at can not be set to before now()';
     END IF;
+
+    NEW.name := TRIM(New.name);
   END IF;
   RETURN NEW;
 END;
@@ -291,11 +313,17 @@ CREATE TABLE IF NOT EXISTS booths (
   created_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
   deleted_at      timestamptz
 );
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_booths_name_active ON booths (LOWER(name)) WHERE deleted_at IS NULL;
 
+-- odendá mezery ze začátku a konce name
 -- blokuje delete a změnu event_id, booth_type, created_at, created_by a znovu nastavení deleted_at, když není null:
-CREATE OR REPLACE FUNCTION booths_block_delete_limit_update()
+CREATE OR REPLACE FUNCTION booths_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
+  IF TG_OP = 'UPDATE' OR TG_OP = 'INESRT' THEN
+    NEW.name := TRIM(NEW.name);
+  END IF;
+
   IF TG_OP = 'UPDATE' THEN
     IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
       RAISE EXCEPTION 'created_at is immutable and cannot be changed';
@@ -327,10 +355,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_booths_block_delete_limit_update
-  BEFORE UPDATE OR DELETE ON booths
+CREATE OR REPLACE TRIGGER trg_booths_block_delete_limit_update_insert
+  BEFORE INSERT OR UPDATE OR DELETE ON booths
   FOR EACH ROW
-  EXECUTE FUNCTION booths_block_delete_limit_update();
+  EXECUTE FUNCTION booths_block_delete_limit_update_insert();
 
 
 
@@ -829,6 +857,13 @@ VALUES
 ('10000000000000000000000000000013', 'development_admin_deleted', 'email_admin_deleted@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', TRUE, NULL, '2025-10-16 20:58:08.485849+0'),
 ('10000000000000000000000000000014', 'development_event_manager_deleted', 'email_event_manager_deleted@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', '2025-10-16 20:58:08.485849+0'),
 ('10000000000000000000000000000015', 'development_cashier_deleted', 'email_cashier_deleted@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', '2025-10-16 20:58:08.485849+0');
+
+INSERT INTO employees (id, created_at, username, email, password_hash, is_admin, created_by, deleted_at)
+VALUES 
+('10000000000000000000000000000016', '2023-1-1 11:11:54.767705+01','development_seller_old1', 'development_seller_old@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000017', '2023-12-30 11:11:54.767705+01','development_seller_old2', 'development_seller_old2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000018', '2027-1-1 11:11:54.767705+01','development_seller_future1', 'development_seller_future1@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000019', '2027-12-30 11:11:54.767705+01','development_seller_future2', 'development_seller_future2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL);
 
 INSERT INTO products (id, name, categories)
 VALUES

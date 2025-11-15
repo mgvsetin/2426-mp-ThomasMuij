@@ -1,7 +1,7 @@
 import { getSessionInfo } from "./session.js";
 
 
-let header, searchBar, accountDropdown, sessionInfoEl, sidebarOverlayPage;
+let header, /*searchBar,*/ accountDropdown, sessionInfoEl, sidebarOverlayPage;
 
 
 function initHeader() {
@@ -22,12 +22,14 @@ function initHeader() {
 
     <div id="header-middle">
       <!-- <div id="search-div"> -->
+      <!--
         <div id="search-bar-container">
           <input id="search-bar" placeholder="Vyhledávání">
           <button id="search-button">
             <img id="search-icon" src="/static/images/icons/search_icon.png">
           </button>
         </div>
+      -->
       <!-- </div> -->
     </div>
 
@@ -51,11 +53,11 @@ function initHeader() {
   header.innerHTML = headerHTML;
   document.body.prepend(header);
 
-  searchBar = document.querySelector('#search-bar');
+  // searchBar = document.querySelector('#search-bar');
   accountDropdown = document.querySelector('#account-dropdown');
   sessionInfoEl = document.querySelector('#session-info');
 
-  searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
+  // searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
 }
 
 
@@ -91,26 +93,26 @@ export async function renderHeader() {
 }
 
 
-function addSearchParam() {
-  if (!searchBar) initHeader();
+// function addSearchParam() {
+//   if (!searchBar) initHeader();
 
-  const searchQuery = searchBar.value.toLowerCase().trim();
-  const url = new URL(window.location);
-  const currentQuery = url.searchParams.get('search_query') || '';
+//   const searchQuery = searchBar.value.toLowerCase().trim();
+//   const url = new URL(window.location);
+//   const currentQuery = url.searchParams.get('search_query') || '';
 
-  if (searchQuery === currentQuery) {
-    return;
-  }
+//   if (searchQuery === currentQuery) {
+//     return;
+//   }
 
-  if (!searchQuery) {
-    url.searchParams.delete('search_query');
-    window.location.href = url;
-    return;
-  }
+//   if (!searchQuery) {
+//     url.searchParams.delete('search_query');
+//     window.location.href = url;
+//     return;
+//   }
 
-  url.searchParams.set('search_query', searchQuery);
-  window.location.href = url;
-}
+//   url.searchParams.set('search_query', searchQuery);
+//   window.location.href = url;
+// }
 
 
 export function headerClickListeners(event) {
@@ -143,11 +145,11 @@ export function headerClickListeners(event) {
     return true;
   }
 
-  const searchButton = event.target.closest('#search-button');
-  if (searchButton && header.contains(searchButton)) {
-    addSearchParam();
-    return true;
-  }
+  // const searchButton = event.target.closest('#search-button');
+  // if (searchButton && header.contains(searchButton)) {
+  //   addSearchParam();
+  //   return true;
+  // }
 
   if (event.target.matches('#account-button, #account-icon')) {
     accountDropdown.toggleAttribute('opened');
@@ -158,13 +160,13 @@ export function headerClickListeners(event) {
 }
 
 
-export function headerKeydownListeners(event) {
-  if (!header) initHeader();
+// export function headerKeydownListeners(event) {
+//   if (!header) initHeader();
 
-  if (event.code === 'Enter' && event.target.matches('#search-bar')) {
-    addSearchParam();
-    return true;
-  }
+//   if (event.code === 'Enter' && event.target.matches('#search-bar')) {
+//     addSearchParam();
+//     return true;
+//   }
 
-  return false;
-}
+//   return false;
+// }

@@ -1,11 +1,15 @@
-import { getEmployees } from "../general/employees.js";
-import { headerClickListeners, headerKeydownListeners, renderHeader } from "../general/header.js";
+import { getEmployees, resetEmployeesCache } from "../general/employees.js";
+import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableWrap = document.querySelector('#table-wrap');
+const tableHeader = document.querySelector('table thead');
+const searchBar = document.querySelector('#search-bar');
+const orderBy = { key: '', ascending: true };
 
+resetEmployeesCache();
 loadPage({
   table: true,
   header: true,
@@ -38,8 +42,11 @@ async function loadPage({
 
 
 document.addEventListener('click', (event) => {
-  headerClickListeners(event);
-  sidebarClickListeners(event);
+  const headerClick = headerClickListeners(event);
+  const sidebarClick =  sidebarClickListeners(event);
+  if (headerClick || sidebarClick) {
+    return;
+  }
 
   if (event.target.matches('#add-employee-button')) {
     openAddEmployeeOverlay();
@@ -51,6 +58,90 @@ document.addEventListener('click', (event) => {
   if (cancelAddButton || AddModalClose) {
     const overlayEl = document.querySelector('#add-overlay');
     if (overlayEl) overlayEl.remove();
+    return;
+  }
+  // "user-header">Zaměstnanec</th>
+  //               <th id="email-header">Email</th>
+  //               <th id="is-admin-header">Admin</th>
+  //               <th id="created-by-header">Vytvořil</th>
+  //               <th id="created-at-header"
+  const headerEl = event.target.closest('th')
+  if (headerEl && event.target.matches('span')) {
+    // 1. kliknutí -> ascending
+    // 2. kliknutí -> descending
+    // 3. kliknutí .> odendám
+    if (headerEl.id === "user-header") {
+      if (orderBy.key !== 'username') {
+        orderBy.key = 'username';
+        orderBy.ascending = true;
+      }
+      else if (orderBy.key === 'username' && orderBy.ascending) {
+        orderBy.ascending = false;
+      } else {
+        orderBy.key = '';
+        orderBy.ascending = true;
+      }
+    } else if (headerEl.id === "email-header") {
+      if (orderBy.key !== 'email') {
+        orderBy.key = 'email';
+        orderBy.ascending = true;
+      }
+      else if (orderBy.key === 'email' && orderBy.ascending) {
+        orderBy.ascending = false;
+      } else {
+        orderBy.key = '';
+        orderBy.ascending = true;
+      }
+    } else if (headerEl.id === "is-admin-header") {
+      if (orderBy.key !== 'is_admin') {
+        orderBy.key = 'is_admin';
+        orderBy.ascending = true;
+      }
+      else if (orderBy.key === 'is_admin' && orderBy.ascending) {
+        orderBy.ascending = false;
+      } else {
+        orderBy.key = '';
+        orderBy.ascending = true;
+      }
+    } else if (headerEl.id === "created-by-header") {
+      if (orderBy.key !== 'created_by') {
+        orderBy.key = 'created_by';
+        orderBy.ascending = true;
+      }
+      else if (orderBy.key === 'created_by' && orderBy.ascending) {
+        orderBy.ascending = false;
+      } else {
+        orderBy.key = '';
+        orderBy.ascending = true;
+      }
+    } else if (headerEl.id === "created-at-header") {
+      if (orderBy.key !== 'created_at') {
+        orderBy.key = 'created_at';
+        orderBy.ascending = true;
+      }
+      else if (orderBy.key === 'created_at' && orderBy.ascending) {
+        orderBy.ascending = false;
+      } else {
+        orderBy.key = '';
+        orderBy.ascending = true;
+      }
+    } else {
+      return;
+    }
+    tableHeader.querySelectorAll('.order-by-arrow')
+      .forEach((arrowEl) => {
+        arrowEl.remove();
+      });
+    if (orderBy.key) {
+      const orderByArrow = document.createElement('span');
+      orderByArrow.classList.add('order-by-arrow');
+      orderByArrow.innerHTML = orderBy.ascending ? '&#8595;' : '&#8593;';
+      headerEl.querySelector('div').append(orderByArrow);
+    }
+
+    loadPage({
+      table: true
+    })
     return;
   }
 
@@ -112,7 +203,7 @@ document.addEventListener('click', (event) => {
     if (!directToRow) return;
     directToRow.setAttribute('selected', '');
 
-    directToRow.scrollIntoView({behavior: "smooth", block: "center"});
+    directToRow.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -136,6 +227,10 @@ document.addEventListener('click', (event) => {
   // maybe add arrows moving the selected attr
   // ??
 
+  if (event.target.matches('#search-bar')) {
+    return;
+  }
+
   // když nebylo kliknuto na nic jiného:
   const selectedId = employeeTableBody.dataset.selected;
 
@@ -152,9 +247,9 @@ document.addEventListener('dblclick', (event) => {
   }
 })
 
-document.addEventListener('keydown', (event) => {
-  headerKeydownListeners(event);
-})
+// document.addEventListener('keydown', (event) => {
+//   headerKeydownListeners(event);
+// })
 
 document.addEventListener('submit', async (event) => {
   const addForm = event.target.closest('#add-form');
@@ -177,6 +272,7 @@ document.addEventListener('submit', async (event) => {
     if (result === true) {
       const overlayEl = document.querySelector('#add-overlay');
       if (overlayEl) overlayEl.remove();
+      resetEmployeesCache();
       loadPage({
         table: true
       });
@@ -207,6 +303,7 @@ document.addEventListener('submit', async (event) => {
     if (result === true) {
       const overlayEl = document.querySelector('#edit-overlay');
       if (overlayEl) overlayEl.remove();
+      resetEmployeesCache();
       loadPage({
         table: true,
         header: true
@@ -235,6 +332,7 @@ document.addEventListener('submit', async (event) => {
     if (result === true) {
       const overlayEl = document.querySelector('#delete-overlay');
       if (overlayEl) overlayEl.remove();
+      resetEmployeesCache();
       loadPage({
         table: true
       });
@@ -247,12 +345,21 @@ document.addEventListener('submit', async (event) => {
 })
 
 
+searchBar.addEventListener('input', (event) => {
+  // if (event.target.matches('#search-bar')) {
+  loadPage({
+    table: true
+  })
+  // }
+})
+
+
 function isSearchedFor(employee, searchQuery) {
   if (!searchQuery) {
     return true;
   }
 
-  const searchQueries = searchQuery.split(' ');
+  const searchQueries = searchQuery.toLowerCase().trim().split(' ');
 
   const id = employee.id.toLowerCase();
   const username = employee.username.toLowerCase();
@@ -261,7 +368,7 @@ function isSearchedFor(employee, searchQuery) {
   const createdBy = employee.created_by ? employee.created_by.toLowerCase() : '-'
   const createdAtDate = new Date(employee.created_at);
   const createdAt = `
-    ${createdAtDate.getDate()}.${createdAtDate.getMonth() + 1}.${createdAtDate.getFullYear()}${createdAtDate.getHours()}:${createdAtDate.getMinutes()}:${createdAtDate.getSeconds()}
+    ${createdAtDate.getDate()}/${createdAtDate.getMonth() + 1}/${createdAtDate.getFullYear()}${createdAtDate.getHours()}:${createdAtDate.getMinutes()}:${createdAtDate.getSeconds()}
   `;
 
   const employeeInfo = `
@@ -273,69 +380,65 @@ function isSearchedFor(employee, searchQuery) {
     ${createdAt}
   `;
 
-  let isSearched = true;
-
   for (const query of searchQueries) {
     if (!query.includes('=')) {
-      if (!employeeInfo.includes(query)) isSearched = false;
+      if (!employeeInfo.includes(query)) return false;
     }
     else {
       const searchKeyWord = query.split('=')[0];
       const search = query.split('=')[1];
 
       if (['id',
-          'identifier']
-          .includes(searchKeyWord)
-          && !id.includes(search)) {
-            isSearched = false;
-          }
-      if (['username',
-          'zaměstnanec',
-          'zamestnanec',
-          'jméno',
-          'jmeno',
-          'uživatel',
-          'uzivatel',
-          'uživatelské_jméno',
-          'uzivatelske_jmeno',
-          'uživatelskéjméno',
-          'uzivatelskejmeno']
-          .includes(searchKeyWord)
-          && !username.includes(search)) {
-            isSearched = false;
-          }
-      if (['email',
-          'e-mail',
-          'mail']
-          .includes(searchKeyWord)
-          && !email.includes(search)) {
-            isSearched = false;
-          }
-      if (['admin']
-          .includes(searchKeyWord)
-          && !isAdmin.includes(search)) {
-            isSearched = false;
-          }
-      if (['vytvořil',
-          'vytvoril',
-          'created_by',
-          'createdby']
-          .includes(searchKeyWord)
-          && !createdBy.includes(search)) {
-            isSearched = false;
-          }
-      if (['vytvořen',
-          'vytvoren',
-          'created_at',
-          'createdat']
-          .includes(searchKeyWord)
-          && !createdAt.includes(search)) {
-            isSearched = false;
-          }
+        'identifier']
+        .includes(searchKeyWord)) {
+        if (!id.includes(search)) return false;
+      }
+      else if (['username',
+        'name',
+        'zaměstnanec',
+        'zamestnanec',
+        'jméno',
+        'jmeno',
+        'uživatel',
+        'uzivatel',
+        'uživatelské_jméno',
+        'uzivatelske_jmeno',
+        'uživatelskéjméno',
+        'uzivatelskejmeno']
+        .includes(searchKeyWord)) {
+        if (!username.includes(search)) return false;
+      }
+      else if (['email',
+        'e-mail',
+        'mail']
+        .includes(searchKeyWord)) {
+        if (!email.includes(search)) return false;
+      }
+      else if (['admin']
+        .includes(searchKeyWord)) {
+        if (!isAdmin.includes(search)) return false;
+      }
+      else if (['vytvořil',
+        'vytvoril',
+        'created_by',
+        'createdby']
+        .includes(searchKeyWord)) {
+        if (!createdBy.includes(search)) return false;
+      }
+      else if (['vytvořen',
+        'vytvoren',
+        'created_at',
+        'createdat']
+        .includes(searchKeyWord)) {
+        if (!createdAt.includes(search)) return false;
+      }
+      else {
+        if (!employeeInfo.includes(query)) return false;
+      }
     }
-    
+
   }
-  return isSearched;
+  return true;
 }
 
 
@@ -353,11 +456,35 @@ async function renderTableRows() {
     return;
   }
 
-  const url = new URL(location);
-  const searchQuery = url.searchParams.get('search_query');
+  // const url = new URL(location);
+  // const searchQuery = url.searchParams.get('search_query');
+  const searchQuery = searchBar.value;
+
+  let sortedEmployees;
+
+  if (!orderBy.key) {
+    sortedEmployees = employees;
+  } else if (orderBy.key === 'created_at') {
+    sortedEmployees = employees.toSorted((a, b) => {
+      a = new Date(a[orderBy.key]);
+      b = new Date(b[orderBy.key]);
+      return (a - b) * orderBy.ascending ? 1 : -1;
+    })
+  } else {
+    sortedEmployees = employees.toSorted((a, b) => {
+      if (orderBy.key === 'is_admin') {
+        a = a[orderBy.key] ? 'ano' : 'ne';
+        b = b[orderBy.key] ? 'ano' : 'ne';
+      } else {
+        a = a[orderBy.key] ? a[orderBy.key].toLowerCase() : '';
+        b = b[orderBy.key] ? b[orderBy.key].toLowerCase() : '';
+      }
+      return a.localeCompare(b) * (orderBy.ascending ? 1 : -1);
+    })
+  }
 
   let rowNumber = 1;
-  employees.forEach((employee) => {
+  sortedEmployees.forEach((employee) => {
     let isAdminHTML;
 
     if (employee.is_admin) {
@@ -368,7 +495,7 @@ async function renderTableRows() {
 
     const createdAt = new Date(employee.created_at);
     const createdAtHTML = `
-      ${createdAt.getDate()}. ${createdAt.getMonth() + 1}. ${createdAt.getFullYear()} ${createdAt.getHours()}:${createdAt.getMinutes()}:${createdAt.getSeconds()}
+      ${createdAt.getDate()}/${createdAt.getMonth() + 1}/${createdAt.getFullYear()}, ${createdAt.getHours()}:${createdAt.getMinutes()}:${createdAt.getSeconds()}
     `;
 
     const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
@@ -403,6 +530,11 @@ async function renderTableRows() {
   })
 
   employeeTableBody.innerHTML = rowsHTML;
+
+  const selectedId = employeeTableBody.dataset.selected;
+
+  const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
+  if (selectedRow) selectedRow.setAttribute('selected', '');
 }
 
 

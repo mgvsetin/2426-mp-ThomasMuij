@@ -11,7 +11,7 @@ bp = Blueprint('events', __name__, url_prefix='/api/events')
 
 
 @bp.route('/')
-def get_employees():
+def get_events_to_manage():
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -19,21 +19,28 @@ def get_employees():
     
     conn = get_db()
 
-    if not employee['is_admin']:
-        event = load_selected_event()
-
-        if not event or not is_manager(employee['id'], event['id']):
-            return jsonify(error='admin_or_manager_required'), 403
-
-    with conn.transaction():
-        with conn.cursor() as cur:
-            employees = cur.execute('''
-                SELECT e.id, e.username, e.email, e.is_admin, e.created_by, e.created_at
-                FROM employees as e
-                WHERE e.deleted_at IS NULL
-                ORDER BY created_at''').fetchall()
-            
-    return jsonify(employees=employees), 200
+    if employee['is_admin']:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                events = cur.execute('''
+                    SELECT id, name, start_at, end_at, created_at
+                    FROM events
+                    WHERE deleted_at IS NULL
+                    ORDER BY created_at''').fetchall()
+    else:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                events = cur.execute('''
+                    SELECT e.id, e.name, e.start_at, e.end_at, e.created_at
+                    FROM events as e
+                    JOIN employee_event_booth_roles AS r ON r.event_id = e.id
+                    WHERE e.deleted_at IS NULL
+                    AND employee_id = %s
+                    AND booth_id IS NULL
+                    ORDER BY e.created_at''',
+                    (employee['id'],)).fetchall()
+                
+    return jsonify(events=events), 200
 
 
 @bp.route('/<uuid:event_id>')

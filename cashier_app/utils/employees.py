@@ -1,5 +1,6 @@
 from cashier_app.db import get_db
 import re
+import unicodedata
 import string
 from typing import List, Tuple
 from email_validator import validate_email as _validate_email, EmailNotValidError
@@ -56,6 +57,7 @@ def validate_username(
     if not isinstance(username, str):
         return False, ["username must be a string"]
 
+    username = unicodedata.normalize("NFC", username)
     username = username.strip()
     if len(username) < min_len:
         errors.append(f"username must be at least {min_len} characters")
@@ -64,7 +66,13 @@ def validate_username(
 
     # Vytvoř třídu povolených znaků (písmena, čísla,...)
     esc = re.escape(allow_chars)
+    # ASCII písmena + číslice + Latin-1 + Latin-Extended-A
+    char_class = r"A-Za-z0-9\u00C0-\u017F"
     pattern = rf"^[A-Za-z0-9](?:[A-Za-z0-9{esc}]{{0,{max_len-2}}})[A-Za-z0-9]$" if max_len >= 2 else r"^[A-Za-z0-9]$"
+    if max_len >= 2:
+        pattern = f"^[{char_class}](?:[{char_class}{esc}]{{0,{max_len-2}}})[{char_class}]$"
+    else:
+        pattern = f"^[{char_class}]$"
     if not re.match(pattern, username):
         errors.append(
             "username must start and end with a letter or digit, "

@@ -1,4 +1,23 @@
+const cache_time_ms = 60 * 1000; // 1 minuta
+// maybe figure out cache max time so that the slow doenst have to happen
+
+const _employeesCache = {
+  employees: null,
+  expiry: 0
+};
+
+
+export function resetEmployeesCache() {
+  _employeesCache.employees = null;
+  _employeesCache.expiry = 0;
+}
+
+
 export async function getEmployees() {
+  if (_employeesCache.employees && _employeesCache.expiry > Date.now()) {
+    return _employeesCache.employees;
+  }
+
   try {
     const response = await fetch('/api/employees');
 
@@ -17,6 +36,9 @@ export async function getEmployees() {
     if (!response.ok) {
       throw new Error('unexpected_error');
     }
+
+    _employeesCache.employees = data.employees;
+    _employeesCache.expiry = Date.now() + cache_time_ms;
 
     return data.employees;
 

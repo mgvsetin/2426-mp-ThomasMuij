@@ -2,12 +2,13 @@ import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEve
 import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
-import { headerClickListeners, headerKeydownListeners, renderHeader } from "../general/header.js";
+import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
 const orderEl = document.querySelector('#order');
 const productSide = orderEl.querySelector('#product-side');
 const summarySide = orderEl.querySelector('#summary-side');
+const searchBar = orderEl.querySelector('#search-bar');
 
 let listenersMade = false;
 
@@ -61,8 +62,11 @@ async function loadPage({
 //   listenersMade = true;
 
 document.addEventListener('click', async (event) => {
-  headerClickListeners(event);
-  sidebarClickListeners(event);
+  const headerClick = headerClickListeners(event);
+  const sidebarClick =  sidebarClickListeners(event);
+  if (headerClick || sidebarClick) {
+    return;
+  }
 
   if (event.target.matches('.selectable-category')) {
     const categoryButton = event.target;
@@ -123,7 +127,7 @@ document.addEventListener('click', async (event) => {
       categories: true,
       products: true,
       summary: true,
-      sidebar: true,
+      // sidebar: true,
       header: true
     });
     return;
@@ -139,7 +143,7 @@ document.addEventListener('click', async (event) => {
       categories: true,
       products: true,
       summary: true,
-      sidebar: true,
+      // sidebar: true,
       header: true
     });
     return;
@@ -147,7 +151,7 @@ document.addEventListener('click', async (event) => {
 })
 
 document.addEventListener('keydown', (event) => {
-  headerKeydownListeners(event);
+  // headerKeydownListeners(event);
 
   if (event.code === 'Enter' && event.target.matches('.productQuantity, .summary-productQuantity')) {
     const quantityInput = event.target;
@@ -184,7 +188,7 @@ productSide.addEventListener('submit', async (event) => {
     if (ok) {
       loadPage({
         header: true,
-        sidebar: true
+        // sidebar: true
       })
       renderBoothPicker();
     }
@@ -203,13 +207,23 @@ productSide.addEventListener('submit', async (event) => {
         categories: true,
         products: true,
         summary: true,
-        sidebar: true,
+        // sidebar: true,
         header: true
       });
     }
     return;
   }
 })
+
+
+searchBar.addEventListener('input', (event) => {
+  // if (event.target.matches('#search-bar')) {
+    loadPage({
+      products: true
+    })
+  // }
+})
+
 
 orderEl.addEventListener('focusout', (event) => {
   if (event.target.matches('.productQuantity, .summary-productQuantity')) {

@@ -15,6 +15,14 @@
 <body>
   <div id="container">
     <div id="topbar">
+      <div id="search-div">
+        <div id="search-bar-container">
+          <input id="search-bar" placeholder="Vyhledávání">
+          <div id="search-icon-container">
+            <img id="search-icon" src="/static/images/icons/search_icon.png">
+          </div>
+        </div>
+      </div>
       <button id="add-employee-button">
         + Přidat zaměstnance
       </button>
@@ -25,13 +33,23 @@
         <table id="employee-table">
           <thead>
             <tr>
-              <th></th>
-              <th>Zaměstnanec</th>
-              <th>Email</th>
-              <th>Admin</th>
-              <th>Vytvořil</th>
-              <th>Vytvořen</th>
-              <th></th>
+              <th id="counter-header"></th>
+              <th id="user-header">
+                <div><span>Zaměstnanec</span></div>
+              </th>
+              <th id="email-header">
+                <div><span>Email</span></div>
+              </th>
+              <th id="is-admin-header">
+                <div><span>Admin</span></div>
+              </th>
+              <th id="created-by-header">
+                <div><span>Vytvořil</span></div>
+              </th>
+              <th id="created-at-header">
+                <div><span>Vytvořen</span></div>
+              </th>
+              <th id="actions-header"></th>
             </tr>
           </thead>
           <tbody id="employee-table-body"></tbody>

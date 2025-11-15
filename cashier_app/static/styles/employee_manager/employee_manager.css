@@ -10,10 +10,69 @@ body {
 
 #topbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   padding-bottom: 16px;
   height: 52px;
   gap: 12px;
+}
+
+#search-div {
+  padding: 13px 20px;
+  border-radius: 5px;
+  flex: 1 1 auto;
+}
+
+#search-bar-container {
+  /* margin: 10px 20px; */
+  position: relative;
+  flex: 0;
+  max-width: 700px;
+  display: flex;
+  min-width: 91px;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+}
+
+#search-bar {
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  border: 1px solid rgb(205, 205, 205);
+  border-radius: 100px;
+  padding: 6px 35px 6px 9px;
+}
+
+#search-icon-container {
+  position: absolute;
+  right: 8px;
+  top: auto;
+  width: 24px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  outline: none;
+  padding: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* #search-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+#search-button:active {
+  background-color: rgba(0, 0, 0, 0.15);
+} */
+
+#search-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  display: block;
 }
 
 #add-employee-button {
@@ -68,6 +127,22 @@ thead th {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+thead th div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+thead th span {
+ cursor: pointer;
+ padding: 3px 0;
+}
+
+thead th .order-by-arrow {
+  padding: 3px;
 }
 
 tbody td {
@@ -182,23 +257,6 @@ tbody tr[selected] {
 .error-message {
   padding-top: 10px;
   background-color: white;
-}
-
-
-@media (max-width: 767px) {
-
-  thead th,
-  tbody td {
-    padding: 8px 10px;
-  }
-}
-
-@media (max-width: 640px) {
-
-  thead th,
-  tbody td {
-    padding: 6px 8px;
-  }
 }
 
 

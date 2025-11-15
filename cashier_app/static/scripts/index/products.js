@@ -19,6 +19,7 @@ import { order } from "./order.js";
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
 const selectableCategoriesEl = productSide.querySelector('#selectable-categories')
+const searchBar = document.querySelector('#search-bar');
 
 
 const cache_time_ms = 60 * 1000; // 1 minuta
@@ -116,8 +117,9 @@ export async function renderProducts() {
     return;
   }
 
-  const url = new URL(window.location);
-  const searchQuery = url.searchParams.get('search_query');
+  // const url = new URL(window.location);
+  // const searchQuery = url.searchParams.get('search_query');
+  const searchQuery = searchBar.value; //.toLowerCase().trim();
   const selectedCategory = getSelectedCategory();
 
   let productsHTML = '';
@@ -178,6 +180,8 @@ function isSearchedFor(product, searchQuery, selectedCategory) {
       return false;
     }
   }
+
+  searchQuery = searchQuery.toLowerCase().trim();
 
   if (!searchQuery
     || product.name.toLowerCase().trim().includes(searchQuery)) {

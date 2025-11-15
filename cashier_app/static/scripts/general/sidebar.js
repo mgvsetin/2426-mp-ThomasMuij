@@ -42,8 +42,8 @@ export async function renderSidebar() {
   }
 
   const isAdmin = sessionInfo.employee.is_admin;
-  const isManager = sessionInfo.employee.is_event_manager;
-  const boothType = sessionInfo.booth ? sessionInfo.booth.booth_type : null;
+  // const isManager = sessionInfo.employee.is_event_manager;
+  // const boothType = sessionInfo.booth ? sessionInfo.booth.booth_type : null;
 
   let sidebarLinksHTML = '';
 
@@ -71,14 +71,16 @@ export async function renderSidebar() {
   //   `;
   // }
 
-  if (sessionInfo.event && (isManager || isAdmin)) {
-    sidebarLinksHTML += `
-      <div id="manager-part">
-        <div id="manager-part-title">Manažer</div>
-        <a id="event-manager-link" href="/events/${sessionInfo.event.id}/manager/">Spravovat akci</a>
-      </div>
-    `;
-  }
+  // if (sessionInfo.event && (isManager || isAdmin)) {
+
+  // maybe check if employee is a manager anywhere in the sessioninfo
+  sidebarLinksHTML += `
+    <div id="manager-part">
+      <div id="manager-part-title">Manažer</div>
+      <a id="events-manager-link" href="/events/manager/">Spravovat akce</a>
+    </div>
+  `;
+  // }
 
   if (isAdmin) {
     sidebarLinksHTML += `

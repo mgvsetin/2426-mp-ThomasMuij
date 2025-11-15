@@ -1,3 +1,4 @@
+/* base adjustments (keeps your existing look and feel) */
 body {
   padding: 80px 20px 20px 20px;
   background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
@@ -6,17 +7,68 @@ body {
 
 #container {
   margin: 0 auto;
+  max-width: 1200px;
 }
 
 #topbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
   padding-bottom: 16px;
   height: 52px;
   gap: 12px;
 }
 
-#add-employee-button {
+#search-div {
+  padding: 13px 20px;
+  border-radius: 5px;
+  flex: 1 1 auto;
+}
+
+#search-bar-container {
+  position: relative;
+  flex: 0;
+  max-width: 700px;
+  display: flex;
+  min-width: 91px;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+}
+
+#search-bar {
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  border: 1px solid rgb(205, 205, 205);
+  border-radius: 100px;
+  padding: 6px 35px 6px 9px;
+}
+
+#search-icon-container {
+  position: absolute;
+  right: 8px;
+  top: auto;
+  width: 24px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  outline: none;
+  padding: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#search-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  display: block;
+}
+
+#add-event-button {
   padding: 10px 16px;
   font-weight: 500;
   font-size: 14px;
@@ -28,11 +80,11 @@ body {
   white-space: nowrap;
 }
 
-#add-employee-button:hover {
+#add-event-button:hover {
   background: #0f7068;
 }
 
-#add-employee-button:active {
+#add-event-button:active {
   background: #0f6d66;
 }
 
@@ -44,11 +96,53 @@ body {
   box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
 }
 
-#table-wrap {
+/* layout for the three sections */
+#events-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+/* section header */
+.events-section {
+  padding: 8px;
+  border-radius: 10px;
+  background: transparent;
+  min-width: 100px;
+}
+
+.events-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 12px 6px;
+}
+
+.events-section-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #153040;
+}
+
+.section-meta span {
+  display: inline-block;
+  background: #eef2ff;
+  color: #1f6feb;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.table-wrap {
   overflow: auto;
   border-radius: 8px;
-  max-height: calc(100vh - 152px);
-  min-height: 120px;
+  min-height: 60px;
+  border: 1px solid #eef6ff;
+  background: #ffffff;
+  max-height: calc(65vh);
   min-width: 100px;
 }
 
@@ -60,7 +154,7 @@ table {
 
 thead th {
   text-align: left;
-  padding: 14px 14px;
+  padding: 12px 14px;
   font-weight: 700;
   color: #1f3b4d;
   border-bottom: 2px solid #e6eef6;
@@ -68,6 +162,18 @@ thead th {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+thead th div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+thead th span {
+  cursor: pointer;
+  padding: 3px 0;
 }
 
 tbody td {
@@ -94,19 +200,23 @@ tbody tr[selected] {
   background: #e8f2ff;
 }
 
-.username {
+.event-name {
   font-weight: 600;
   color: #153040;
 }
 
-.id.muted {
-  font-size: 10px;
+.event-name .id-muted {
+  font-size: 11px;
   font-weight: 500;
+  color: #6b7280;
+  margin-left: 6px;
 }
 
-.email {
+/* datetime and muted */
+.datetime {
   font-weight: 600;
   color: #153040;
+  white-space: nowrap;
 }
 
 .muted {
@@ -114,40 +224,11 @@ tbody tr[selected] {
   font-size: 13px;
 }
 
-.badge {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-  min-width: 56px;
-  text-align: center;
-}
-
-.badge.yes {
-  background: #ecfdf5;
-  color: #166534;
-  border: 1px solid rgba(16, 164, 82, 0.08);
-}
-
-.badge.no {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid rgba(99, 102, 241, 0.02);
-}
-
-.created-by {
-  font-size: 10px;
-}
-
-.created-by div {
-  padding: 2px 0;
-  color: #6b7280;
-  cursor: pointer;
-}
-
+/* actions and icons */
 .actions {
-  min-width: 120px;
+  min-width: 90px;
+  text-align: right;
+  padding-right: 10px;
 }
 
 .icon-btn {
@@ -173,343 +254,12 @@ tbody tr[selected] {
   color: #1f6feb;
 }
 
-.icon-btn.delete {
-  background: #fff7f7;
-  border-color: rgba(239, 68, 68, 0.06);
-  color: #ef4444;
-}
-
-.error-message {
-  padding-top: 10px;
-  background-color: white;
+/* smaller utility */
+.counter-header,
+.actions-header {
+  width: 48px;
+  text-align: left;
 }
 
 
-@media (max-width: 767px) {
-
-  thead th,
-  tbody td {
-    padding: 8px 10px;
-  }
-}
-
-@media (max-width: 640px) {
-
-  thead th,
-  tbody td {
-    padding: 6px 8px;
-  }
-}
-
-
-#add-overlay,
-#edit-overlay,
-#delete-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(10, 12, 14, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-  padding: 5px;
-  animation: overlay-fade .14s ease-out;
-  padding-top: 65px;
-}
-
-@keyframes overlay-fade {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-#add-modal,
-#edit-modal,
-#delete-modal {
-  width: 100%;
-  max-width: 560px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(10, 10, 10, 0.24);
-  transform-origin: center;
-  animation: modal-pop .16s cubic-bezier(.2, .8, .2, 1);
-  font-family: inherit;
-  color: black;
-
-  max-height: 100%;
-  overflow: auto;
-}
-
-@keyframes modal-pop {
-  from {
-    transform: translateY(6px) scale(.995);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-#add-modal-header,
-#edit-modal-header,
-#delete-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(10, 10, 10, 0.06);
-}
-
-#add-overlay-title,
-#edit-overlay-title,
-#delete-overlay-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-#delete-overlay-title {
-  color: #991b1b;
-}
-
-#add-modal-close,
-#edit-modal-close,
-#delete-modal-close {
-  background: transparent;
-  border: none;
-  height: 22px;
-  width: 22px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-#add-modal-close:hover,
-#edit-modal-close:hover,
-#delete-modal-close:hover {
-  background-color: rgb(245, 245, 245);
-}
-
-#add-form,
-#edit-form,
-#delete-form {
-  padding: 18px 20px;
-  display: grid;
-  gap: 12px;
-}
-
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-}
-
-.form-row label {
-  font-size: 0.86rem;
-  color: #111827;
-  font-weight: 600;
-}
-
-.form-row input[type="text"],
-.form-row input[type="email"],
-.form-row input[type="password"] {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(10, 10, 10, 0.12);
-  font-size: 0.95rem;
-  font-family: inherit;
-  outline: none;
-  transition: box-shadow .12s, border-color .12s;
-}
-
-
-.pw-eye {
-  position: absolute;
-  top: 30px;
-  right: 8px;
-  cursor: pointer;
-}
-
-:root {
-  --fg: #585858;
-  --contrast: #fff;
-}
-
-.eye-shape {
-  fill: var(--fg);
-  vector-effect: non-scaling-stroke;
-}
-
-.g-show {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-
-.g-hide {
-  opacity: 0;
-  transform: scale(.98);
-  pointer-events: none;
-}
-
-:root .pw-eye.state-hide .g-show {
-  opacity: 0;
-  transform: scale(.98);
-  pointer-events: none;
-}
-
-:root .pw-eye.state-hide .g-hide {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-
-.slash,
-.ring-stroke {
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-
-.add-error,
-.edit-error,
-.delete-error {
-  color: rgb(194, 14, 26);
-  font-size: 14px;
-  line-height: 1.35;
-  display: none;
-}
-
-#general-add-error,
-#general-edit-error,
-#general-delete-error {
-  margin-top: 4px;
-}
-
-.show-add-error,
-.show-edit-error,
-.show-delete-error {
-  display: block;
-}
-
-.form-row input:focus {
-  border-color: rgba(34, 197, 94, 0.3);
-  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
-}
-
-#delete-id-label,
-#delete-username-label,
-#delete-email-label {
-  font-weight: 600;
-}
-
-#delete-id,
-#delete-username,
-#delete-email {
-  margin-left: 7px;
-  cursor: default;
-}
-
-#add-id,
-#edit-id,
-#delete-id {
-  border: none;
-  color: #6b7280;
-  font-size: 13px;
-  box-shadow: none;
-  outline: none;
-}
-
-#add-form-actions,
-#edit-form-actions,
-#delete-form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 6px;
-}
-
-#add-save,
-#add-cancel,
-#edit-cancel,
-#edit-save,
-#delete-confirm,
-#delete-cancel {
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-}
-
-#delete-confirm {
-  background: #c53737;
-  color: #fff;
-  box-shadow: 0 6px 10px rgba(197, 55, 55, 0.12);
-}
-
-#delete-confirm:hover {
-  box-shadow: 3px 3px 8px rgba(185, 47, 47, 0.3);
-  background-color: #b92f2f;
-}
-
-#add-cancel,
-#edit-cancel,
-#delete-cancel {
-  background: transparent;
-  border: 1px solid rgba(10, 10, 10, 0.08);
-  color: #111827;
-}
-
-#add-cancel:hover,
-#edit-cancel:hover,
-#delete-cancel:hover {
-  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
-}
-
-#add-save {
-  background: #0f766e;
-  color: #fff;
-  box-shadow: 0 6px 10px rgba(15, 118, 110, 0.12);
-}
-
-#add-save:hover {
-  box-shadow: 3px 3px 8px rgba(15, 118, 110, 0.3);
-}
-
-#edit-save {
-  background: #0f766e;
-  color: #fff;
-  box-shadow: 0 6px 10px rgba(15, 118, 110, 0.12);
-}
-
-#edit-save:hover {
-  box-shadow: 3px 3px 8px rgba(15, 118, 110, 0.3);
-}
-
-.employee-summary .username {
-  font-weight: 700;
-  color: #153040;
-}
-
-.employee-summary .email {
-  color: #153040;
-  font-weight: 600;
-}
-
-.employee-summary .muted {
-  color: #6b7280;
-  font-size: 13px;
-}
+/* reuse your overlay styles (kept in main CSS) if needed */

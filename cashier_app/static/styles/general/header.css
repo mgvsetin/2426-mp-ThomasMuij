@@ -56,7 +56,7 @@
   min-width: 0;
 }
 
-#search-bar-container {
+/* #search-bar-container {
   margin: 0 20px;
   position: relative;
   flex: 1 1 auto;
@@ -106,7 +106,7 @@
   height: 18px;
   object-fit: cover;
   display: block;
-}
+} */
 
 
 #header-right {
@@ -213,12 +213,12 @@
 
 #account-dropdown button:hover,
 #account-dropdown a:hover {
-  background-color: rgb(238, 238, 238);
+  background-color: rgb(240, 240, 240);
 }
 
 #account-dropdown button:active,
 #account-dropdown a:active {
-  background-color: rgb(233, 233, 233);
+  background-color: rgb(235, 235, 235);
 }
 
 /* #choose-new-event-button {
