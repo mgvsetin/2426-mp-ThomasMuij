@@ -87,7 +87,6 @@ export async function renderSidebar() {
       <div id="admin-part">
         <div id="admin-part-title">Admin</div>
         <a id="employee-manager-link" href="/admin/employee_manager/">Spravovat zaměstnance</a>
-        <a id="events-manager-link" href="">Spravovat akce</a>
       </div>
     `;
   }

@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 from psycopg import IntegrityError
@@ -5,7 +6,7 @@ from argon2 import PasswordHasher
 from cashier_app.events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_db
-from cashier_app.utils.employees import is_manager, validate_username, validate_email, validate_password
+from cashier_app.utils.events import validate_event_name
 
 bp = Blueprint('events', __name__, url_prefix='/api/events')
 
@@ -107,7 +108,7 @@ def get_event(event_id):
 
 
 @bp.route('/create', methods=('POST',))
-def add_employee(): 
+def add_event(): 
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -116,45 +117,57 @@ def add_employee():
     if not logged_employee['is_admin']:
         return jsonify(error='insufficient_priviliges'), 403
 
-    username = request.form.get('username', '').strip()
-    email = request.form.get('email', '').strip().lower()
-    password_raw = request.form.get('password', '')
+    name = request.form.get('name', '').strip()
+    start_at = request.form.get('start-at', '').strip()
+    end_at = request.form.get('end-at', '').strip()
 
-    if not username:
-        return jsonify(error='missing_username'), 400
-    
-    if not email:
-        return jsonify(error='missing_email'), 400
-    
-    if not password_raw:
-        return jsonify(error='missing_password'), 400
+    if not name:
+        return jsonify(error='missing_name'), 400
 
-
-    ok, errors = validate_username(username)
+    ok, errors = validate_event_name(name)
     if not ok:
         return jsonify(error=errors[0]), 400
 
-    ok, errors = validate_email(email)
-    if not ok:
-        return jsonify(error="invalid_email"), 400    
+    params = {
+        'name': name,
+        'created_by': logged_employee['id']
+        }
 
-    ok, errors = validate_password(password_raw)
-    if not ok:
-        return jsonify(error=errors[0]), 400
+
+    if start_at:
+        try:
+            start_at = datetime.fromisoformat(start_at)
+        except ValueError:
+            return jsonify(error='invalid_start_at'), 400
+        params['start_at'] = start_at
     
-    password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
-    password_hash = password_hasher.hash(password_raw)        
+    if end_at:
+        try:
+            end_at = datetime.fromisoformat(end_at)
+        except ValueError:
+            return jsonify(error='invalid_end_at'), 400
+        
+        # if end_at < datetime.now():
+        #     return jsonify(error='invalid_end_at_date'), 400
+
+        params['end_at'] = end_at
+    
+    if start_at and end_at:
+        if start_at > end_at:
+            return jsonify(error='invalid_start_at_end_at_dates'), 400
+
+    cols_str = ', '.join(params.keys())
+    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 
     conn = get_db()
     try:
         with conn.transaction():
             with conn.cursor() as cur:
-                cur.execute('''
-                    INSERT INTO employees
-                    (username, email, password_hash, created_by)
-                    VALUES (%s, %s, %s, %s)''',
-                    (username, email, password_hash, logged_employee['id']))
-
+                cur.execute(f'''
+                    INSERT INTO events
+                    ({cols_str})
+                    VALUES ({col_values_placeholders})''',
+                    (params))
     except IntegrityError as e:
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 

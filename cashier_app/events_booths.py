@@ -257,7 +257,7 @@ def select_booth():
     with conn.transaction():
         with conn.cursor() as cur:
             booth = cur.execute('''
-                SELECT booth_type, auth_required
+                SELECT booth_type
                 FROM booths
                 WHERE id = %s
                 AND event_id = %s
@@ -292,23 +292,6 @@ def select_booth():
                     
                     if not booth_link:
                         return jsonify(error='employee_not_linked_to_booth'), 400
-
-    is_allowed = not booth['auth_required']
-    
-    if not is_allowed:
-        is_allowed = employee['is_admin']
-
-    if not is_allowed:  
-        if event_link[0]['role'] == 'event_manager':
-            is_allowed = True
-
-    # if not is_allowed:
-    #     auth_username_or_email = request.form.get('username-email')
-    #     auth_password = request.form.get('password')
-    #     # split the authentication from the login func and use here
-
-    if not is_allowed:
-        return jsonify(error='employee_does_not_have_permission_for_booth'), 403
     
     session['booth_id'] = str(booth_id)
     return jsonify(), 200

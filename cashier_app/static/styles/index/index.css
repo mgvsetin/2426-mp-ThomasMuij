@@ -1,3 +1,7 @@
+body {
+  padding-top: 60px;
+}
+
 #order {
   height: calc(100vh - 60px);
   display: flex;
@@ -39,7 +43,7 @@
   outline: none;
   border: 1px solid rgb(205, 205, 205);
   border-radius: 100px;
-  padding: 6px 35px 6px 9px;
+  padding: 8px 35px 8px 9px;
 }
 
 #search-icon-container {

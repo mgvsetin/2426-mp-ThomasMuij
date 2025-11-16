@@ -11,19 +11,21 @@ body {
 #topbar {
   display: flex;
   align-items: center;
-  padding-bottom: 16px;
-  height: 52px;
-  gap: 12px;
+  height: 64px;
+  margin-bottom: 4px;
+  padding: 0 15px;
+  gap: 32px;
+  background-color: rgb(251, 253, 255);
+  background-color: white;
+  border: 1px solid rgb(230, 238, 246);
+  border-radius: 8px;
 }
 
 #search-div {
-  padding: 13px 20px;
-  border-radius: 5px;
   flex: 1 1 auto;
 }
 
 #search-bar-container {
-  /* margin: 10px 20px; */
   position: relative;
   flex: 0;
   max-width: 700px;
@@ -101,12 +103,14 @@ body {
   padding: 8px;
   border: 1px solid rgb(230, 238, 246);
   box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
 #table-wrap {
   overflow: auto;
   border-radius: 8px;
-  max-height: calc(100vh - 152px);
+  max-height: calc(100vh - 186px);
   min-height: 120px;
   min-width: 100px;
 }

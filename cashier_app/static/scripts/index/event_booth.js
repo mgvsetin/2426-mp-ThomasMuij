@@ -249,8 +249,7 @@ export async function pickBooth(formData) {
     if ((response.status === 400 && data.error === 'invalid_booth_id')
       ||(response.status === 404 && data.error === 'booth_not_found')
       ||(response.status === 400 && data.error === 'employee_not_linked_to_event')
-      ||(response.status === 400 && data.error === 'employee_not_linked_to_booth')
-      ||(response.status === 403 && data.error === 'employee_does_not_have_permission_for_booth')) {
+      ||(response.status === 400 && data.error === 'employee_not_linked_to_booth')) {
       console.log(data.error)
       throw new Error('bad_booth');
     }

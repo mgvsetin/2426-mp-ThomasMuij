@@ -260,8 +260,8 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_events_name_active ON events (LOWER(name)) WHERE deleted_at IS NULL;
 
+              -- (odendáno: zajistí že end_at jde pouze nastavit po now())
 -- blokuje delete a změnu created_at, created_by
--- zajistí že end_at jde pouze nastavit po now()
 -- odendá mezery na začátku a konci u name
 CREATE OR REPLACE FUNCTION events_block_delete_limit_update_insert()
 RETURNS trigger AS $$
@@ -286,9 +286,9 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
-    IF NEW.end_at <= now() THEN
-      RAISE EXCEPTION 'end_at can not be set to before now()';
-    END IF;
+    -- IF NEW.end_at <= now() THEN
+    --   RAISE EXCEPTION 'end_at can not be set to before now()';
+    -- END IF;
 
     NEW.name := TRIM(New.name);
   END IF;
@@ -888,11 +888,13 @@ VALUES
 
 INSERT INTO events (id, name, start_at, end_at, created_by)
 VALUES
-('30000000000000000000000000000001', 'development_event1', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
-('30000000000000000000000000000002', 'development_event2', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
-('30000000000000000000000000000003', 'development_event3', '2025-10-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
-('30000000000000000000000000000004', 'development_future_event', '2026-12-16 20:40:55+02', '2027-12-16 20:40:55+02', '10000000000000000000000000000001'),
-('30000000000000000000000000000005', 'development_past_event', '2023-10-16 20:40:55+02', now() + INTERVAL '2 seconds', '10000000000000000000000000000001');
+('30000000000000000000000000000001', 'development_event1', '2025-8-16 20:40:55+02', '2026-11-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000002', 'development_event2', '2025-9-16 20:40:55+02', '2026-10-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000003', 'development_event3', '2025-10-16 20:40:55+02', '2026-9-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000004', 'development_future_event', '2026-12-16 20:40:55+02', '2027-11-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000005', 'development_past_event', '2023-10-16 20:40:55+02', now() + INTERVAL '2 seconds', '10000000000000000000000000000001'),
+('30000000000000000000000000000006', 'adevelopment_future_event', '2026-11-16 20:40:55+02', '2027-12-16 20:40:55+02', '10000000000000000000000000000001'),
+('30000000000000000000000000000007', 'adevelopment_past_event', '2023-9-16 20:40:55+02', now() + INTERVAL '4 seconds', '10000000000000000000000000000001');
 
 INSERT INTO booths (id, name, event_id, booth_type, created_by)
 VALUES

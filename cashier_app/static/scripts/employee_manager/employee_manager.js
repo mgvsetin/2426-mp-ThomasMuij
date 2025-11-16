@@ -71,60 +71,15 @@ document.addEventListener('click', (event) => {
     // 2. kliknutí -> descending
     // 3. kliknutí .> odendám
     if (headerEl.id === "user-header") {
-      if (orderBy.key !== 'username') {
-        orderBy.key = 'username';
-        orderBy.ascending = true;
-      }
-      else if (orderBy.key === 'username' && orderBy.ascending) {
-        orderBy.ascending = false;
-      } else {
-        orderBy.key = '';
-        orderBy.ascending = true;
-      }
+      toggleOrder('username');
     } else if (headerEl.id === "email-header") {
-      if (orderBy.key !== 'email') {
-        orderBy.key = 'email';
-        orderBy.ascending = true;
-      }
-      else if (orderBy.key === 'email' && orderBy.ascending) {
-        orderBy.ascending = false;
-      } else {
-        orderBy.key = '';
-        orderBy.ascending = true;
-      }
+      toggleOrder('email');
     } else if (headerEl.id === "is-admin-header") {
-      if (orderBy.key !== 'is_admin') {
-        orderBy.key = 'is_admin';
-        orderBy.ascending = true;
-      }
-      else if (orderBy.key === 'is_admin' && orderBy.ascending) {
-        orderBy.ascending = false;
-      } else {
-        orderBy.key = '';
-        orderBy.ascending = true;
-      }
+      toggleOrder('is_admin');
     } else if (headerEl.id === "created-by-header") {
-      if (orderBy.key !== 'created_by') {
-        orderBy.key = 'created_by';
-        orderBy.ascending = true;
-      }
-      else if (orderBy.key === 'created_by' && orderBy.ascending) {
-        orderBy.ascending = false;
-      } else {
-        orderBy.key = '';
-        orderBy.ascending = true;
-      }
+      toggleOrder('created_by');
     } else if (headerEl.id === "created-at-header") {
-      if (orderBy.key !== 'created_at') {
-        orderBy.key = 'created_at';
-        orderBy.ascending = true;
-      }
-      else if (orderBy.key === 'created_at' && orderBy.ascending) {
-        orderBy.ascending = false;
-      } else {
-        orderBy.key = '';
-        orderBy.ascending = true;
-      }
+      toggleOrder('created_at');
     } else {
       return;
     }
@@ -354,6 +309,19 @@ searchBar.addEventListener('input', (event) => {
 })
 
 
+function toggleOrder(key) {
+  if (orderBy.key !== key) {
+    orderBy.key = key;
+    orderBy.ascending = true;
+  } else if (orderBy.ascending) {
+    orderBy.ascending = false;
+  } else {
+    orderBy.key = '';
+    orderBy.ascending = true;
+  }
+}
+
+
 function isSearchedFor(employee, searchQuery) {
   if (!searchQuery) {
     return true;
@@ -442,6 +410,12 @@ function isSearchedFor(employee, searchQuery) {
 }
 
 
+function addZero(timePart) {
+  timePart = String(timePart);
+  return timePart.length === 1 ? `0${timePart}` : timePart;
+}
+
+
 async function renderTableRows() {
   const employees = await getEmployees();
 
@@ -495,7 +469,7 @@ async function renderTableRows() {
 
     const createdAt = new Date(employee.created_at);
     const createdAtHTML = `
-      ${createdAt.getDate()}/${createdAt.getMonth() + 1}/${createdAt.getFullYear()}, ${createdAt.getHours()}:${createdAt.getMinutes()}:${createdAt.getSeconds()}
+      ${addZero(createdAt.getDate())}/${addZero(createdAt.getMonth() + 1)}/${createdAt.getFullYear()}, ${addZero(createdAt.getHours())}:${addZero(createdAt.getMinutes())}:${addZero(createdAt.getSeconds())}
     `;
 
     const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
@@ -762,7 +736,16 @@ function showAddErrors(error) {
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'db_integrity_error':
-      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
+      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel.');
+      return;
+    case 'missing_username':
+      setErr(usernameError, 'Chybí uživatelské jméno.');
+      return;
+    case 'missing_email':
+      setErr(emailError, 'Chybí email.');
+      return;
+    case 'missing_password':
+      setErr(passwordError, 'Chybí heslo.');
       return;
     case 'invalid_email':
       setErr(emailError, 'Neplatný e-mail.');
