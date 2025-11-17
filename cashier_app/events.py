@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import timezone
+from dateutil import parser
 from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 from psycopg import IntegrityError
@@ -40,7 +41,7 @@ def get_events_to_manage():
                     AND booth_id IS NULL
                     ORDER BY e.created_at''',
                     (employee['id'],)).fetchall()
-                
+
     return jsonify(events=events), 200
 
 
@@ -108,7 +109,7 @@ def get_event(event_id):
 
 
 @bp.route('/create', methods=('POST',))
-def add_event(): 
+def add_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -133,27 +134,31 @@ def add_event():
         'created_by': logged_employee['id']
         }
 
+    start_at_utc = None
+    end_at_utc = None
 
     if start_at:
         try:
-            start_at = datetime.fromisoformat(start_at)
-        except ValueError:
+            start_at_dt = parser.isoparse(start_at)
+            start_at_utc = start_at_dt.astimezone(timezone.utc)
+        except (ValueError, TypeError):
             return jsonify(error='invalid_start_at'), 400
-        params['start_at'] = start_at
+        params['start_at'] = start_at_utc
     
     if end_at:
         try:
-            end_at = datetime.fromisoformat(end_at)
-        except ValueError:
+            end_at_dt = parser.isoparse(end_at)
+            end_at_utc = end_at_dt.astimezone(timezone.utc)
+        except (ValueError, TypeError):
             return jsonify(error='invalid_end_at'), 400
         
-        # if end_at < datetime.now():
+        # if end_at_utc < datetime.now():
         #     return jsonify(error='invalid_end_at_date'), 400
 
-        params['end_at'] = end_at
+        params['end_at'] = end_at_utc
     
-    if start_at and end_at:
-        if start_at > end_at:
+    if start_at_utc and end_at_utc:
+        if start_at_utc > end_at_utc:
             return jsonify(error='invalid_start_at_end_at_dates'), 400
 
     cols_str = ', '.join(params.keys())

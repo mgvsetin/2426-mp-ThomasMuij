@@ -93,6 +93,7 @@ def get_db(row_factory=dict_row, autocommit=True, **kwargs):
 
         g.db = psycopg.connect(conninfo, **requested_args)
         g.db_meta = requested_metadata
+
         return g.db
 
     # připojení je zavřené nebo jinak pokažené

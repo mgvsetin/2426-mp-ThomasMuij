@@ -33,7 +33,8 @@ def create_app(test_config=None):
             host=localhost
             user=postgres
             password=heslo123
-            port=5432""",
+            port=5432
+            options='-c timezone=UTC'""",
         PASSWORD_HASHER_PARAMETERS = {
             'time_cost': 3,
             'memory_cost': 65536,

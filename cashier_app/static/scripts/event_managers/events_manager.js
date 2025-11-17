@@ -1,5 +1,7 @@
+import { formatDateTimeISOToDisplay, isValidDate } from "../general/date_utils.js";
 import { getEvents, resetEventsCache } from "../general/events.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
+import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
@@ -157,6 +159,33 @@ document.addEventListener('submit', async (event) => {
 
     const formData = new FormData(addForm);
 
+    const startAtStr = formData.get('start-at');
+    const endAtStr = formData.get('end-at');
+
+    const startAt = new Date(startAtStr);
+    const endAt = new Date(endAtStr);
+
+    if (startAtStr && !isValidDate(startAt)) {
+      showAddEventErrors('invalid_start_at');
+      saveButton.disabled = false;
+      return;
+    }
+    if (endAtStr && !isValidDate(endAt)) {
+      showAddEventErrors('invalid_end_at');
+      saveButton.disabled = false;
+      return;
+    }
+
+    if (startAtStr) {
+      const startAtIsoUtc = startAt.toISOString();
+      formData.set('start-at', startAtIsoUtc);
+    }
+    
+    if (endAtStr) {
+      const endAtIsoUtc = endAt.toISOString();
+      formData.set('end-at', endAtIsoUtc);
+    }
+
     formData.set('name', formData.get('name').trim());
 
     try {
@@ -219,25 +248,6 @@ function toggleOrder(key) {
     orderBy.key = '';
     orderBy.ascending = true;
   }
-}
-
-function safeParse(str) {
-  try {
-    return JSON.parse(str);
-  } catch (err) {
-    return null;
-  }
-}
-
-function addZero(timePart) {
-  timePart = String(timePart);
-  return timePart.length === 1 ? `0${timePart}` : timePart;
-}
-
-function formatDateTimeISOToDisplay(isoString) {
-  if (!isoString) return '-'
-  const d = new Date(isoString);
-  return `${addZero(d.getDate())}/${addZero(d.getMonth() + 1)}/${d.getFullYear()}, ${addZero(d.getHours())}:${addZero(d.getMinutes())}:${addZero(d.getSeconds())}`
 }
 
 
@@ -469,8 +479,11 @@ function showAddEventErrors(error) {
     return;
   }
 
-  const str = String(error);
-  switch (str) {
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
     case 'insufficient_priviliges':
       setErr(generalError, 'Nemáte oprávnění vytvořit akci.');
       return;
@@ -496,15 +509,36 @@ function showAddEventErrors(error) {
       break;
   }
 
-  setErr(generalError, str);
-}
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
 
-
-function escapeHTML(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  setErr(generalError, errorStr);
 }

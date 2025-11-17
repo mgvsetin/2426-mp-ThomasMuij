@@ -1,5 +1,7 @@
+import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
 import { getEmployees, resetEmployeesCache } from "../general/employees.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
+import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
 
@@ -334,10 +336,7 @@ function isSearchedFor(employee, searchQuery) {
   const email = employee.email.toLowerCase();
   const isAdmin = employee.is_admin ? 'ano' : 'ne';
   const createdBy = employee.created_by ? employee.created_by.toLowerCase() : '-'
-  const createdAtDate = new Date(employee.created_at);
-  const createdAt = `
-    ${createdAtDate.getDate()}/${createdAtDate.getMonth() + 1}/${createdAtDate.getFullYear()}${createdAtDate.getHours()}:${createdAtDate.getMinutes()}:${createdAtDate.getSeconds()}
-  `;
+  const createdAt = formatDateTimeISOToDisplay(employee.created_at);
 
   const employeeInfo = `
     ${id}
@@ -410,12 +409,6 @@ function isSearchedFor(employee, searchQuery) {
 }
 
 
-function addZero(timePart) {
-  timePart = String(timePart);
-  return timePart.length === 1 ? `0${timePart}` : timePart;
-}
-
-
 async function renderTableRows() {
   const employees = await getEmployees();
 
@@ -467,11 +460,7 @@ async function renderTableRows() {
       isAdminHTML = '<span class="badge no">NE</span>';
     }
 
-    const createdAt = new Date(employee.created_at);
-    const createdAtHTML = `
-      ${addZero(createdAt.getDate())}/${addZero(createdAt.getMonth() + 1)}/${createdAt.getFullYear()}, ${addZero(createdAt.getHours())}:${addZero(createdAt.getMinutes())}:${addZero(createdAt.getSeconds())}
-    `;
-
+    const createdAtHTML = formatDateTimeISOToDisplay(employee.created_at)
     const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
 
     if (!isSearchedFor(employee, searchQuery)) {
@@ -593,11 +582,10 @@ function openAddEmployeeOverlay() {
 
 function openEditOverlay(row) {
   if (!row) return;
-  let employee;
-  try {
-    employee = JSON.parse(row.getAttribute('data-employee'));
-  } catch (err) {
-    console.error('Failed to parse employee data:', err);
+
+  const employee = safeParse(row.getAttribute('data-employee'));
+  if (!employee) {
+    console.error('Failed to parse employee data');
     return;
   }
 
@@ -863,7 +851,7 @@ function showEditErrors(error) {
     return;
   }
 
-  const resStr = String(error);
+  const resStr = String(error).toLowerCase().trim();
 
   switch (resStr) {
     case 'insufficient_priviliges':
@@ -897,83 +885,81 @@ function showEditErrors(error) {
       break;
   }
 
-  const low = resStr.toLowerCase();
-
-  if (low.includes('username must be at least')) {
-    let limit = low.split('username must be at least ');
+  if (resStr.includes('username must be at least')) {
+    let limit = resStr.split('username must be at least ');
     limit = limit[1].split(' characters')[0];
     setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
     return;
   }
-  if (low.includes('username must be at most')) {
-    let limit = low.split('username must be at most ');
+  if (resStr.includes('username must be at most')) {
+    let limit = resStr.split('username must be at most ');
     limit = limit[1].split(' characters')[0];
     setErr(usernameError, `Maximální délka uživatelského jména je ${limit}..`);
     return;
   }
-  if (low.includes('username must start and end with')) {
-    const allowedChars = low.split('characters: ')[1];
+  if (resStr.includes('username must start and end with')) {
+    const allowedChars = resStr.split('characters: ')[1];
     setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
     return;
   }
-  if (low.includes('username must not contain')) {
+  if (resStr.includes('username must not contain')) {
     setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
     return;
   }
-  if (low.includes('username must not be all numeric')) {
+  if (resStr.includes('username must not be all numeric')) {
     setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
     return;
   }
-  if (low.includes('username must not contain the reserved words')) {
-    const reservedWords = low.split('reserved words: ')[1];
+  if (resStr.includes('username must not contain the reserved words')) {
+    const reservedWords = resStr.split('reserved words: ')[1];
     setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
     return;
   }
 
-  if (low.includes('invalid_email')) {
+  if (resStr.includes('invalid_email')) {
     setErr(emailError, 'Email není platný');
     return;
   }
 
-  if (low.includes('password must be at least')) {
-    let limit = low.split('password must be at least ');
+  if (resStr.includes('password must be at least')) {
+    let limit = resStr.split('password must be at least ');
     limit = limit[1].split(' characters')[0];
     setErr(passwordError, `Minimální délka hesla je ${limit}.`);
     return;
   }
-  if (low.includes('password must not contain spaces or tabs')) {
+  if (resStr.includes('password must not contain spaces or tabs')) {
     setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
     return;
   }
-  if (low.includes('uppercase')) {
+  if (resStr.includes('uppercase')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
     return;
   }
-  if (low.includes('lowercase')) {
+  if (resStr.includes('lowercase')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
     return;
   }
-  if (low.includes('digit')) {
+  if (resStr.includes('digit')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
     return;
   }
-  if (low.includes('special character')) {
+  if (resStr.includes('special character')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
     return;
   }
-  if (low.includes('too common')) {
+  if (resStr.includes('too common')) {
     setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
     return;
   }
-  if (low.includes('must not contain the username')) {
+  if (resStr.includes('must not contain the username')) {
     setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
     return;
   }
-  if (low.includes('must not contain the email local-part')) {
+  if (resStr.includes('must not contain the email local-part')) {
     setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
     return;
   }
-  if (low.includes('repeated characters')) {
+  if (resStr.includes('repeated characters')) {
     setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
     return;
   }
@@ -1026,11 +1012,9 @@ function showDeleteErrors(error) {
 
 function openDeleteOverlay(row) {
   if (!row) return;
-  let employee;
-  try {
-    employee = JSON.parse(row.getAttribute('data-employee'));
-  } catch (err) {
-    console.error('Failed to parse employee data:', err);
+  const employee = safeParse(row.getAttribute('data-employee'));
+  if (!employee) {
+    console.error('Failed to parse employee data');
     return;
   }
 
@@ -1187,14 +1171,4 @@ async function deleteEmployee(formData) {
   } catch (error) {
     return 'unexpected_error';
   }
-}
-
-
-function escapeHTML(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
