@@ -4,7 +4,7 @@ from psycopg import IntegrityError
 from argon2 import PasswordHasher
 from cashier_app.events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 from cashier_app.utils.employees import is_manager, validate_username, validate_email, validate_password
 
 bp = Blueprint('employees', __name__, url_prefix='/api/employees')
@@ -16,8 +16,6 @@ def get_employees():
 
     if employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
-    
-    conn = get_db()
 
     if not employee['is_admin']:
         event = load_selected_event()
@@ -25,7 +23,7 @@ def get_employees():
         if not event or not is_manager(employee['id'], event['id']):
             return jsonify(error='admin_or_manager_required'), 403
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             employees = cur.execute('''
                 SELECT e.id, e.username, e.email, e.is_admin, e.created_by, e.created_at
@@ -75,9 +73,8 @@ def add_employee():
     password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
     password_hash = password_hasher.hash(password_raw)        
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
                     INSERT INTO employees
@@ -148,9 +145,8 @@ def edit_employee():
 
     col_updates_str = ', '.join(col_updates)
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f'''
                     UPDATE employees
@@ -193,9 +189,8 @@ def delete_employee():
     if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
         return jsonify(error='insufficient_priviliges'), 403
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE employees

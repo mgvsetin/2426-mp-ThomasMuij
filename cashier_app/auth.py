@@ -9,7 +9,7 @@ from urllib.parse import urlparse, urljoin
 from flask import Blueprint, request, render_template, current_app, session, redirect, url_for, g, jsonify
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -42,9 +42,8 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
     str | None
     ID zaměstnance (řetězec) pokud ověření proběhlo úspěšně, jinak None.
     """
-    conn = get_db()
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             employee = cur.execute('''
                 SELECT id, password_hash
@@ -65,7 +64,7 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
     
     if password_hasher.check_needs_rehash(employee['password_hash']):
         new_hash = password_hasher.hash(password)
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE employees
@@ -107,6 +106,7 @@ def login():
         return jsonify(error='invalid_credentials'), 401
 
     # letwebserver (nginx?) serve static files for performance; Flask can still send_static_file during development.
+
     return current_app.send_static_file('html/login/login.html')
 
 
@@ -122,8 +122,7 @@ def load_logged_in_employee() -> dict | None:
         g.employee = None
         return g.employee
 
-    conn = get_db()
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             g.employee = cur.execute('''
                 SELECT id, username, email, is_admin

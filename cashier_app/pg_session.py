@@ -18,7 +18,7 @@ from werkzeug.datastructures import CallbackDict
 from psycopg.types.json import Json
 from flask import current_app, request, session as flask_session
 
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 
 # 1) Sliding vs fixed expiry
 
@@ -119,16 +119,16 @@ class PgSessionInterface(SessionInterface):
     
     Parametry
     ---------
-    get_db_fn: callable
-    Funkce pro získání DB spojení (defaultně cashier_app.db.get_db).
+    get_db_pool: callable
+    Funkce pro získání DB pool (defaultně cashier_app.db.get_pool).
     table: str
     Název DB tabulky, kam se session ukládají (výchozí 'sessions').
     """
     serializer = json
     session_class = PgSession
 
-    def __init__(self, get_db_fn=get_db, table='sessions'):
-        self.get_db = get_db_fn
+    def __init__(self, get_db_pool=get_pool, table='sessions'):
+        self.get_pool = get_db_pool
         self.table = table
 
     def generate_sid(self):
@@ -163,8 +163,8 @@ class PgSessionInterface(SessionInterface):
         if not sid:
             return self.session_class(sid=None, new=True)
 
-        conn = self.get_db()
-        with conn.transaction():
+        pool = self.get_pool()
+        with pool.connection() as conn:
             with conn.cursor() as cur:
                 row = cur.execute(f'''
                     SELECT data, employee_id, ip, ua_hash, expires_at
@@ -176,7 +176,7 @@ class PgSessionInterface(SessionInterface):
         
         if row['expires_at'] is not None and row['expires_at'] < datetime.datetime.now(datetime.timezone.utc):
             # expired
-            with conn.transaction():
+            with pool.connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(f'''
                         DELETE FROM {self.table}
@@ -225,8 +225,8 @@ class PgSessionInterface(SessionInterface):
         # if session is empty -> delete cookie and DB row
         if not session:
             if session.sid:
-                conn = self.get_db()
-                with conn.transaction():
+                pool = self.get_pool()
+                with pool.connection() as conn:
                     with conn.cursor() as cur:
                         cur.execute(f'''
                             DELETE FROM {self.table}
@@ -255,8 +255,8 @@ class PgSessionInterface(SessionInterface):
         ua_hash = short_ua_hash(request.headers.get('User-Agent', ''))
         ip = client_ip_from_request()
 
-        conn = self.get_db()
-        with conn.transaction():
+        pool = self.get_pool()
+        with pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f"""
                     INSERT INTO {self.table} (id, data, employee_id, ip, ua_hash, modified_at, expires_at)
@@ -298,14 +298,14 @@ class PgSessionInterface(SessionInterface):
 
 
 # --- small helper to delete expired sessions (callable from CLI/cron) ------
-def delete_expired_sessions(conn=None, max_inactive_days: int | None = None) -> int:
+def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> int:
     """Smaže z DB expirované sessiony a (volitelně) staré řádky bez expires_at.
 
 
     Parametry
     ---------
     conn: psycopg.Connection | None
-    Volitelné spojení k DB. Pokud None, použije se get_db().
+    Volitelný pool pro DB. Pokud None, použije se get_pool().
     max_inactive_days: int | None
     Pokud je zadáno, smaže i řádky kde expires_at IS NULL a upraveno bylo
     více než `max_inactive_days` dní.
@@ -323,8 +323,8 @@ def delete_expired_sessions(conn=None, max_inactive_days: int | None = None) -> 
     otherwise uses provided value. If the final threshold is None, only deletes rows with a non-null expires_at.
     """
     close_conn = False
-    if conn is None:
-        conn = get_db()
+    if pool is None:
+        pool = get_pool()
         close_conn = True
 
     if max_inactive_days is None:
@@ -337,7 +337,7 @@ def delete_expired_sessions(conn=None, max_inactive_days: int | None = None) -> 
 
     deleted = 0
 
-    with conn.transaction():
+    with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 DELETE FROM sessions

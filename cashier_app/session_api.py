@@ -1,5 +1,5 @@
 from flask import Blueprint, session, jsonify
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 from cashier_app.events_booths import load_selected_event, load_selected_booth
 from cashier_app.auth import load_logged_in_employee
 
@@ -23,8 +23,7 @@ def account_info():
     
     is_manager = False
     if event:
-        conn = get_db()
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 is_manager = bool(cur.execute('''
                     SELECT 1

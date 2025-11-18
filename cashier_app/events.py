@@ -6,7 +6,7 @@ from psycopg import IntegrityError
 from argon2 import PasswordHasher
 from cashier_app.events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_name
 
 bp = Blueprint('events', __name__, url_prefix='/api/events')
@@ -18,11 +18,9 @@ def get_events_to_manage():
 
     if employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
-    
-    conn = get_db()
 
     if employee['is_admin']:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 events = cur.execute('''
                     SELECT id, name, start_at, end_at, created_at
@@ -30,7 +28,7 @@ def get_events_to_manage():
                     WHERE deleted_at IS NULL
                     ORDER BY created_at''').fetchall()
     else:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 events = cur.execute('''
                     SELECT e.id, e.name, e.start_at, e.end_at, e.created_at
@@ -51,13 +49,11 @@ def get_event(event_id):
 
     if employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
-    
-    conn = get_db()
 
     if not employee['is_admin'] and not is_manager(employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             event = cur.execute('''
                 SELECT id, name, start_at, end_at, created_at, created_by
@@ -164,9 +160,8 @@ def add_event():
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f'''
                     INSERT INTO events
@@ -236,9 +231,8 @@ def edit_employee():
 
     col_updates_str = ', '.join(col_updates)
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f'''
                     UPDATE employees
@@ -281,9 +275,8 @@ def delete_employee():
     if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
         return jsonify(error='insufficient_priviliges'), 403
 
-    conn = get_db()
     try:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
                     UPDATE employees

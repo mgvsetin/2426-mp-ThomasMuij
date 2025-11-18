@@ -5,6 +5,8 @@ registruje blueprinty a nastavuje session interface.
 
 from flask import Flask
 import os
+from datetime import datetime, date, timezone
+from flask.json.provider import DefaultJSONProvider
 
 
 # název funkce je důležitý, aby ji flask spustil
@@ -68,12 +70,21 @@ def create_app(test_config=None):
     #     import time
     #     time.sleep(1)
 
+    # není nutné, ale js teoreticky bere pouze ISO 8601
+    # prakticky funguje i default, ale nemusí vždy fungovat
+    class ISOJSONProvider(DefaultJSONProvider):
+        def default(self, obj):
+            if isinstance(obj, (datetime, date)):
+                if isinstance(obj, date) and not isinstance(obj, datetime):
+                    return obj.isoformat()
+                if obj.tzinfo is None:
+                    obj = obj.replace(tzinfo=timezone.utc)
+
+                return obj.astimezone(timezone.utc).isoformat()
+            
+            return super().default(obj)
     
-    @app.route('/temporary/config') # remove this
-    def temporary():
-        response = [str(k) for k in app.config.items()]
-        response.append(app.instance_path)
-        return response
+    app.json = ISOJSONProvider(app)
     
     from cashier_app import db
     db.init_app(app)
@@ -82,7 +93,7 @@ def create_app(test_config=None):
     from datetime import timedelta
     app.permanent_session_lifetime = timedelta(days=7)
 
-    app.session_interface = PgSessionInterface(get_db_fn=db.get_db)
+    app.session_interface = PgSessionInterface(get_db_pool=db.get_pool)
 
     from cashier_app.pg_session import clear_sessions_command
     app.cli.add_command(clear_sessions_command)
@@ -112,5 +123,17 @@ def create_app(test_config=None):
 
     from cashier_app import events
     app.register_blueprint(events.bp)
+
+    # @app.after_request
+    # def print_sum(a):
+    #     with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
+    #         # import pprint
+    #         # pprint.pprint(db.get_pool().get_stats(), stream=f)
+    #         # print('\n', file=f)
+    #         with db.get_pool().connection() as conn:
+    #             with conn.cursor() as cur:
+    #                 cur.execute("SHOW TIMEZONE")
+    #                 print(cur.fetchone(), file=f)   # should be ('UTC',)
+    #     return a
 
     return app
