@@ -8,6 +8,7 @@ from cashier_app.events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_db
 from cashier_app.utils.events import validate_event_name
+from cashier_app.utils.employees import is_manager
 
 bp = Blueprint('events', __name__, url_prefix='/api/events')
 
@@ -54,7 +55,7 @@ def get_event(event_id):
     
     conn = get_db()
 
-    if not employee['is_admin'] and not is_manager(employee['id'], event_id):
+    if not employee['is_admin'] and not (employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
 
     with conn.transaction():
@@ -180,11 +181,89 @@ def add_event():
 
 
 @bp.route('/edit', methods=('POST',))
-def edit_employee():
+def edit_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
+
+    try:
+        event_id = UUID(request.form.get('id'))
+    except ValueError:
+        return jsonify(error='invalid_id'), 400
+
+    if not event_id:
+        return jsonify(error='missing_id'), 400
+
+    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+        return jsonify(error='insufficient_priviliges'), 403
+
+    name = request.form.get('name', '').strip()
+    start_at = request.form.get('start-at', '').strip()
+    end_at = request.form.get('end-at', '').strip()
+
+    params = {}
+
+    start_at_utc = None
+    end_at_utc = None
+
+    if name:
+        ok, errors = validate_event_name(name)
+        if not ok:
+            return jsonify(error=errors[0]), 400
+        params['name'] = name
+
+    if start_at:
+        try:
+            start_at_dt = parser.isoparse(start_at)
+            start_at_utc = start_at_dt.astimezone(timezone.utc)
+        except (ValueError, TypeError):
+            return jsonify(error='invalid_start_at'), 400
+        params['start_at'] = start_at_utc
+    
+    if end_at:
+        try:
+            end_at_dt = parser.isoparse(end_at)
+            end_at_utc = end_at_dt.astimezone(timezone.utc)
+        except (ValueError, TypeError):
+            return jsonify(error='invalid_end_at'), 400
+        
+        # if end_at_utc < datetime.now():
+        #     return jsonify(error='invalid_end_at_date'), 400
+
+        params['end_at'] = end_at_utc
+    
+    if start_at_utc and end_at_utc:
+        if start_at_utc > end_at_utc:
+            return jsonify(error='invalid_start_at_end_at_dates'), 400
+
+    if not params:
+        return jsonify(error='no_column_to_update'), 400
+
+    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
+    
+
+    conn = get_db()
+    try:
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute(f'''
+                    INSERT INTO events
+                    ({cols_str})
+                    VALUES ({col_values_placeholders})''',
+                    (params))
+    except IntegrityError as e:
+        return jsonify(error='db_integrity_error', detail=str(e)), 400
+
+    return jsonify(), 200
+
+    logged_employee = load_logged_in_employee()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.login')), 401
+
+    if not logged_employee['is_admin'] and not (logged_employee['id'], event_id):
+        return jsonify(error='insufficient_priviliges'), 403
 
     try:
         edit_employee_id = UUID(request.form.get('id'))
