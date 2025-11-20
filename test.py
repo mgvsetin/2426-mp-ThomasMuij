@@ -1,6 +1,9 @@
 a = set()
 print(a)
 
+
+
+
 a.update(['a', 'b', 'a'])
 print(a)
 
