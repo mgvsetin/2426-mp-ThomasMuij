@@ -209,7 +209,7 @@ document.addEventListener('submit', async (event) => {
       }
 
       if (response.status === 400) {
-        showAddEventErrors(data.error || 'invalid_request');
+        showAddEventErrors(data.error || 'invalid_request', data.detail);
         saveButton.disabled = false;
         return;
       }
@@ -462,7 +462,7 @@ function clearAddEventErrors() {
 }
 
 
-function showAddEventErrors(error) {
+function showAddEventErrors(error, detail) {
   const nameError = document.querySelector('#name-add-error');
   const startAtError = document.querySelector('#start-add-error');
   const endAtError = document.querySelector('#end-add-error');
@@ -503,7 +503,11 @@ function showAddEventErrors(error) {
     //   setErr(endAtError, 'Konec nemůže být nastaven do minulosti.');
     //   return;
     case 'db_integrity_error':
-      setErr(nameError, 'Název už má jiná akce.');
+      if (detail.includes('unique_index_events_name_active')) {
+        setErr(nameError, 'Název už má jiná akce.');
+      } else {
+        showAddEventErrors('unexpected_error');
+      }
       return;
     default:
       break;

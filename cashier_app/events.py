@@ -154,10 +154,14 @@ def add_event():
 
         params['end_at'] = end_at_utc
     
-    if start_at_utc and end_at_utc:
-        if start_at_utc > end_at_utc:
-            return jsonify(error='invalid_start_at_end_at_dates'), 400
+    # if start_at_utc and end_at_utc:
+    #     if start_at_utc > end_at_utc:
+    #         return jsonify(error='invalid_start_at_end_at_dates'), 400
+# make html, css and js for my event_manager page. It should contain the event id (mute), name, start and end dates/times, created by (muted) and created at (muted) 
+# It should contain a table of employees linked to that event (either managers (not linked to a booth) or ones linked to a booth (they can be linked to more booths). It should also contain a table of products, their prices and linked booths. then also a table of all the booths of that event. I will give you html, css and js of my events_manager so that you can make it in a similar style. I will also give you the sql.  
+# There should be a button to edit the event (make an overlay similar to the add event overlay in my events_manager page) which allows you to edit the events table. I will give you the backend too (however , it does not yet provide capability to edit other tables linked to an event)
 
+# events.py
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 
@@ -170,6 +174,9 @@ def add_event():
                     VALUES ({col_values_placeholders})''',
                     (params))
     except IntegrityError as e:
+        with open(r'C:\Users\thomas.muijsenberg\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
+            print(str(e), file=f)
+
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
@@ -237,143 +244,75 @@ def edit_event():
 
     col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
     
+    params['id'] = event_id
+    # validate start_at end_at from db?
 
-    conn = get_db()
-    try:
-        with conn.transaction():
-            with conn.cursor() as cur:
-                cur.execute(f'''
-                    INSERT INTO events
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})''',
-                    (params))
-    except IntegrityError as e:
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
-
-    return jsonify(), 200
-
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
-
-    if not logged_employee['is_admin'] and not (logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
-
-    try:
-        edit_employee_id = UUID(request.form.get('id'))
-    except ValueError:
-        return jsonify(error='invalid_id'), 400
-
-    if not edit_employee_id:
-        return jsonify(error='missing_id'), 400
-
-    if not logged_employee['is_admin'] and logged_employee['id'] != edit_employee_id:
-        return jsonify(error='insufficient_priviliges'), 403
-
-    new_username = request.form.get('username', '').strip()
-    new_email = request.form.get('email', '').strip().lower()
-    new_password_raw = request.form.get('password', '')
-
-    col_updates = []
-    params = {'edit_employee_id': edit_employee_id}
-
-    if new_username:
-        ok, errors = validate_username(new_username)
-        if not ok:
-            return jsonify(error=errors[0]), 400
-        col_updates.append('username = %(new_username)s')
-        params['new_username'] = new_username
-    
-    if new_email:
-        ok, errors = validate_email(new_email)
-        if not ok:
-            return jsonify(error="invalid_email"), 400
-        col_updates.append('email = %(new_email)s')
-        params['new_email'] = new_email
-        
-    if new_password_raw:
-        ok, errors = validate_password(new_password_raw)
-        if not ok:
-            return jsonify(error=errors[0]), 400
-        
-        password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
-        new_password_hash = password_hasher.hash(new_password_raw)
-
-        col_updates.append('password_hash = %(new_password_hash)s')
-        params['new_password_hash'] = new_password_hash
-
-        
-
-    if not col_updates:
-        return jsonify(error='no_column_updated'), 400
-
-    col_updates_str = ', '.join(col_updates)
-
+    # add editing event info from other tables
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(f'''
-                    UPDATE employees
+                    UPDATE events
                     SET {col_updates_str}
-                    WHERE id = %(edit_employee_id)s
+                    WHERE id = %(id)s)
                     AND deleted_at IS NULL''',
                     params)
                 rows_affected = cur.rowcount
-
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {edit_employee_id}')
-    except IntegrityError as e:
+                    raise RuntimeError(f'multiple rows updated for id {event_id}')
+    except IntegrityError as e: # can be start_at <= end_at now, do through detail? (add detail check to others?)
+        # with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
+        #     print(e, file=f)
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
-        current_app.logger.exception('multiple rows updated for employee id %s', edit_employee_id)
+        current_app.logger.exception('multiple rows updated for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
 
-
     if rows_affected == 0:
-        return jsonify(error='employee_not_found'), 404
+        return jsonify(error='event_not_found'), 404
 
     return jsonify(), 200
 
 
+
 @bp.route('/delete', methods=('DELETE',))
-def delete_employee():
+def delete_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
 
     try:
-        delete_employee_id = UUID(request.form.get('id'))
+        event_id = UUID(request.form.get('id'))
     except ValueError:
         return jsonify(error='invalid_id'), 400
 
-    if not delete_employee_id:
+    if not event_id:
         return jsonify(error='missing_id'), 400
 
-    if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
+    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute('''
-                    UPDATE employees
+                    UPDATE events
                     SET deleted_at = now()
                     WHERE id = %s
                     AND deleted_at IS NULL''',
-                    (delete_employee_id,))
+                    (event_id,))
                 
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {delete_employee_id}')
+                    raise RuntimeError(f'multiple rows deleted for id {event_id}')
     except RuntimeError:
-        current_app.logger.exception('multiple rows deleted for employee id %s', delete_employee_id)
+        current_app.logger.exception('multiple rows deleted for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
 
 
     if rows_affected == 0:
-        return jsonify(error='employee_not_found'), 404
+        return jsonify(error='event_not_found'), 404
 
     return jsonify(), 200
