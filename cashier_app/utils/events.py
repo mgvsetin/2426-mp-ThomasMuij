@@ -1,4 +1,3 @@
-from cashier_app.db import get_db
 import re
 import unicodedata
 import string

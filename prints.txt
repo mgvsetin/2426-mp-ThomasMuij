@@ -1,2 +1,3 @@
 with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
     print(value, file=f)
+

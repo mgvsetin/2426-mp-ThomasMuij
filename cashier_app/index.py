@@ -1,6 +1,4 @@
-from flask import Blueprint, current_app, jsonify
-from cashier_app.events_booths import load_selected_event, load_selected_booth
-from cashier_app.db import get_db
+from flask import Blueprint, current_app
 
 bp = Blueprint('order', __name__)
 

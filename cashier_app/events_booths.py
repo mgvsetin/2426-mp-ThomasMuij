@@ -7,7 +7,7 @@ Obsahuje dva blueprinty: 'events' (hlavní) a 'booths' (pod '/booths').
 # import functools
 from uuid import UUID
 from flask import Blueprint, request, session, g, jsonify, make_response, url_for
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.employees import is_manager
 
@@ -33,9 +33,8 @@ def get_active_events_for_employee():
     if employee is None:
         return jsonify(redirect_url=url_for('auth.login')), 401
 
-    conn = get_db()
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             if employee['is_admin']:
                 events = cur.execute('''
@@ -87,8 +86,7 @@ def select_event():
     except (TypeError, ValueError):
         return jsonify(error='invalid_event_id'), 400
 
-    conn = get_db()
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             event = cur.execute('''
                 SELECT id
@@ -102,7 +100,7 @@ def select_event():
     
     # ověř zda zaměstanec je spojený s akcí
     if not employee['is_admin']:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 role = cur.execute('''
                     SELECT role
@@ -146,8 +144,7 @@ def load_selected_event() -> dict | None:
         g.event = None
         return g.event
     
-    conn = get_db()
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             g.event = cur.execute('''
                 SELECT id, name, start_at, end_at
@@ -196,7 +193,6 @@ def get_event_booths_for_employee():
     if event is None:
         return jsonify(error='no_selected_event'), 400
     
-    conn = get_db()
 
     all_event_booths_sql = '''
                     SELECT id, name
@@ -204,7 +200,7 @@ def get_event_booths_for_employee():
                     WHERE event_id = %s
                     AND deleted_at IS NULL'''
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             # is_event_manager = 
 
@@ -252,9 +248,8 @@ def select_booth():
     except (TypeError, ValueError):
         return jsonify(error='invalid_booth_id'), 400
 
-    conn = get_db()
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             booth = cur.execute('''
                 SELECT booth_type
@@ -269,7 +264,7 @@ def select_booth():
 
     # ověř zda je zaměstanenc spojený se stánkem:
     if not employee['is_admin']:
-        with conn.transaction():
+        with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 event_link = cur.execute('''
                     SELECT role
@@ -311,9 +306,7 @@ def load_selected_booth():
         g.booth = None
         return g.booth
     
-    conn = get_db()
-    
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             g.booth = cur.execute('''
                 SELECT id, name, event_id, booth_type
@@ -347,9 +340,8 @@ def get_products_and_categories():
     if booth is None:
         return jsonify(error='no_selected_booth'), 400
     
-    conn = get_db()
     
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             products = cur.execute('''
                 SELECT products.id, products.name, products.categories, price.price, images.image_path, images.filename
@@ -364,7 +356,7 @@ def get_products_and_categories():
     for product in products:
         categories.update(product['categories'])
 
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             selectable_categories = cur.execute('''
             SELECT name

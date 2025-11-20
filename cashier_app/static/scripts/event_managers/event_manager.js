@@ -1,326 +1,544 @@
-// event_manager.js
-// Minimal scaffold. Replace /api/... endpoints with your own.
-// Hooks: #event-id-val, #event-name, #event-start, #event-end, #event-created-by, #event-created-at
-// Tables: #employees-table-body, #products-table-body, #booths-table-body
-// Charts: #profit-chart, #products-chart
-
+import { formatDateTimeISOToDisplay, isValidDate } from "../general/date_utils.js";
+import { getEvents, resetEventsCache } from "../general/events.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
+import { escapeHTML, safeParse } from "../general/html_display_utils.js";
+import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
-const employeesTbody = document.querySelector('#employees-table-body');
-const productsTbody = document.querySelector('#products-table-body');
-const boothsTbody = document.querySelector('#booths-table-body');
+const searchBar = document.querySelector('#search-bar');
+const addEventButton = document.querySelector('#add-event-button');
 
-loadPage({ 
+const eventsSplit = document.querySelector('#events-split');
+
+const activeBody = document.querySelector('#active-table-body');
+const futureBody = document.querySelector('#future-table-body');
+const pastBody = document.querySelector('#past-table-body');
+
+const activeCountEl = document.querySelector('#active-count');
+const futureCountEl = document.querySelector('#future-count');
+const pastCountEl = document.querySelector('#past-count');
+
+const tableHeaders = document.querySelectorAll('thead');
+
+const orderBy = { key: '', ascending: true }; // key: 'start_at', 'end_at', 'created_at'
+
+
+async function addAddEventButton() {
+  const sessionInfo = await getSessionInfo();
+  if (!sessionInfo) return;
+  if (!sessionInfo.employee.is_admin) return;
+  addEventButton.classList.add('show');
+}
+addAddEventButton();
+
+
+resetEventsCache();
+loadPage({
+  table: true,
   header: true,
-  sidebar: true,
-  data: true });
+  sidebar: true
+});
 
 async function loadPage({
+  table = false,
   header = false,
-  sidebar = false,
-  data = false } = {}
-) {
-  const tasks = [];
-  if (header) tasks.push(renderHeader());
-  if (sidebar) tasks.push(renderSidebar());
-  if (data) tasks.push(loadEventData());
-  await Promise.all(tasks);
+  sidebar = false } = {}) {
+  const toLoad = [];
+  if (table) toLoad.push(renderTableRows());
+  if (header) toLoad.push(renderHeader());
+  if (sidebar) toLoad.push(renderSidebar());
+  await Promise.all(toLoad);
 }
 
-document.addEventListener('click', (event) => {
-  headerClickListeners(event);
-  sidebarClickListeners(event);
 
-  if (event.target.closest('#refresh-event')) {
-    loadEventData();
+document.addEventListener('click', (event) => {
+  const headerClick = headerClickListeners(event);
+  const sidebarClick = sidebarClickListeners(event);
+  if (headerClick || sidebarClick) return;
+
+  if (event.target.matches('#add-event-button')) {
+    openAddEventOverlay();
     return;
   }
-  if (event.target.closest('#add-employee-to-event')) {
-    openAddEmployeeToEventOverlay();
+
+  // klinutí na span v záhlaví
+  // nastavuje řazení
+  const headerEl = event.target.closest('th');
+  if (headerEl && event.target.matches('span')) {
+    const id = headerEl.id || '';
+    // includes protože některé mají -future a -past
+    if (id.includes('name-header')) {
+      toggleOrder('name');
+    } else if (id.includes('start-at-header')) {
+      toggleOrder('start_at');
+    } else if (id.includes('end-at-header')) {
+      toggleOrder('end_at');
+    } else if (id.includes('created-at-header')) {
+      toggleOrder('created_at');
+    } else {
+      return;
+    }
+
+    document.querySelectorAll('.order-by-arrow').forEach(el => el.remove());
+    if (orderBy.key) {
+      // nastavuje šipky v záhlaví (pro aktivní, bodoucí i minulé)
+      const selector = `[id*="${id.split('-header')[0]}-header"]`
+      const headersToMark = document.querySelectorAll(selector);
+      headersToMark.forEach(headerToMark => {
+        const arrow = document.createElement('span');
+        arrow.classList.add('order-by-arrow');
+        arrow.innerHTML = orderBy.ascending ? '&#8595;' : '&#8593;';
+        headerToMark.querySelector('div').append(arrow);
+      })
+    }
+
+    loadPage({
+      table: true
+    });
     return;
   }
-  if (event.target.closest('.employee-link')) {
-    // sample handler for employee row click
-    const id = event.target.closest('tr')?.id;
-    if (id) openEditEmployeeRoleOverlay(id);
+
+  // kliknutí na úpravu akce --> /events/id akce/manager/
+  const editButton = event.target.closest('.edit.icon-btn');
+  if (editButton) {
+    const row = editButton.closest('tr[data-event]');
+    if (!row) return;
+    const eventData = safeParse(row.getAttribute('data-event'));
+    if (!eventData) return;
+    window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager/`;
+    return;
   }
-  if (event.target.closest('#open-graph-modal')) {
-    openGraphModal();
+
+  // kliknutí na řádek ho vybere
+  const row = event.target.closest('tr[data-event]');
+  if (row) {
+    const prevSelected = eventsSplit.querySelector('tr[selected]');
+    if (prevSelected) prevSelected.removeAttribute('selected');
+    row.setAttribute('selected', '');
+    eventsSplit.dataset.selected = row.id;
+    return;
+  }
+
+  // zrušit vybírání akce
+  if (event.target.closest('#add-event-cancel') || event.target.closest('#add-event-modal-close')) {
+    const overlay = document.querySelector('#add-event-overlay');
+    if (overlay) overlay.remove();
+    return;
+  }
+
+  // kliknutí na "nic" odvybere řádek
+  if (!event.target.matches('#search-bar')) {
+    const selected = eventsSplit.querySelector('tr[selected]');
+    if (selected) selected.removeAttribute('selected');
+    eventsSplit.dataset.selected = '';
   }
 });
 
-/* ---------- Data loading ---------- */
+document.addEventListener('dblclick', (event) => {
+  const row = event.target.closest('tr[data-event]');
+  if (!row) return;
+  const eventData = safeParse(row.getAttribute('data-event'));
+  if (!eventData) return;
+  window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager/`;
+});
 
-async function loadEventData() {
-  // Placeholder: your server should provide event + employees + products + booths endpoints.
-  // Example: GET /api/events/selected -> { event: {...}, employees: [...], products: [...], booths: [...] }
-  try {
-    const eventId = location.pathname.split('/')[2];
-    const res = await fetch(`/api/events/${eventId}`);
-    if (res.status === 401) {
-      const json = await res.json();
-      window.location.href = json.redirect_url;
+
+searchBar.addEventListener('input', () => {
+  loadPage({ table: true });
+});
+
+
+document.addEventListener('submit', async (event) => {
+  const addForm = event.target.closest('#add-event-form');
+  if (addForm) {
+    event.preventDefault();
+    const saveButton = addForm.querySelector('#add-event-save');
+    saveButton.disabled = true;
+
+    clearAddEventErrors();
+
+    const formData = new FormData(addForm);
+
+    const startAtStr = formData.get('start-at');
+    const endAtStr = formData.get('end-at');
+
+    const startAt = new Date(startAtStr);
+    const endAt = new Date(endAtStr);
+
+    if (startAtStr && !isValidDate(startAt)) {
+      showAddEventErrors('invalid_start_at');
+      saveButton.disabled = false;
       return;
     }
-    if (!res.ok) throw new Error('failed_to_load_event');
+    if (endAtStr && !isValidDate(endAt)) {
+      showAddEventErrors('invalid_end_at');
+      saveButton.disabled = false;
+      return;
+    }
 
-    const data = await res.json();
-    // expected structure:
-    // data.event, data.employees (array), data.products (array), data.booths (array)
-    renderEventHeader(data.event);
-    renderEmployeesTable(data.employees || []);
-    renderProductsTable(data.products || []);
-    renderBoothsTable(data.booths || []);
-    renderCharts(data.metrics || {}); // optional metrics: profit, products_sold...
-  } catch (err) {
-    console.error('loadEventData:', err);
-    // show minimal error in tables
-    employeesTbody.innerHTML = `<tr><td colspan="7" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
-    productsTbody.innerHTML = `<tr><td colspan="6" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
-    boothsTbody.innerHTML = `<tr><td colspan="7" class="error-message">Nepodařilo se načíst data akce.</td></tr>`;
+    if (startAtStr) {
+      const startAtIsoUtc = startAt.toISOString();
+      formData.set('start-at', startAtIsoUtc);
+    }
+    
+    if (endAtStr) {
+      const endAtIsoUtc = endAt.toISOString();
+      formData.set('end-at', endAtIsoUtc);
+    }
+
+    formData.set('name', formData.get('name').trim());
+
+    try {
+      const response = await fetch('/api/events/create', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showAddEventErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showAddEventErrors(data.error || 'invalid_request');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showAddEventErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      const overlay = document.querySelector('#add-event-overlay');
+      if (overlay) overlay.remove();
+
+      resetEventsCache();
+      loadPage({
+        table: true
+      });
+
+    } catch (err) {
+      showAddEventErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+});
+
+
+function toggleOrder(key) {
+  if (orderBy.key !== key) {
+    orderBy.key = key;
+    orderBy.ascending = true;
+  } else if (orderBy.ascending) {
+    orderBy.ascending = false;
+  } else {
+    orderBy.key = '';
+    orderBy.ascending = true;
   }
 }
 
-/* ---------- Renderers ---------- */
 
-function renderEventHeader(event = {}) {
-  document.getElementById('event-id-val').textContent = event.id || '—';
-  document.getElementById('event-name').textContent = event.name || '—';
-  document.getElementById('event-start').textContent = event.start_at ? formatDateTime(event.start_at) : '—';
-  document.getElementById('event-end').textContent = event.end_at ? formatDateTime(event.end_at) : '—';
-  document.getElementById('event-created-by').textContent = event.created_by || '—';
-  document.getElementById('event-created-at').textContent = event.created_at ? formatDateTime(event.created_at) : '—';
+function isSearchedForEvent(ev, searchQuery) {
+  if (!searchQuery) return true;
+  const queries = searchQuery.toLowerCase().trim().split(/\s+/);
+  const id = String(ev.id || '').toLowerCase();
+  const name = String(ev.name || '').toLowerCase();
+  const startAt = formatDateTimeISOToDisplay(ev.start_at || '').toLowerCase();
+  const endAt = formatDateTimeISOToDisplay(ev.end_at || '').toLowerCase();
+  const created_at = formatDateTimeISOToDisplay(ev.created_at || '').toLowerCase();
+
+  const searchable = `${id} ${name} ${startAt} ${endAt} ${created_at}`;
+
+  for (const q of queries) {
+    if (!q.includes('=')) {
+      if (!searchable.includes(q)) return false;
+    } else {
+      // key=value (id=..., name=..., start_at=..., end_at=...)
+      const [k, v] = q.split('=');
+      if (['id', 'identifier'].includes(k)) {
+        if (!id.includes(v)) return false;
+      } else if (['name', 'akce', 'nazev', 'název'].includes(k)) {
+        if (!name.includes(v)) return false;
+      } else if (['start_at', 'začátek', 'zacatek'].includes(k)) {
+        if (!startAt.includes(v)) return false;
+      } else if (['end_at', 'konec'].includes(k)) {
+        if (!endAt.includes(v)) return false;
+      } else if (['created_at', 'vytvořena', 'vytvorena'].includes(k)) {
+        if (!created_at.includes(v)) return false;
+      } else {
+        if (!searchable.includes(q)) return false;
+      }
+    }
+  }
+  return true;
 }
 
-function renderEmployeesTable(employees = []) {
-  // employees: { id, username, email, role, booths: [{id, name}, ...], created_by, created_at }
-  if (!employees.length) {
-    employeesTbody.innerHTML = `<tr><td class="error-message" colspan="7">Žádní zaměstnanci přiřazení k této akci.</td></tr>`;
+
+function sorter(a, b) {
+  if (!orderBy.key) return 0;
+  const key = orderBy.key;
+  let aa = a[key] || '';
+  let bb = b[key] || '';
+
+  if (key === 'start_at' || key === 'end_at' || key === 'created_at') {
+    aa = aa ? new Date(aa).getTime() : Infinity;
+    bb = bb ? new Date(bb).getTime(): 0;
+    return (aa - bb) * (orderBy.ascending ? 1 : -1);
+  }
+
+  aa = String(aa).toLowerCase();
+  bb = String(bb).toLowerCase();
+  return aa.localeCompare(bb) * (orderBy.ascending ? 1 : -1);
+}
+
+
+function renderRowsFromList(list, tbody) {
+  const searchQuery = searchBar.value;
+  let rows = '';
+  let idx = 1;
+
+  for (const ev of list) {
+    if (!isSearchedForEvent(ev, searchQuery)) continue;
+
+    const createdAtStr = formatDateTimeISOToDisplay(ev.created_at);
+    const startAtStr = formatDateTimeISOToDisplay(ev.start_at);
+    const endAtStr = formatDateTimeISOToDisplay(ev.end_at);
+    const safeEv = escapeHTML(JSON.stringify(ev));
+
+    rows += `
+        <tr id="${escapeHTML(String(ev.id))}" data-event='${safeEv}'>
+          <td>${idx}</td>
+          <td class="event-name">${escapeHTML(ev.name || '-')} <span class="id-muted muted">(${escapeHTML(ev.id)})</span></td>
+          <td class="datetime">${startAtStr}</td>
+          <td class="datetime">${endAtStr}</td>
+          <td class="created-at muted">${createdAtStr}</td>
+          <td class="actions">
+            <button class="icon-btn edit" title="Otevřít správu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+          </td>
+        </tr>
+      `;
+    idx += 1;
+  }
+
+  tbody.innerHTML = rows || `<tr><td class="muted" colspan="6">Žádné položky.</td></tr>`;
+}
+
+
+async function renderTableRows() {
+  const events = await getEvents();
+
+  if (events === 'unexpected_error') {
+    const errHTML = `<tr><td class="error-message" colspan="6">Nepovedlo se načíst akce.</td></tr>`;
+    activeBody.innerHTML = errHTML;
+    futureBody.innerHTML = errHTML;
+    pastBody.innerHTML = errHTML;
     return;
   }
 
-  let html = '';
-  let n = 1;
-  for (const emp of employees) {
-    const boothsHtml = (emp.booths || []).map(b => `<span class="small-chip" title="${escapeHtml(b.name)}">${escapeHtml(b.name)}</span>`).join(' ');
-    const createdAt = emp.created_at ? formatDateTime(emp.created_at) : '-';
-    const role = emp.role || '—';
-    html += `
-      <tr id="${emp.id}" data-employee='${escapeHtml(JSON.stringify(emp))}'>
-        <td>${n}</td>
-        <td class="username">${escapeHtml(emp.username || '-')} <span class="id muted">(${escapeHtml(emp.id || '-')})</span></td>
-        <td>${escapeHtml(role)}</td>
-        <td><div class="small-list">${boothsHtml || '-'}</div></td>
-        <td class="muted">${escapeHtml(emp.created_by || '-')}</td>
-        <td class="muted">${createdAt}</td>
-        <td class="actions">
-          <button class="icon-btn edit employee-link" title="Upravit roli/stánky">
-            ✎
+  // rozděl akce
+  const now = new Date();
+
+  const active = [];
+  const future = [];
+  const past = [];
+
+  for (const ev of events) {
+    const startAt = ev.start_at ? new Date(ev.start_at) : null;
+    const endAt = ev.end_at ? new Date(ev.end_at) : null;
+
+    if (!startAt && !endAt) future.push(ev);
+    else if (!startAt && endAt >= now) future.push(ev);
+    else if (!startAt && endAt < now) past.push(ev);
+    else if (!endAt && startAt <= now) active.push(ev);
+    else if (!endAt && startAt > now) future.push(ev);
+    else if (startAt <= now && now <= endAt) active.push(ev);
+    else if (startAt > now) future.push(ev);
+    else past.push(ev);
+  }
+
+  if (orderBy.key) {
+    active.sort(sorter);
+    future.sort(sorter);
+    past.sort(sorter);
+  }
+
+
+  renderRowsFromList(active, activeBody);
+  renderRowsFromList(future, futureBody);
+  renderRowsFromList(past, pastBody);
+
+  activeCountEl.textContent = active.length;
+  futureCountEl.textContent = future.length;
+  pastCountEl.textContent = past.length;
+
+  const selectedId = eventsSplit.dataset.selected;
+  if (!selectedId) return;
+  const sel = eventsSplit.querySelector(`[id="${selectedId}"]`);
+  if (sel) sel.setAttribute('selected', '');
+}
+
+
+function openAddEventOverlay() {
+  if (document.querySelector('#add-event-overlay')) {
+    const el = document.querySelector('#add-event-name');
+    if (el) el.focus();
+    return;
+  }
+
+  const overlayHTML = `
+    <div id="add-event-overlay">
+      <div id="add-event-modal">
+        <header id="add-event-modal-header">
+          <h2 id="add-event-overlay-title">Přidat akci</h2>
+          <button id="add-event-modal-close" type="button" aria-label="Zavřít">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </button>
-        </td>
-      </tr>
-    `;
-    n++;
-  }
-  employeesTbody.innerHTML = html;
-}
-
-function renderProductsTable(products = []) {
-  // products: { id, name, price_czk, booths: [{id,name}], created_at }
-  if (!products.length) {
-    productsTbody.innerHTML = `<tr><td class="error-message" colspan="6">Žádné produkty pro tuto akci.</td></tr>`;
-    return;
-  }
-
-  let html = '';
-  let n = 1;
-  for (const p of products) {
-    const boothsHtml = (p.booths || []).map(b => `<span class="small-chip">${escapeHtml(b.name)}</span>`).join(' ');
-    const createdAt = p.created_at ? formatDateTime(p.created_at) : '-';
-    html += `
-      <tr id="${p.id}" data-product='${escapeHtml(JSON.stringify(p))}'>
-        <td>${n}</td>
-        <td class="username">${escapeHtml(p.name || '-')} <span class="id muted">(${escapeHtml(p.id || '-')})</span></td>
-        <td>${typeof p.price_czk === 'number' ? p.price_czk : '-'}</td>
-        <td><div class="small-list">${boothsHtml || '-'}</div></td>
-        <td class="muted">${createdAt}</td>
-        <td class="actions">
-          <button class="icon-btn edit" data-product-edit="${p.id}">✎</button>
-        </td>
-      </tr>
-    `;
-    n++;
-  }
-  productsTbody.innerHTML = html;
-}
-
-function renderBoothsTable(booths = []) {
-  // booths: { id, name, booth_type, auth_required, created_by, created_at }
-  if (!booths.length) {
-    boothsTbody.innerHTML = `<tr><td class="error-message" colspan="7">Žádné stánky pro tuto akci.</td></tr>`;
-    return;
-  }
-
-  let html = '';
-  let n = 1;
-  for (const b of booths) {
-    const createdAt = b.created_at ? formatDateTime(b.created_at) : '-';
-    html += `
-      <tr id="${b.id}" data-booth='${escapeHtml(JSON.stringify(b))}'>
-        <td>${n}</td>
-        <td class="username">${escapeHtml(b.name || '-')} <span class="id muted">(${escapeHtml(b.id || '-')})</span></td>
-        <td>${escapeHtml(b.booth_type || '-')}</td>
-        <td>${b.auth_required ? 'ano' : 'ne'}</td>
-        <td class="muted">${escapeHtml(b.created_by || '-')}</td>
-        <td class="muted">${createdAt}</td>
-        <td class="actions">
-          <button class="icon-btn edit" data-booth-edit="${b.id}">✎</button>
-        </td>
-      </tr>
-    `;
-    n++;
-  }
-  boothsTbody.innerHTML = html;
-}
-
-/* ---------- Charts (placeholders) ---------- */
-
-function renderCharts(metrics = {}) {
-  // metrics could be: { profit_timeseries: [...], products_sold: [...], total_profit, transactions_count }
-  document.getElementById('total-profit').textContent = metrics.total_profit ?? '—';
-  document.getElementById('transactions-count').textContent = metrics.transactions_count ?? '—';
-
-  // Simple placeholder drawing without external libs:
-  drawPlaceholderChart('profit-chart', metrics.profit_timeseries || []);
-  drawPlaceholderChart('products-chart', metrics.products_sold || []);
-}
-
-function drawPlaceholderChart(canvasId, series = []) {
-  const c = document.getElementById(canvasId);
-  if (!c) return;
-  const ctx = c.getContext('2d');
-  const w = c.width;
-  const h = c.height;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#f3f7fb';
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#1f6feb';
-  ctx.font = '12px sans-serif';
-  if (!series.length) {
-    ctx.fillStyle = '#6b7280';
-    ctx.fillText('Žádná data', 10, 20);
-    return;
-  }
-  // draw simple bars/line
-  const max = Math.max(...series.map(s => s.value || s));
-  const step = w / series.length;
-  series.forEach((s, i) => {
-    const val = s.value ?? s;
-    const hval = (val / max) * (h - 30);
-    ctx.fillRect(i * step + 6, h - hval - 10, Math.max(6, step - 8), hval);
-  });
-}
-
-/* ---------- Overlays (basic, you can expand) ---------- */
-
-function openAddEmployeeToEventOverlay() {
-  const overlay = `
-    <div id="add-employee-overlay">
-      <div id="add-modal" class="modal-small">
-        <header>
-          <h3>Přidat zaměstnance k akci</h3>
-          <button id="add-employee-close">✖</button>
         </header>
-        <form id="add-employee-form" style="padding:12px;">
-          <label>Employee ID nebo uživatelské jméno<input name="employee_identifier" type="text" required /></label>
-          <label>Role
-            <select name="role">
-              <option value="event_manager">event_manager</option>
-              <option value="seller">seller</option>
-              <option value="cashier">cashier</option>
-            </select>
-          </label>
-          <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:10px;">
-            <button type="button" id="add-employee-cancel">Zrušit</button>
-            <button type="submit" id="add-employee-save">Přidat</button>
+
+        <form id="add-event-form">
+          <div class="form-row">
+            <label for="add-event-name">Název akce</label>
+            <input id="add-event-name" name="name" type="text" placeholder="Název akce" required />
+            <div id="name-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="add-event-start-at">Začátek</label>
+            <input id="add-event-start-at" name="start-at" type="datetime-local" />
+            <div id="start-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="add-event-end-at">Konec</label>
+            <input id="add-event-end-at" name="end-at" type="datetime-local" />
+            <div id="end-add-error" class="add-error"></div>
+          </div>
+
+          <div class="form-row">
+            <div id="general-add-event-error" class="add-error"></div>
+          </div>
+
+          <div id="add-event-form-actions">
+            <button type="button" id="add-event-cancel">Zrušit</button>
+            <button type="submit" id="add-event-save">Vytvořit</button>
           </div>
         </form>
       </div>
     </div>
   `;
-  document.body.insertAdjacentHTML('beforeend', overlay);
 
-  document.getElementById('add-employee-close').addEventListener('click', closeAddEmployeeOverlay);
-  document.getElementById('add-employee-cancel').addEventListener('click', closeAddEmployeeOverlay);
-  document.getElementById('add-employee-form').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    // collect and POST to /api/employee_event_booth_roles/create or similar
-    // after success: reload data
-    closeAddEmployeeOverlay();
-    await loadEventData();
+  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+
+  const focusEl = document.querySelector('#add-event-name');
+  if (focusEl) focusEl.focus();
+}
+
+
+function clearAddEventErrors() {
+  const els = document.querySelectorAll('#add-event-form .add-error, #add-event-form .general-add-error');
+  els.forEach(e => {
+    e.innerHTML = '';
+    e.classList.remove('show-add-error');
   });
 }
 
-function closeAddEmployeeOverlay() {
-  const el = document.getElementById('add-employee-overlay');
-  if (el) el.remove();
-}
 
-function openEditEmployeeRoleOverlay(employeeId) {
-  // read row data
-  const row = document.getElementById(employeeId);
-  if (!row) return;
-  const emp = JSON.parse(row.getAttribute('data-employee'));
-  // build overlay (left as simple example)
-  const overlay = `
-    <div id="edit-role-overlay">
-      <div id="edit-modal" class="modal-small">
-        <header>
-          <h3>Upravit přiřazení — ${escapeHtml(emp.username)}</h3>
-          <button id="edit-role-close">✖</button>
-        </header>
-        <div style="padding:12px;">
-          <p><strong>Role:</strong> ${escapeHtml(emp.role || '')}</p>
-          <p><strong>Stánky:</strong> ${(emp.booths || []).map(b => escapeHtml(b.name)).join(', ') || '-'}</p>
-          <div style="display:flex; gap:8px; justify-content:flex-end; padding-top:10px;">
-            <button id="edit-role-cancel">Zavřít</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.insertAdjacentHTML('beforeend', overlay);
-  document.getElementById('edit-role-close').addEventListener('click', closeEditRoleOverlay);
-  document.getElementById('edit-role-cancel').addEventListener('click', closeEditRoleOverlay);
-}
+function showAddEventErrors(error) {
+  const nameError = document.querySelector('#name-add-error');
+  const startAtError = document.querySelector('#start-add-error');
+  const endAtError = document.querySelector('#end-add-error');
+  const generalError = document.querySelector('#general-add-event-error');
 
-function closeEditRoleOverlay() {
-  const el = document.getElementById('edit-role-overlay');
-  if (el) el.remove();
-}
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-add-error');
+  };
 
-function openGraphModal() {
-  // Expand charts to fullscreen — quick placeholder
-  alert('Tady můžete otevřít fullscreen grafy (implementace dle preferencí).');
-}
-
-/* ---------- Utilities ---------- */
-
-function formatDateTime(iso) {
-  try {
-    const d = new Date(iso);
-    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  } catch (e) {
-    return iso;
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
   }
-}
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění vytvořit akci.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'invalid_start_at':
+      setErr(startAtError, 'Zkuste začátek vybrat znovu.');
+      return;
+    case 'invalid_end_at':
+      setErr(endAtError, 'Zkuste konec vybrat znovu.');
+      return;
+    case 'invalid_start_at_end_at_dates':
+      setErr(generalError, 'Začátek musí být dříve než konec.');
+      return;
+    // case 'invalid_end_at_date':
+    //   setErr(endAtError, 'Konec nemůže být nastaven do minulosti.');
+    //   return;
+    case 'db_integrity_error':
+      setErr(nameError, 'Název už má jiná akce.');
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  setErr(generalError, errorStr);
 }

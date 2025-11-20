@@ -1,7 +1,6 @@
 from flask import Blueprint, current_app, jsonify, url_for, redirect
 from uuid import UUID
 from cashier_app.auth import load_logged_in_employee
-from cashier_app.db import get_db
 from cashier_app.events_booths import load_selected_event
 from cashier_app.utils.employees import is_manager
 

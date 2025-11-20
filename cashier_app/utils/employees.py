@@ -1,4 +1,4 @@
-from cashier_app.db import get_db
+from cashier_app.db import get_pool
 import re
 import unicodedata
 import string
@@ -6,9 +6,8 @@ from typing import List, Tuple
 from email_validator import validate_email as _validate_email, EmailNotValidError
 
 def is_manager(employee_id, event_id):
-    conn = get_db()
     is_manager = False
-    with conn.transaction():
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             is_manager = bool(cur.execute('''
                 SELECT 1
