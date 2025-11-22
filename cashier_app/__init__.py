@@ -7,6 +7,7 @@ from flask import Flask
 import os
 from datetime import datetime, date, timezone
 from flask.json.provider import DefaultJSONProvider
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 # název funkce je důležitý, aby ji flask spustil
@@ -63,6 +64,12 @@ def create_app(test_config=None):
         app.config.from_pyfile('config.py')
     else:
         app.config.from_mapping(test_config)
+
+
+    # pouze když je nastavený nginx (nebo jiný proxy), nastavení x_for=1... musí být přesná
+    # app.wsgi_app = ProxyFix(
+    # app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    # )
 
 
     # @app.before_request

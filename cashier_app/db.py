@@ -176,7 +176,7 @@ def init_app(app: Flask):
         conninfo,
         kwargs={'row_factory': dict_row},
         min_size=1,
-        max_size=10,
+        max_size=5,
         timeout=30,
         # check=ConnectionPool.check_connection,
         open=True) # if process can be preloaded and then forked, use open=False and call pool.open() after fork
