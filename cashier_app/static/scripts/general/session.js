@@ -1,6 +1,6 @@
 export async function getSessionInfo() {
   try {
-    const response = await fetch('/api/session/');
+    const response = await fetch('/api/session');
 
     if (!response.ok) {
       throw new Error('unexpected_error');

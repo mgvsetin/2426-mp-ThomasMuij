@@ -105,7 +105,7 @@ document.addEventListener('click', (event) => {
     if (!row) return;
     const eventData = safeParse(row.getAttribute('data-event'));
     if (!eventData) return;
-    window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager/`;
+    window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
     return;
   }
 
@@ -139,7 +139,7 @@ document.addEventListener('dblclick', (event) => {
   if (!row) return;
   const eventData = safeParse(row.getAttribute('data-event'));
   if (!eventData) return;
-  window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager/`;
+  window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
 });
 
 

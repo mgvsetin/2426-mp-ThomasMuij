@@ -98,7 +98,7 @@ def client_ip_from_request() -> str:
     """
     # If you are behind a reverse proxy, ensure that Flask/your proxy
     # is configured to pass the correct header and that you trust it.
-    xff = request.headers.get('X-Forwarder-For', '')
+    xff = request.headers.get('X-Forwarded-For', '')
     if xff:
         # take the first IP in X-Forwarded-For (the originating IP)
         ips = [p.strip() for p in xff.split(',') if p.strip()]

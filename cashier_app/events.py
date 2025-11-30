@@ -4,21 +4,50 @@ from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 from psycopg import IntegrityError
 from argon2 import PasswordHasher
-from cashier_app.events_booths import load_selected_event
+from cashier_app.employee_events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_name
 from cashier_app.utils.employees import is_manager
 
-bp = Blueprint('events', __name__, url_prefix='/api/events')
+bp = Blueprint('events', __name__, url_prefix='/events')
 
 
-@bp.route('/')
+@bp.route('/manager')
+def get_events_manager_page():
+    # employee = load_logged_in_employee()
+
+    # if employee is None:
+    #     return redirect(url_for('auth.get_login_page'))
+
+    # # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
+    # #     return jsonify(error='insufficient_priviliges'), 403
+
+    return current_app.send_static_file('html/event_managers/events_manager.html')
+
+
+@bp.route('/<uuid:event_id>/manager')
+def get_event_manager_page(event_id):
+    # employee = load_logged_in_employee()
+
+    # if employee is None:
+    #     return redirect(url_for('auth.get_login_page'))
+
+    # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
+    #     return jsonify(error='insufficient_priviliges'), 403
+
+    return current_app.send_static_file('html/event_managers/event_manager.html')
+
+
+api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
+
+
+@api_bp.route('')
 def get_events_to_manage():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if employee['is_admin']:
         with get_pool().connection() as conn:
@@ -44,12 +73,12 @@ def get_events_to_manage():
     return jsonify(events=events), 200
 
 
-@bp.route('/<uuid:event_id>')
+@api_bp.route('/<uuid:event_id>')
 def get_event(event_id):
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not employee['is_admin'] and not (employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
@@ -105,12 +134,12 @@ def get_event(event_id):
     return jsonify(event=event, employees=employees, products=products, booths=booths), 200
 
 
-@bp.route('/create', methods=('POST',))
+@api_bp.route('/create', methods=('POST',))
 def add_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin']:
         return jsonify(error='insufficient_priviliges'), 403
@@ -182,12 +211,12 @@ def add_event():
     return jsonify(), 200
 
 
-@bp.route('/edit', methods=('POST',))
+@api_bp.route('/edit', methods=('POST',))
 def edit_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     try:
         event_id = UUID(request.form.get('id'))
@@ -275,12 +304,12 @@ def edit_event():
 
 
 
-@bp.route('/delete', methods=('DELETE',))
+@api_bp.route('/delete', methods=('DELETE',))
 def delete_event():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     try:
         event_id = UUID(request.form.get('id'))

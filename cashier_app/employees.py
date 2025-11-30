@@ -2,20 +2,35 @@ from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 from psycopg import IntegrityError
 from argon2 import PasswordHasher
-from cashier_app.events_booths import load_selected_event
+from cashier_app.employee_events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.employees import is_manager, validate_username, validate_email, validate_password
 
-bp = Blueprint('employees', __name__, url_prefix='/api/employees')
+bp = Blueprint('employees', __name__, url_prefix='/employees')
 
 
-@bp.route('/')
+@bp.route('/manager')
+def get_employees_manager_page():
+    # employee = load_logged_in_employee()
+
+    # if employee is None:
+    #     return redirect(url_for('auth.login'))
+
+    # if not employee['is_admin']:
+    #     return jsonify(error='admin_required'), 403
+    return current_app.send_static_file('html/employee_managers/employees_manager.html')
+
+
+api_bp = Blueprint('employees_api', __name__, url_prefix='/api/employees')
+
+
+@api_bp.route('')
 def get_employees():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not employee['is_admin']:
         event = load_selected_event()
@@ -34,12 +49,12 @@ def get_employees():
     return jsonify(employees=employees), 200
 
 
-@bp.route('/create', methods=('POST',))
-def add_employee(): 
+@api_bp.route('/create', methods=('POST',))
+def add_employee():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin']:
         return jsonify(error='insufficient_priviliges'), 403
@@ -88,12 +103,12 @@ def add_employee():
     return jsonify(), 200
 
 
-@bp.route('/edit', methods=('POST',))
+@api_bp.route('/edit', methods=('POST',))
 def edit_employee():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     try:
         edit_employee_id = UUID(request.form.get('id'))
@@ -171,12 +186,12 @@ def edit_employee():
     return jsonify(), 200
 
 
-@bp.route('/delete', methods=('DELETE',))
+@api_bp.route('/delete', methods=('DELETE',))
 def delete_employee():
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     try:
         delete_employee_id = UUID(request.form.get('id'))

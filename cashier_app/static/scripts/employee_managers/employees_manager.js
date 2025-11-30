@@ -4,6 +4,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
+console.log("here14")
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableWrap = document.querySelector('#table-wrap');

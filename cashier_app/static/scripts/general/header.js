@@ -41,7 +41,7 @@ function initHeader() {
       <div id="account-dropdown">
         <div id="session-info"></div>
         ${newEventButtonHTML}
-        <a id="logout-link" href="/auth/logout">
+        <a id="logout-link" href="/api/auth/logout">
           Odhlásit
         </a>
       </div>

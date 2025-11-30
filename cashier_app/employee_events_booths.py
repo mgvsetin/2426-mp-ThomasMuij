@@ -11,10 +11,10 @@ from cashier_app.db import get_pool
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.employees import is_manager
 
-bp = Blueprint('employee_events', __name__, url_prefix='/api/employees/me/events')
+api_bp = Blueprint('employee_events_api', __name__, url_prefix='/api/employees/me/events')
 
 
-@bp.route('/active')
+@api_bp.route('/active')
 def get_active_events_for_employee():
     """Vrátí aktivní (práve probíhající) události pro přihlášeného zaměstnance.
 
@@ -31,7 +31,7 @@ def get_active_events_for_employee():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
 
     with get_pool().connection() as conn:
@@ -61,7 +61,7 @@ def get_active_events_for_employee():
     return jsonify(events), 200
 
 
-@bp.route('/select', methods=('PUT',))
+@api_bp.route('/select', methods=('PUT',))
 def select_event():
     """Vybere událost pro aktuální session zaměstnance.
 
@@ -78,7 +78,7 @@ def select_event():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     event_id_raw = request.form.get('event')
     try:
@@ -120,7 +120,7 @@ def select_event():
         return jsonify(error='event_not_found_or_inactive'), 404
 
 
-@bp.route('/remove', methods=('DELETE',))
+@api_bp.route('/remove', methods=('DELETE',))
 def remove_event():
     """Odstraní vybranou událost a stánek z aktuální session.
 
@@ -172,10 +172,10 @@ def load_selected_event() -> dict | None:
 
 
 
-bp_booths = Blueprint('booths', __name__, url_prefix='/booths')
+api_booths_bp = Blueprint('booths', __name__, url_prefix='/booths')
 
 
-@bp_booths.route('/active')
+@api_booths_bp.route('/active')
 def get_event_booths_for_employee():
     """Vrátí seznam stánků pro vybranou událost, které může zaměstnanec obsluhovat.
 
@@ -186,7 +186,7 @@ def get_event_booths_for_employee():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     event = load_selected_event()
 
@@ -223,7 +223,7 @@ def get_event_booths_for_employee():
     return jsonify(booths), 200
 
 
-@bp_booths.route('/select', methods=('PUT',))
+@api_booths_bp.route('/select', methods=('PUT',))
 def select_booth():
     """Vybere stánek pro aktuální session.
 
@@ -234,7 +234,7 @@ def select_booth():
     employee = load_logged_in_employee()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     event = load_selected_event()
 
@@ -319,7 +319,7 @@ def load_selected_booth():
     return g.booth
 
 
-@bp_booths.route('/products+categories')
+@api_booths_bp.route('/products+categories')
 def get_products_and_categories():
     """Vrátí produkty a kategorie dostupné pro vybraný stánek.
 
@@ -332,7 +332,7 @@ def get_products_and_categories():
     booth = load_selected_booth()
 
     if employee is None:
-        return jsonify(redirect_url=url_for('auth.login')), 401
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if event is None:
         return jsonify(error='no_selected_event'), 400
@@ -368,4 +368,4 @@ def get_products_and_categories():
     return jsonify(products=products, selectable_categories=selectable_categories), 200
 
 
-bp.register_blueprint(bp_booths)
+api_bp.register_blueprint(api_booths_bp)

@@ -66,16 +66,19 @@ def create_app(test_config=None):
         app.config.from_mapping(test_config)
 
 
-    # pouze když je nastavený nginx (nebo jiný proxy), nastavení x_for=1... musí být přesná
-    # app.wsgi_app = ProxyFix(
-    # app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
-    # )
+    # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
+    app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    )
 
 
-    # @app.before_request
-    # def simulate_slow_connection():
-    #     import time
-    #     time.sleep(1)
+    @app.before_request
+    def simulate_slow_connection():
+        # import time
+        # time.sleep(1)
+        from flask import request
+        with open(r'/home/thoma/code/2426-mp-ThomasMuij/prints.txt', 'a', encoding='utf-8') as f:
+            print(request, file=f)
 
     # není nutné, ale js teoreticky bere pouze ISO 8601
     # prakticky funguje i default, ale nemusí vždy fungovat
@@ -107,29 +110,25 @@ def create_app(test_config=None):
 
     from cashier_app import auth
     app.register_blueprint(auth.bp)
+    app.register_blueprint(auth.api_bp)
 
     from cashier_app import session_api
-    app.register_blueprint(session_api.bp)
+    app.register_blueprint(session_api.api_bp)
 
     from cashier_app import index
     app.register_blueprint(index.bp)
-    # aby fungovalo i url_for('index') (ne jenom url_for('order.index'))
-    app.add_url_rule('/', endpoint='index') # maybe remove, make a general index for employees and users
+    # maybe make a general index for employees and users
 
-    from cashier_app import events_booths
-    app.register_blueprint(events_booths.bp)
-
-    from cashier_app import employee_manager
-    app.register_blueprint(employee_manager.bp)
+    from cashier_app import employee_events_booths
+    app.register_blueprint(employee_events_booths.api_bp)
 
     from cashier_app import employees
     app.register_blueprint(employees.bp)
-
-    from cashier_app import event_managers
-    app.register_blueprint(event_managers.bp)
+    app.register_blueprint(employees.api_bp)
 
     from cashier_app import events
     app.register_blueprint(events.bp)
+    app.register_blueprint(events.api_bp)
 
     # @app.after_request
     # def print_sum(a):

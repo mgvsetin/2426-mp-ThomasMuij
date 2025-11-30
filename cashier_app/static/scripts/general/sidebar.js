@@ -77,7 +77,7 @@ export async function renderSidebar() {
   sidebarLinksHTML += `
     <div id="manager-part">
       <div id="manager-part-title">Manažer</div>
-      <a id="events-manager-link" href="/events/manager/">Spravovat akce</a>
+      <a id="events-manager-link" href="/events/manager">Spravovat akce</a>
     </div>
   `;
   // }
@@ -86,7 +86,7 @@ export async function renderSidebar() {
     sidebarLinksHTML += `
       <div id="admin-part">
         <div id="admin-part-title">Admin</div>
-        <a id="employee-manager-link" href="/admin/employee_manager/">Spravovat zaměstnance</a>
+        <a id="employee-manager-link" href="/employees/manager">Spravovat zaměstnance</a>
       </div>
     `;
   }

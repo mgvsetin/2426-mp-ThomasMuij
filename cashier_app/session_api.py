@@ -1,9 +1,9 @@
 from flask import Blueprint, session, jsonify
 from cashier_app.db import get_pool
-from cashier_app.events_booths import load_selected_event, load_selected_booth
+from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
 from cashier_app.auth import load_logged_in_employee
 
-bp = Blueprint('session', __name__, url_prefix='/api/session')
+api_bp = Blueprint('session_api', __name__, url_prefix='/api/session')
 
 # {
 #   "sub": "user-id-uuid",
@@ -15,8 +15,8 @@ bp = Blueprint('session', __name__, url_prefix='/api/session')
 #   "exp": 169YYY
 # }
 
-@bp.route('/')
-def account_info():
+@api_bp.route('') #/ why does it work with a slash (different from others)??
+def session_info():
     employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()

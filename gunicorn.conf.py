@@ -51,8 +51,9 @@ access_log_format = '%(h)s %(l)s %(u)s %(t)s \u001b[1;38;2;26;176;240m"%(r)s"\u0
 # prob permanent (some require changes)
 wsgi_app = 'cashier_app:create_app()'
 
-# bind = "127.0.0.1:8000" unix:PATH
-workers = min(12, multiprocessing.cpu_count() * 2 + 1)
+# bind = "127.0.0.1:8000" unix:/path/to.sock
+# for unix socket set umask = 0o007
+workers = 2 # min(12, multiprocessing.cpu_count() * 2 + 1)
 
 # ssl config stuff (will be handled by ngingx?)
 

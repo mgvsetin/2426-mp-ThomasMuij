@@ -1,8 +1,7 @@
 from flask import Blueprint, current_app
 
-bp = Blueprint('order', __name__)
+bp = Blueprint('index', __name__, url_prefix='/')
 
-# make it route here if /index
-@bp.route('/')
-def index():
+@bp.route('')
+def get_index_page():
     return current_app.send_static_file('html/index/index.html')

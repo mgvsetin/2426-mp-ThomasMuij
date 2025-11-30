@@ -11,7 +11,16 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from cashier_app.db import get_pool
 
+
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+@bp.route('/login')
+def get_login_page():
+    return current_app.send_static_file('html/login/login.html')
+
+
+api_bp = Blueprint('auth_api', __name__, url_prefix='/api/auth')
 
 # CSRF protection
 # No brute-force protection / rate-limiting / logging of failed attempts
@@ -75,7 +84,7 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
     return employee['id']
 
 
-@bp.route('/login', methods=('GET', 'POST'))
+@api_bp.route('/login', methods=('POST',))
 def login():
     """View pro přihlášení zaměstnance.
 
@@ -84,30 +93,30 @@ def login():
     - GET: vrátí statickou HTML stránku přihlášení (pro vývoj/produkci lze použít webserver)
     - POST: zpracuje přihlašovací údaje, vytvoří session a vrátí JSON s redirect_url nebo chybu.
     """
-    if request.method == 'POST':
-        username_or_email = request.form.get('username-email', '').strip()
-        password = request.form.get('password', '')
-        remember_me = request.form.get('remember-me')
+    # if request.method == 'POST':
+    username_or_email = request.form.get('username-email', '').strip()
+    password = request.form.get('password', '')
+    remember_me = request.form.get('remember-me')
 
-        employee_id = get_employee_id(username_or_email, password)
+    employee_id = get_employee_id(username_or_email, password)
 
-        if employee_id:
-            session.clear()
-            # request that the session cookie be replaced with a new sid when saved
-            session['_regenerate'] = True
-            session['employee_id'] = str(employee_id)
-
-            if remember_me:
-                session.permanent = True
-
-            return jsonify(redirect_url=url_for('order.index')), 201
-
+    if employee_id:
         session.clear()
-        return jsonify(error='invalid_credentials'), 401
+        # request that the session cookie be replaced with a new sid when saved
+        session['_regenerate'] = True
+        session['employee_id'] = str(employee_id)
+
+        if remember_me:
+            session.permanent = True
+
+        return jsonify(redirect_url=url_for('index.get_index_page')), 201
+
+    session.clear()
+    return jsonify(error='invalid_credentials'), 401
 
     # letwebserver (nginx?) serve static files for performance; Flask can still send_static_file during development.
 
-    return current_app.send_static_file('html/login/login.html')
+    # return current_app.send_static_file('html/login/login.html')
 
 
 def load_logged_in_employee() -> dict | None:
@@ -133,12 +142,12 @@ def load_logged_in_employee() -> dict | None:
     return g.employee
 
 
-@bp.route('/logout')
+@api_bp.route('/logout')
 def logout():
     """Odhlásí aktuálního uživatele clearnutím session a přesměrová na login.
     """
     session.clear()
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('auth.get_login_page'))
 
 
 # def login_required(view):
