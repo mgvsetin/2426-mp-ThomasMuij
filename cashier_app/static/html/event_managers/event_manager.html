@@ -4,130 +4,130 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Správa akcí</title>
+  <title>Správa akce</title>
 
   <link rel="stylesheet" href="/static/styles/general/general.css">
   <link rel="stylesheet" href="/static/styles/general/header.css">
   <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/event_managers/events_manager.css">
+  <link rel="stylesheet" href="/static/styles/event_managers/event_manager.css">
 </head>
 
 <body>
   <div id="container">
     <div id="topbar">
-      <div id="search-div">
-        <div id="search-bar-container">
-          <input id="search-bar" placeholder="Vyhledávání" />
-          <div id="search-icon-container">
-            <img id="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
-          </div>
-        </div>
+      <div id="event-search">
+        <input id="search-bar" placeholder="Filtrovat v tabulkách (např. název, stánek ...)">
       </div>
-
-      <button id="add-event-button">
-        + Přidat akci
-      </button>
     </div>
 
     <div id="card">
-      <div id="events-split">
-        <!-- Aktivní -->
-        <section class="events-section" id="active-events-section">
-          <header class="events-section-header">
-            <h3>Aktivní</h3>
-            <div class="section-meta"><span id="active-count">0</span></div>
-          </header>
+      <div id="event-head">
+        <div id="event-info">
+          <div id="event-name">-</div>
+          <div class="id-muted muted" id="event-id">(-)</div>
+          <div id="event-datetime">-</div>
+          <div class="muted-block" style="margin-top:6px;">
+            Vytvořil: <span id="event-created-by" class="muted">-</span>
+            <span class="muted">•</span>
+            <span id="event-created-at" class="muted">-</span>
+          </div>
+        </div>
+        <div id="event-actions">
+          <button id="open-graphs" class="btn btn-ghost">Zobrazit grafy</button>
+          <button id="edit-event" class="btn btn-primary">Upravit akci</button>
+          <button id="delete-event" class="btn">Smazat</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="panel wide" id="booths-panel">
+          <div class="panel-header">
+            <h3>Stánky</h3>
+            <div><button id="add-booth" class="btn">+ Přidat stánek</button></div>
+          </div>
           <div class="table-wrap">
-            <table class="events-table" id="active-table">
+            <table id="booths-table">
               <thead>
                 <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
+                  <th>#</th>
+                  <th>Název</th>
+                  <th>Typ</th>
+                  <th class="muted">ID</th>
+                  <th class="actions">Akce</th>
                 </tr>
               </thead>
-              <tbody id="active-table-body"></tbody>
+              <tbody></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Budoucí -->
-        <section class="events-section" id="future-events-section">
-          <header class="events-section-header">
-            <h3>Budoucí</h3>
-            <div class="section-meta"><span id="future-count">0</span></div>
-          </header>
+        <section class="panel" id="managers-panel">
+          <div class="panel-header">
+            <h3>Manažeři akce</h3>
+            <div><button id="add-manager" class="btn">Přiřadit manažera</button></div>
+          </div>
           <div class="table-wrap">
-            <table class="events-table" id="future-table">
+            <table id="managers-table">
               <thead>
                 <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header-future">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header-future">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header-future">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header-future">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
+                  <th>#</th>
+                  <th>Uživatel</th>
+                  <th class="muted">Email</th>
+                  <th class="actions">Akce</th>
                 </tr>
               </thead>
-              <tbody id="future-table-body"></tbody>
+              <tbody></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Minulé -->
-        <section class="events-section" id="past-events-section">
-          <header class="events-section-header">
-            <h3>Minulé</h3>
-            <div class="section-meta"><span id="past-count">0</span></div>
-          </header>
+        <section class="panel" id="employees-panel">
+          <div class="panel-header">
+            <h3>Ostatní zaměstnanci</h3>
+            <div><button id="add-employee" class="btn">Přiřadit zaměstnance</button></div>
+          </div>
           <div class="table-wrap">
-            <table class="events-table" id="past-table">
+            <table id="employees-table">
               <thead>
                 <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header-past">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header-past">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header-past">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header-past">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
+                  <th>#</th>
+                  <th>Uživatel</th>
+                  <th>Role</th>
+                  <th>Stánky</th>
+                  <th class="actions">Akce</th>
                 </tr>
               </thead>
-              <tbody id="past-table-body"></tbody>
+              <tbody></tbody>
             </table>
           </div>
         </section>
+
+        <section class="panel wide" id="products-panel">
+          <div class="panel-header">
+            <h3>Produkty & Ceny</h3>
+            <div><button id="add-product" class="btn">Přidat produkt</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="products-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Název</th>
+                  <th>Cena (Kč)</th>
+                  <th>Stánky</th>
+                  <th class="actions">Akce</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
 
-  <script type="module" src="/static/scripts/event_managers/events_manager.js"></script>
+  <script type="module" src="/static/scripts/event_managers/event_manager.js"></script>
 </body>
 
 </html>
