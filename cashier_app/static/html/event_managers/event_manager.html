@@ -6,128 +6,601 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Správa akcí</title>
 
-  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <!-- <link rel="stylesheet" href="/static/styles/general/general.css">
   <link rel="stylesheet" href="/static/styles/general/header.css">
   <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/event_managers/events_manager.css">
-</head>
+  <link rel="stylesheet" href="/static/styles/event_managers/event_manager.css"> -->
 
+  <style>
+    /* Base styles inspired by events_manager.css */
+    :root{
+      --bg-start:#f6f8fb;
+      --bg-end:#ffffff;
+      --card-bg:#ffffff;
+      --primary:#0f766e;
+      --accent:#1f6feb;
+      --muted:#6b7280;
+      --panel-border:#e4ecf5;
+      --shadow:0 6px 20px rgba(23,39,55,0.04);
+      --radius:8px;
+      --max-height:65vh;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      padding:62px 8px 12px 8px;
+      background:linear-gradient(180deg,var(--bg-start) 0%,var(--bg-end) 100%);
+      color:#102a43;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    #container{max-width:1200px;margin:0 auto;}
+
+    /* Topbar */
+    #topbar{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:6px;border-radius:6px;background:#fff;border:1px solid #e6eef6;z-index:20}
+    #event-search{flex:1;max-width:640px;display:flex;align-items:center;gap:8px;padding:6px}
+    #event-search input{flex:1;padding:9px 12px;border-radius:100px;border:1px solid #cdd6e6;outline:none}
+
+    .btn{padding:9px 12px;border-radius:10px;border:none;font-weight:600;cursor:pointer}
+    .btn-primary{background:var(--primary);color:white;box-shadow:0 6px 18px rgba(15,118,110,0.1)}
+    .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.06)}
+
+    /* Card */
+    #card{background:var(--card-bg);border:1px solid var(--panel-border);border-radius:10px;padding:18px;margin-top:12px;box-shadow:var(--shadow)}
+
+    /* Event header */
+    #event-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    #event-info h1{margin:0;font-size:1.2rem}
+    .muted{color:var(--muted);font-size:13px}
+    .id-muted{font-size:12px;margin-left:8px;color:var(--muted)}
+
+    /* Grid layout for tables */
+    .grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+
+    .panel{background:#fff;border:1px solid var(--panel-border);border-radius:10px;padding:12px}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .panel-header h3{margin:0;font-size:1rem}
+
+    .table-wrap{overflow:auto;border-radius:8px;border:1px solid #e6eef6;max-height:var(--max-height);}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    thead th{position:sticky;top:0;background:#fbfdff;padding:10px 12px;border-bottom:2px solid #e6eef6;text-align:left;font-weight:700}
+    tbody td{padding:10px 12px;border-bottom:1px solid #f2f6fb;white-space:nowrap}
+    tbody tr:nth-child(even){background:#f7fbff}
+    .actions{min-width:120px;text-align:right}
+    .icon-btn{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:8px;border:1px solid transparent;background:transparent;cursor:pointer;margin-left:8px}
+    .icon-btn.edit{background:#f7fbff;border-color:rgba(31,111,235,0.06);color:#1f6feb}
+
+    /* modal overlay */
+    .overlay{position:fixed;inset:0;background:rgba(10,12,14,0.55);display:flex;align-items:center;justify-content:center;z-index:1200;padding:16px}
+    .modal{width:100%;max-width:720px;background:#fff;border-radius:12px;box-shadow:0 12px 30px rgba(10,10,10,0.24);padding:16px;max-height:90vh;overflow:auto}
+    .form-row{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+    label{font-weight:700;font-size:0.9rem}
+    input[type=text],select,input[type=datetime-local],input[type=number]{padding:10px;border-radius:8px;border:1px solid rgba(0,0,0,0.12)}
+
+    .muted-block{color:var(--muted);font-size:13px}
+
+    /* small responsive tweaks */
+    @media (min-width:900px){.grid{grid-template-columns:1fr 1fr;}.grid .wide{grid-column:1 / -1}}
+  </style>
+</head>
 <body>
+  mozna dej vsechno sem misto navic stranky na grafy
   <div id="container">
     <div id="topbar">
-      <div id="search-div">
-        <div id="search-bar-container">
-          <input id="search-bar" placeholder="Vyhledávání" />
-          <div id="search-icon-container">
-            <img id="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
-          </div>
-        </div>
+      <div id="event-search">
+        <input id="search-bar" placeholder="Filtrovat v tabulkách (např. název, stánek ...)">
       </div>
-
-      <button id="add-event-button">
-        + Přidat akci
-      </button>
+      <button id="open-graphs" class="btn btn-ghost">Zobrazit grafy</button>
+      <button id="edit-event" class="btn btn-primary">Upravit akci</button>
+      <button id="delete-event" class="btn">Smazat</button>
     </div>
 
     <div id="card">
-      <div id="events-split">
-        <!-- Aktivní -->
-        <section class="events-section" id="active-events-section">
-          <header class="events-section-header">
-            <h3>Aktivní</h3>
-            <div class="section-meta"><span id="active-count">0</span></div>
-          </header>
+      <div id="event-head">
+        <div id="event-info">
+          <h1 id="event-name">—</h1>
+          <div class="muted-block">
+            <span id="event-datetime">—</span>
+            <span class="id-muted muted" id="event-id">(—)</span>
+          </div>
+          <div class="muted-block" style="margin-top:6px;">
+            Vytvořil: <span id="event-created-by" class="muted">—</span>
+            <span class="muted">•</span>
+            <span id="event-created-at" class="muted">—</span>
+          </div>
+        </div>
+        <div id="event-actions">
+          <button id="add-booth" class="btn">+ Přidat stánek</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="panel wide" id="booths-panel">
+          <div class="panel-header"><h3>Stánky</h3><div></div></div>
           <div class="table-wrap">
-            <table class="events-table" id="active-table">
+            <table id="booths-table">
               <thead>
-                <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
-                </tr>
+                <tr><th>#</th><th>Název</th><th>Typ</th><th class="muted">ID</th><th class="actions">Akce</th></tr>
               </thead>
-              <tbody id="active-table-body"></tbody>
+              <tbody></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Budoucí -->
-        <section class="events-section" id="future-events-section">
-          <header class="events-section-header">
-            <h3>Budoucí</h3>
-            <div class="section-meta"><span id="future-count">0</span></div>
-          </header>
+        <section class="panel" id="managers-panel">
+          <div class="panel-header"><h3>Manažeři akce</h3><div><button id="add-manager" class="btn">Přiřadit manažera</button></div></div>
           <div class="table-wrap">
-            <table class="events-table" id="future-table">
-              <thead>
-                <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header-future">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header-future">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header-future">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header-future">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
-                </tr>
-              </thead>
-              <tbody id="future-table-body"></tbody>
+            <table id="managers-table">
+              <thead><tr><th>#</th><th>Uživatel</th><th class="muted">Email</th><th class="actions">Akce</th></tr></thead>
+              <tbody></tbody>
             </table>
           </div>
         </section>
 
-        <!-- Minulé -->
-        <section class="events-section" id="past-events-section">
-          <header class="events-section-header">
-            <h3>Minulé</h3>
-            <div class="section-meta"><span id="past-count">0</span></div>
-          </header>
+        <section class="panel" id="employees-panel">
+          <div class="panel-header"><h3>Ostatní zaměstnanci</h3><div><button id="add-employee" class="btn">Přiřadit zaměstnance</button></div></div>
           <div class="table-wrap">
-            <table class="events-table" id="past-table">
-              <thead>
-                <tr>
-                  <th class="counter-header"></th>
-                  <th id="name-header-past">
-                    <div><span>Akce</span></div>
-                  </th>
-                  <th id="start-at-header-past">
-                    <div><span>Začátek</span></div>
-                  </th>
-                  <th id="end-at-header-past">
-                    <div><span>Konec</span></div>
-                  </th>
-                  <th id="created-at-header-past">
-                    <div><span>Vytvořena</span></div>
-                  </th>
-                  <th class="actions-header"></th>
-                </tr>
-              </thead>
-              <tbody id="past-table-body"></tbody>
+            <table id="employees-table">
+              <thead><tr><th>#</th><th>Uživatel</th><th>Role</th><th>Stánky</th><th class="actions">Akce</th></tr></thead>
+              <tbody></tbody>
             </table>
           </div>
         </section>
+
+        <section class="panel wide" id="products-panel">
+          <div class="panel-header"><h3>Produkty & Ceny</h3><div><button id="add-product" class="btn">Přidat produkt</button></div></div>
+          <div class="table-wrap">
+            <table id="products-table">
+              <thead><tr><th>#</th><th>Název</th><th>Cena (Kč)</th><th>Stánky</th><th class="actions">Akce</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
 
-  <script type="module" src="/static/scripts/event_managers/events_manager.js"></script>
+  <!-- Overlays (injected when needed) -->
+
+  <script type="module">
+    // Minimal helpers
+    const escapeHTML = (s='') => String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',"`":'&#96;'}[c]));
+
+    function formatDateTimeISOToDisplay(iso){
+      if(!iso) return '-';
+      try{
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '-';
+        return d.toLocaleString();
+      }catch(e){return '-'}
+    }
+
+    // get event id from url: /events/<uuid>/manager
+    function getEventIdFromPath(){
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      // expect ['events','<id>','manager']
+      if(parts[0] === 'events' && parts.length >= 2){
+        return parts[1];
+      }
+      return null;
+    }
+
+    const eventId = getEventIdFromPath();
+    if(!eventId){
+      document.getElementById('card').innerHTML = '<div class="panel">Nelze určit ID akce z URL.</div>';
+    }
+
+    // cache of fetched data
+    let _data = {event:null, booths:[], employees:[], products:[]};
+
+    async function fetchEvent(){
+      try{
+        const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
+        if(res.status === 401){ const json = await res.json(); window.location.href = json.redirect_url; return; }
+        if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.error||'Chyba při načítání akce'); }
+        const j = await res.json();
+        _data.event = j.event;
+        _data.booths = j.booths || [];
+        _data.employees = j.employees || [];
+        _data.products = j.products || [];
+        renderAll();
+      }catch(err){
+        console.error(err);
+        const card = document.getElementById('card');
+        card.insertAdjacentHTML('afterbegin', `<div class="panel" style="border-color:#f5c6cb;color:#842029">${escapeHTML(String(err.message))}</div>`);
+      }
+    }
+
+    function renderAll(){
+      renderHeader();
+      renderBooths();
+      renderEmployees();
+      renderProducts();
+    }
+
+    function renderHeader(){
+      const ev = _data.event;
+      if(!ev) return;
+      document.getElementById('event-name').textContent = ev.name || '-';
+      const start = formatDateTimeISOToDisplay(ev.start_at);
+      const end = formatDateTimeISOToDisplay(ev.end_at);
+      document.getElementById('event-datetime').textContent = start === '-' && end === '-' ? '-' : `${start} — ${end}`;
+      document.getElementById('event-id').textContent = `(${ev.id})`;
+      document.getElementById('event-created-by').textContent = ev.created_by || '-';
+      document.getElementById('event-created-at').textContent = formatDateTimeISOToDisplay(ev.created_at);
+    }
+
+    function findBoothNameById(id){
+      const b = _data.booths.find(x=>x.id===id);
+      return b ? b.name : id;
+    }
+
+    function renderBooths(){
+      const tbody = document.querySelector('#booths-table tbody');
+      tbody.innerHTML = '';
+      if(!_data.booths || !_data.booths.length){
+        tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné stánky.</td></tr>`; return;
+      }
+      _data.booths.forEach((b,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td class="event-name">${escapeHTML(b.name)}</td>
+          <td>${escapeHTML(b.booth_type)}</td>
+          <td class="muted">${escapeHTML(b.id)}</td>
+          <td class="actions">
+            <button class="icon-btn edit edit-booth" data-id="${b.id}" title="Upravit">✏️</button>
+            <button class="icon-btn delete delete-booth" data-id="${b.id}" title="Smazat">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderEmployees(){
+      const managersBody = document.querySelector('#managers-table tbody');
+      const employeesBody = document.querySelector('#employees-table tbody');
+      managersBody.innerHTML = '';
+      employeesBody.innerHTML = '';
+
+      if(!_data.employees || !_data.employees.length){
+        managersBody.innerHTML = `<tr><td class="muted" colspan="4">Žádní manažeři.</td></tr>`;
+        employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`;
+        return;
+      }
+
+      // employees array: {id, username, email, booths: [{booth_id, role}, ...]}
+      const managers = [];
+      const others = [];
+
+      for(const emp of _data.employees){
+        // filter booths for this event: booth ids that exist in _data.booths
+        const boothsForEvent = (emp.booths||[]).filter(b=> _data.booths.some(x=>x.id===b.booth_id));
+        const hasManagerRole = boothsForEvent.some(b=> b.role === 'event_manager');
+        const assignedBooths = boothsForEvent.filter(b=> b.booth_id).map(b=> ({id:b.booth_id,name:findBoothNameById(b.booth_id),role:b.role}));
+
+        const row = {id:emp.id, username:emp.username, email:emp.email, booths:assignedBooths, role: hasManagerRole ? 'event_manager' : (assignedBooths[0] ? assignedBooths[0].role : '-') };
+        if(hasManagerRole) managers.push(row); else others.push(row);
+      }
+
+      if(managers.length===0){ managersBody.innerHTML = `<tr><td class="muted" colspan="4">Žádní manažeři.</td></tr>`; }
+      managers.forEach((m,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${escapeHTML(m.username)} <div class="muted" style="font-size:12px">(${escapeHTML(m.id)})</div></td>
+          <td class="muted">${escapeHTML(m.email)}</td>
+          <td class="actions">
+            <button class="icon-btn edit edit-employee" data-id="${m.id}" title="Upravit">✏️</button>
+            <button class="icon-btn delete delete-employee" data-id="${m.id}" title="Odebrat">🗑️</button>
+          </td>
+        `;
+        managersBody.appendChild(tr);
+      });
+
+      if(others.length===0){ employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`; }
+      others.forEach((e,i)=>{
+        const boothsStr = e.booths.map(b=>escapeHTML(b.name)).join(', ') || '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${escapeHTML(e.username)} <div class="muted" style="font-size:12px">(${escapeHTML(e.id)})</div></td>
+          <td>${escapeHTML(e.role)}</td>
+          <td>${boothsStr}</td>
+          <td class="actions">
+            <button class="icon-btn edit edit-employee" data-id="${e.id}" title="Upravit">✏️</button>
+            <button class="icon-btn delete delete-employee" data-id="${e.id}" title="Odebrat">🗑️</button>
+          </td>
+        `;
+        employeesBody.appendChild(tr);
+      });
+    }
+
+    function renderProducts(){
+      const tbody = document.querySelector('#products-table tbody');
+      tbody.innerHTML = '';
+      if(!_data.products || !_data.products.length){ tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné produkty nebo ceny.</td></tr>`; return; }
+
+      _data.products.forEach((p,i)=>{
+        const booths = (p.booths||[]).map(b=> findBoothNameById(b.booth_id)).filter(Boolean).join(', ') || '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i+1}</td>
+          <td>${escapeHTML(p.name)}</td>
+          <td>${escapeHTML(String(p.price || '-'))}</td>
+          <td>${escapeHTML(booths)}</td>
+          <td class="actions">
+            <button class="icon-btn edit edit-product" data-id="${p.id}" title="Upravit">✏️</button>
+            <button class="icon-btn delete delete-product" data-id="${p.id}" title="Odebrat">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ========== Modals & Actions (create/edit/delete) ===========
+    function openModal(html){
+      if(document.querySelector('.overlay')) return; // one modal at a time
+      const div = document.createElement('div');
+      div.className = 'overlay';
+      div.innerHTML = `<div class="modal">${html}</div>`;
+      document.body.appendChild(div);
+      div.addEventListener('click', (e)=>{ if(e.target === div) div.remove(); });
+      return div;
+    }
+
+    function closeModal(){ const o = document.querySelector('.overlay'); if(o) o.remove(); }
+
+    // Add Booth
+    document.getElementById('add-booth').addEventListener('click', ()=>{
+      const html = `
+        <header style="display:flex;justify-content:space-between;align-items:center"><h2>Přidat stánek</h2><button id="close-modal">✖</button></header>
+        <div style="margin-top:12px">
+          <div class="form-row"><label>Název</label><input id="booth-name" type="text"/></div>
+          <div class="form-row"><label>Typ</label><select id="booth-type"><option value="seller">seller</option><option value="cashier">cashier</option></select></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Vytvořit</button></div>
+        </div>
+      `;
+      const modal = openModal(html);
+      modal.querySelector('#close-modal').addEventListener('click', closeModal);
+      modal.querySelector('#cancel').addEventListener('click', closeModal);
+      modal.querySelector('#save').addEventListener('click', async ()=>{
+        const name = modal.querySelector('#booth-name').value.trim();
+        const type = modal.querySelector('#booth-type').value;
+        if(!name){ alert('Zadejte název'); return; }
+        // call API to create booth (endpoint may vary - adjust to your backend)
+        try{
+          const form = new FormData();
+          form.set('name', name);
+          form.set('booth_type', type);
+          form.set('event_id', eventId);
+          const res = await fetch('/api/booths/create', {method:'POST', body:form});
+          if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+          closeModal(); fetchEvent();
+        }catch(e){ alert('Nelze vytvořit stánek: '+e.message); }
+      });
+    });
+
+    // open graphs
+    document.getElementById('open-graphs').addEventListener('click', ()=>{
+      // either navigate to a dedicated graphs page or open overlay
+      // We'll navigate to /events/<id>/graphs (implement server-side) as requested
+      window.location.href = `/events/${encodeURIComponent(eventId)}/graphs`;
+    });
+
+    // Edit / Delete Event
+    document.getElementById('edit-event').addEventListener('click', ()=>{
+      const ev = _data.event; if(!ev) return;
+      const html = `
+        <header style="display:flex;justify-content:space-between;align-items:center"><h2>Upravit akci</h2><button id="close-modal">✖</button></header>
+        <div style="margin-top:12px">
+          <div class="form-row"><label>Název</label><input id="event-name-input" type="text" value="${escapeHTML(ev.name||'')}"/></div>
+          <div class="form-row"><label>Začátek</label><input id="event-start-input" type="datetime-local" value="${ev.start_at? new Date(ev.start_at).toISOString().slice(0,16):''}"/></div>
+          <div class="form-row"><label>Konec</label><input id="event-end-input" type="datetime-local" value="${ev.end_at? new Date(ev.end_at).toISOString().slice(0,16):''}"/></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Uložit</button></div>
+        </div>
+      `;
+      const modal = openModal(html);
+      modal.querySelector('#close-modal').addEventListener('click', closeModal);
+      modal.querySelector('#cancel').addEventListener('click', closeModal);
+      modal.querySelector('#save').addEventListener('click', async ()=>{
+        const name = modal.querySelector('#event-name-input').value.trim();
+        const start = modal.querySelector('#event-start-input').value;
+        const end = modal.querySelector('#event-end-input').value;
+        if(!name){ alert('Název je povinný'); return; }
+        try{
+          const form = new FormData(); form.set('id', eventId); form.set('name', name);
+          if(start) form.set('start-at', new Date(start).toISOString());
+          if(end) form.set('end-at', new Date(end).toISOString());
+          const res = await fetch('/api/events/edit', {method:'POST', body:form});
+          if(res.status === 401){ const j=await res.json(); window.location.href = j.redirect_url; return; }
+          if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+          closeModal(); fetchEvent();
+        }catch(e){ alert('Nelze upravit akci: '+e.message); }
+      });
+    });
+
+    document.getElementById('delete-event').addEventListener('click', async ()=>{
+      if(!confirm('Smazat tuto akci? (operace je soft-delete)')) return;
+      try{
+        const form = new FormData(); form.set('id', eventId);
+        const res = await fetch('/api/events/delete', {method:'DELETE', body:form});
+        if(res.status === 401){ const j=await res.json(); window.location.href = j.redirect_url; return; }
+        if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+        // go back to events list
+        window.location.href = '/events/manager';
+      }catch(e){ alert('Nelze smazat akci: '+e.message); }
+    });
+
+    // Delegated actions for booth/edit/delete product/employee
+    document.addEventListener('click', async (ev)=>{
+      const editB = ev.target.closest('.edit-booth');
+      if(editB){
+        const id = editB.dataset.id; const booth = _data.booths.find(b=>b.id===id); if(!booth) return;
+        const html = `
+          <header style="display:flex;justify-content:space-between;align-items:center"><h2>Upravit stánek</h2><button id="close-modal">✖</button></header>
+          <div style="margin-top:12px">
+            <div class="form-row"><label>Název</label><input id="booth-name" type="text" value="${escapeHTML(booth.name)}"/></div>
+            <div class="form-row"><label>Typ</label><select id="booth-type"><option value="seller" ${booth.booth_type==='seller'? 'selected':''}>seller</option><option value="cashier" ${booth.booth_type==='cashier'? 'selected':''}>cashier</option></select></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Uložit</button></div>
+          </div>
+        `;
+        const modal = openModal(html);
+        modal.querySelector('#close-modal').addEventListener('click', closeModal);
+        modal.querySelector('#cancel').addEventListener('click', closeModal);
+        modal.querySelector('#save').addEventListener('click', async ()=>{
+          const name = modal.querySelector('#booth-name').value.trim();
+          const type = modal.querySelector('#booth-type').value;
+          if(!name){ alert('Název je povinný'); return; }
+          try{
+            const form = new FormData(); form.set('id', id); form.set('name', name); form.set('booth_type', type);
+            const res = await fetch('/api/booths/edit', {method:'POST', body:form});
+            if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+            closeModal(); fetchEvent();
+          }catch(e){ alert('Nelze upravit stánek: '+e.message); }
+        });
+        return;
+      }
+
+      const delB = ev.target.closest('.delete-booth');
+      if(delB){
+        const id = delB.dataset.id; if(!confirm('Opravit stánku? Smazat stánek?')) return; // typo preserved? change to Czech wording
+        try{
+          const form = new FormData(); form.set('id', id);
+          const res = await fetch('/api/booths/delete', {method:'DELETE', body:form});
+          if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+          fetchEvent();
+        }catch(e){ alert('Nelze smazat stánek: '+e.message); }
+        return;
+      }
+
+      const editEmp = ev.target.closest('.edit-employee');
+      if(editEmp){
+        const id = editEmp.dataset.id; const emp = _data.employees.find(x=>x.id===id); if(!emp) return;
+        // simple modal to change role or booths assignment (UI only)
+        const availableBooths = _data.booths.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+        const html = `
+          <header style="display:flex;justify-content:space-between;align-items:center"><h2>Upravit zaměstnance</h2><button id="close-modal">✖</button></header>
+          <div style="margin-top:12px">
+            <div class="form-row"><label>Uživatel</label><input type="text" value="${escapeHTML(emp.username)}" disabled/></div>
+            <div class="form-row"><label>Přiřazené stánky (více pro Ctrl/Shift)</label><select id="employee-booths" multiple size="6">${availableBooths}</select></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Uložit</button></div>
+          </div>
+        `;
+        const modal = openModal(html);
+        modal.querySelector('#close-modal').addEventListener('click', closeModal);
+        modal.querySelector('#cancel').addEventListener('click', closeModal);
+        // preselect current booths
+        const sel = modal.querySelector('#employee-booths');
+        const assigned = (emp.booths||[]).map(b=>b.booth_id);
+        for(const opt of sel.options){ if(assigned.includes(opt.value)) opt.selected = true; }
+
+        modal.querySelector('#save').addEventListener('click', async ()=>{
+          const selected = Array.from(sel.selectedOptions).map(o=>o.value);
+          try{
+            // API shape: create role rows for each selected booth or remove others. Implement via backend endpoints.
+            const form = new FormData(); form.set('employee_id', id); form.set('event_id', eventId); form.set('booth_ids', JSON.stringify(selected));
+            const res = await fetch('/api/employee_event_booth_roles/update_for_employee', {method:'POST', body:form});
+            if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+            closeModal(); fetchEvent();
+          }catch(e){ alert('Nelze upravit zaměstnance: '+e.message); }
+        });
+        return;
+      }
+
+      const delEmp = ev.target.closest('.delete-employee');
+      if(delEmp){ const id = delEmp.dataset.id; if(!confirm('Odebrat přiřazení zaměstnance?')) return; try{ const form=new FormData(); form.set('employee_id', id); form.set('event_id', eventId); const res = await fetch('/api/employee_event_booth_roles/delete_for_employee', {method:'DELETE', body:form}); if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); } fetchEvent(); }catch(e){ alert('Nelze odebrat zaměstnance: '+e.message); } return; }
+
+      const editP = ev.target.closest('.edit-product');
+      if(editP){ const id = editP.dataset.id; const p = _data.products.find(x=>x.id===id); if(!p) return; const availableBooths = _data.booths.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join(''); const html = `
+          <header style="display:flex;justify-content:space-between;align-items:center"><h2>Upravit produkt</h2><button id="close-modal">✖</button></header>
+          <div style="margin-top:12px">
+            <div class="form-row"><label>Název</label><input id="prod-name" type="text" value="${escapeHTML(p.name)}"/></div>
+            <div class="form-row"><label>Cena (Kč)</label><input id="prod-price" type="number" value="${escapeHTML(String(p.price||''))}"/></div>
+            <div class="form-row"><label>Přiřadit stánky</label><select id="prod-booths" multiple size="6">${availableBooths}</select></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Uložit</button></div>
+          </div>
+        `; const modal = openModal(html); modal.querySelector('#close-modal').addEventListener('click', closeModal); modal.querySelector('#cancel').addEventListener('click', closeModal); const sel = modal.querySelector('#prod-booths'); const assigned = (p.booths||[]).map(b=>b.booth_id); for(const opt of sel.options){ if(assigned.includes(opt.value)) opt.selected = true; } modal.querySelector('#save').addEventListener('click', async ()=>{ const name = modal.querySelector('#prod-name').value.trim(); const price = modal.querySelector('#prod-price').value; const booths = Array.from(sel.selectedOptions).map(o=>o.value); if(!name || !price){ alert('Vyplňte název a cenu'); return; } try{ const form = new FormData(); form.set('product_id', id); form.set('name', name); form.set('price', price); form.set('booth_ids', JSON.stringify(booths)); const res = await fetch('/api/product_event_prices/update_for_product', {method:'POST', body:form}); if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); } closeModal(); fetchEvent(); }catch(e){ alert('Nelze upravit produkt: '+e.message); } }); return; }
+
+      const delP = ev.target.closest('.delete-product');
+      if(delP){ const id = delP.dataset.id; if(!confirm('Odebrat tento produkt z akce?')) return; try{ const form = new FormData(); form.set('product_id', id); form.set('event_id', eventId); const res = await fetch('/api/product_event_prices/delete_for_product', {method:'DELETE', body:form}); if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); } fetchEvent(); }catch(e){ alert('Nelze odebrat produkt: '+e.message); } return; }
+
+    });
+
+    // Add product and add employee/manager buttons (open small modals)
+    document.getElementById('add-product').addEventListener('click', ()=>{
+      const html = `
+        <header style="display:flex;justify-content:space-between;align-items:center"><h2>Přidat produkt / cenu pro akci</h2><button id="close-modal">✖</button></header>
+        <div style="margin-top:12px">
+          <div class="form-row"><label>Produkt (existující ID)</label><input id="prod-id" type="text" placeholder="UUID produktu (pokud nové, vytvořte produkt jinde)"/></div>
+          <div class="form-row"><label>Cena (Kč)</label><input id="prod-price" type="number"/></div>
+          <div class="form-row"><label>Přiřadit stánky (volitelné)</label><select id="prod-booths" multiple size="6">${_data.booths.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}</select></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Vytvořit</button></div>
+        </div>
+      `;
+      const modal = openModal(html);
+      modal.querySelector('#close-modal').addEventListener('click', closeModal);
+      modal.querySelector('#cancel').addEventListener('click', closeModal);
+      modal.querySelector('#save').addEventListener('click', async ()=>{
+        const productId = modal.querySelector('#prod-id').value.trim(); const price = modal.querySelector('#prod-price').value; const booths = Array.from(modal.querySelector('#prod-booths').selectedOptions).map(o=>o.value);
+        if(!productId || !price){ alert('Vyplňte id produktu a cenu'); return; }
+        try{
+          const form = new FormData(); form.set('product_id', productId); form.set('event_id', eventId); form.set('price', price); form.set('booth_ids', JSON.stringify(booths));
+          const res = await fetch('/api/product_event_prices/create', {method:'POST', body:form});
+          if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+          closeModal(); fetchEvent();
+        }catch(e){ alert('Nelze přidat produkt: '+e.message); }
+      });
+    });
+
+    // add manager / employee
+    document.getElementById('add-manager').addEventListener('click', ()=> openAssignEmployeeModal(true));
+    document.getElementById('add-employee').addEventListener('click', ()=> openAssignEmployeeModal(false));
+
+    function openAssignEmployeeModal(asManager){
+      const html = `
+        <header style="display:flex;justify-content:space-between;align-items:center"><h2>${asManager? 'Přiřadit manažera':'Přiřadit zaměstnance'}</h2><button id="close-modal">✖</button></header>
+        <div style="margin-top:12px">
+          <div class="form-row"><label>Employee ID</label><input id="emp-id" type="text" placeholder="UUID zaměstnance"/></div>
+          ${asManager? '': '<div class="form-row"><label>Stánek (pokud ne manažer)</label><select id="emp-booth"><option value="">-- vyberte --</option>' + _data.booths.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('') + '</select></div>'}
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="cancel" class="btn btn-ghost">Zrušit</button><button id="save" class="btn btn-primary">Přiřadit</button></div>
+        </div>
+      `;
+      const modal = openModal(html);
+      modal.querySelector('#close-modal').addEventListener('click', closeModal);
+      modal.querySelector('#cancel').addEventListener('click', closeModal);
+      modal.querySelector('#save').addEventListener('click', async ()=>{
+        const empId = modal.querySelector('#emp-id').value.trim();
+        const boothId = asManager ? null : (modal.querySelector('#emp-booth').value || null);
+        if(!empId){ alert('Zadejte ID zaměstnance'); return; }
+        try{
+          const form = new FormData(); form.set('employee_id', empId); form.set('event_id', eventId); if(boothId) form.set('booth_id', boothId);
+          const res = await fetch('/api/employee_event_booth_roles/create', {method:'POST', body:form});
+          if(res.status === 401){ const j=await res.json(); window.location.href = j.redirect_url; return; }
+          if(!res.ok){ const j=await res.json().catch(()=>({error:'Chyba'})); throw new Error(j.error||'Chyba'); }
+          closeModal(); fetchEvent();
+        }catch(e){ alert('Nelze přiřadit zaměstnance: '+e.message); }
+      });
+    }
+
+    // initial fetch
+    if(eventId) fetchEvent();
+
+    // simple client-side filtering by search bar (filters across rendered tables)
+    document.getElementById('search-bar').addEventListener('input', (e)=>{
+      const q = e.target.value.trim().toLowerCase();
+      // hide rows that don't match
+      document.querySelectorAll('table tbody tr').forEach(tr=>{
+        const text = tr.textContent.toLowerCase();
+        tr.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+
+  </script>
+
+  <!-- <script type="module" src="/static/scripts/event_managers/event_manager.js"></script> -->
 </body>
 
 </html>

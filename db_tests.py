@@ -7,26 +7,18 @@ def get_db(row_factory=dict_row, **kwargs):
             host=localhost
             user=postgres
             password=heslo123
-            port=5432"""
+            port=5432
+            options='-c timezone=UTC'"""
     
     return psycopg.connect(conninfo, row_factory=row_factory, **kwargs)
 
-
-categories = set()
-for product in [{'categories': ['Jídlo']}, {'categories': ['Jídlo', 'Hamburger']}]:
-    categories.update(product['categories'])
-
-print(categories)
-
 with get_db() as conn:
     with conn.cursor() as cur:
-        selectable_categories = cur.execute('''
-            SELECT name
-            FROM selectable_categories
-            WHERE name = ANY(%s::text[])''',
-            (list(categories),)).fetchall()
+        sessions = cur.execute('''
+            SELECT *
+            FROM sessions''').fetchall()
         
-print(selectable_categories)
+print(sessions)
 
 
 # import sqlite3

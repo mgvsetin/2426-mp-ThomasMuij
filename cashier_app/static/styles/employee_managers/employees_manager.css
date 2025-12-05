@@ -181,6 +181,7 @@ tbody tr[selected] {
 .id.muted {
   font-size: 10px;
   font-weight: 500;
+  display: block;
 }
 
 .email {

@@ -80,7 +80,7 @@ def get_event(event_id):
     if employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
-    if not employee['is_admin'] and not (employee['id'], event_id):
+    if not employee['is_admin'] and not is_manager(employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
 
     with get_pool().connection() as conn:
@@ -186,11 +186,7 @@ def add_event():
     # if start_at_utc and end_at_utc:
     #     if start_at_utc > end_at_utc:
     #         return jsonify(error='invalid_start_at_end_at_dates'), 400
-# make html, css and js for my event_manager page. It should contain the event id (mute), name, start and end dates/times, created by (muted) and created at (muted) 
-# It should contain a table of employees linked to that event (either managers (not linked to a booth) or ones linked to a booth (they can be linked to more booths). It should also contain a table of products, their prices and linked booths. then also a table of all the booths of that event. I will give you html, css and js of my events_manager so that you can make it in a similar style. I will also give you the sql.  
-# There should be a button to edit the event (make an overlay similar to the add event overlay in my events_manager page) which allows you to edit the events table. I will give you the backend too (however , it does not yet provide capability to edit other tables linked to an event)
 
-# events.py
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 

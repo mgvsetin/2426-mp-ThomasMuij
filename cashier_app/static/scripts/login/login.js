@@ -2,7 +2,28 @@ const form = document.querySelector('#login-form');
 const errorMessageElement = document.querySelector('.error-message');
 const submitButton = document.querySelector('#submit-button');
 const showPassword = document.querySelector('.pw-eye');
-const passwordInput = document.querySelector('#password')
+const passwordInput = document.querySelector('#password');
+
+
+async function redirectLoggedIn() {
+  try {
+    const response = await fetch('/api/session');
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.employee) {
+      window.location.href = '/';
+    }
+  } catch (error) {
+    return;
+  }
+}
+
+redirectLoggedIn();
 
 if (form) {
   form.addEventListener('submit', async (event) => {
