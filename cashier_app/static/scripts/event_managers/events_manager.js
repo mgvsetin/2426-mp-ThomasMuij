@@ -4,11 +4,12 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
+import { markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
 
 const searchBar = document.querySelector('#search-bar');
 const addEventButton = document.querySelector('#add-event-button');
 
-const eventsSplit = document.querySelector('#events-split');
+const card = document.querySelector('#card');
 
 const activeBody = document.querySelector('#active-table-body');
 const futureBody = document.querySelector('#future-table-body');
@@ -112,26 +113,22 @@ document.addEventListener('click', (event) => {
   // kliknutí na řádek ho vybere
   const row = event.target.closest('tr[data-event]');
   if (row) {
-    const prevSelected = eventsSplit.querySelector('tr[selected]');
-    if (prevSelected) prevSelected.removeAttribute('selected');
-    row.setAttribute('selected', '');
-    eventsSplit.dataset.selected = row.id;
+    selectRow(row, card);
     return;
   }
 
-  // zrušit vybírání akce
+  // zrušit vytváření akce
   if (event.target.closest('#add-event-cancel') || event.target.closest('#add-event-modal-close')) {
     const overlay = document.querySelector('#add-event-overlay');
     if (overlay) overlay.remove();
     return;
   }
 
-  // kliknutí na "nic" odvybere řádek
-  if (!event.target.matches('#search-bar')) {
-    const selected = eventsSplit.querySelector('tr[selected]');
-    if (selected) selected.removeAttribute('selected');
-    eventsSplit.dataset.selected = '';
+  if (event.target.matches('#search-bar')) {
+    return;
   }
+  // kliknutí na "nic" odvybere řádek
+  unselectRow(card);
 });
 
 document.addEventListener('dblclick', (event) => {
@@ -388,10 +385,7 @@ async function renderTableRows() {
   futureCountEl.textContent = future.length;
   pastCountEl.textContent = past.length;
 
-  const selectedId = eventsSplit.dataset.selected;
-  if (!selectedId) return;
-  const sel = eventsSplit.querySelector(`[id="${selectedId}"]`);
-  if (sel) sel.setAttribute('selected', '');
+  markSelectedRow(card);
 }
 
 

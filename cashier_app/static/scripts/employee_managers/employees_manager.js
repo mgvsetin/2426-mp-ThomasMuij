@@ -3,11 +3,11 @@ import { getEmployees, resetEmployeesCache } from "../general/employees.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
+import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
 
 console.log("here14")
 
 const employeeTableBody = document.querySelector('#employee-table-body');
-const tableWrap = document.querySelector('#table-wrap');
 const tableHeader = document.querySelector('table thead');
 const searchBar = document.querySelector('#search-bar');
 const orderBy = { key: '', ascending: true };
@@ -46,7 +46,7 @@ async function loadPage({
 
 document.addEventListener('click', (event) => {
   const headerClick = headerClickListeners(event);
-  const sidebarClick =  sidebarClickListeners(event);
+  const sidebarClick = sidebarClickListeners(event);
   if (headerClick || sidebarClick) {
     return;
   }
@@ -56,6 +56,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // zavřít přidávání zaměstnance
   const cancelAddButton = event.target.closest('#add-cancel');
   const AddModalClose = event.target.closest('#add-modal-close')
   if (cancelAddButton || AddModalClose) {
@@ -63,11 +64,8 @@ document.addEventListener('click', (event) => {
     if (overlayEl) overlayEl.remove();
     return;
   }
-  // "user-header">Zaměstnanec</th>
-  //               <th id="email-header">Email</th>
-  //               <th id="is-admin-header">Admin</th>
-  //               <th id="created-by-header">Vytvořil</th>
-  //               <th id="created-at-header"
+  
+  // nastavuje řazení (při kliknutí na span v header)
   const headerEl = event.target.closest('th')
   if (headerEl && event.target.matches('span')) {
     // 1. kliknutí -> ascending
@@ -103,6 +101,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // úprava zaměstnance
   const editButton = event.target.closest('.edit.icon-btn');
   if (editButton) {
     const row = editButton.closest('tr[data-employee]');
@@ -110,6 +109,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // zrušit úpravu zaměstnance
   const cancelEditButton = event.target.closest('#edit-cancel');
   const editModalClose = event.target.closest('#edit-modal-close')
   if (cancelEditButton || editModalClose) {
@@ -118,6 +118,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // otevři potvrzení odstranění zaměstnance
   const deleteButton = event.target.closest('.delete.icon-btn');
   if (deleteButton) {
     const row = deleteButton.closest('tr[data-employee]');
@@ -125,6 +126,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // zruš odstranění zaměstnance
   const cancelDeleteButton = event.target.closest('#delete-cancel');
   const deleteModalClose = event.target.closest('#delete-modal-close')
   if (cancelDeleteButton || deleteModalClose) {
@@ -133,6 +135,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  // ukaž nebo skryj heslo a změň oko
   const showPassword = event.target.closest('.pw-eye');
   if (showPassword) {
     const passwordInput = showPassword.parentElement.querySelector('input[name="password"]');
@@ -147,33 +150,17 @@ document.addEventListener('click', (event) => {
     showPassword.classList.toggle('state-hide', isShow);
   }
 
-  const directToEl = event.target.closest('div[data-direct-to]');
-  if (directToEl && employeeTableBody.contains(directToEl)) {
-    const selectedId = employeeTableBody.dataset.selected;
-
-    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-    if (selectedRow) selectedRow.removeAttribute('selected');
-
-    const directToId = directToEl.dataset.directTo;
-    employeeTableBody.dataset.selected = directToId;
-
-    const directToRow = employeeTableBody.querySelector(`[id="${directToId}"]`);
-    if (!directToRow) return;
-    directToRow.setAttribute('selected', '');
-
-    directToRow.scrollIntoView({ behavior: "smooth", block: "center" });
+  // kliknutí na id zaměstance (u vytvořil)
+  const clickedDirectEl = event.target.closest('div[data-direct-to]');
+  if (clickedDirectEl && employeeTableBody.contains(clickedDirectEl)) {
+    directTo(clickedDirectEl, employeeTableBody)
     return;
   }
 
-  const row = event.target.closest('tr');
-  if (row && employeeTableBody.contains(row)) {
-    const selectedId = employeeTableBody.dataset.selected;
-
-    const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-    if (selectedRow) selectedRow.removeAttribute('selected');
-
-    row.setAttribute('selected', '');
-    employeeTableBody.dataset.selected = row.id;
+  // kliknutí na řádek ho vybere
+  const row = event.target.closest('tr[data-employee]');
+  if (row) {
+    selectRow(row, employeeTableBody);
     return;
   }
 
@@ -190,12 +177,7 @@ document.addEventListener('click', (event) => {
   }
 
   // když nebylo kliknuto na nic jiného:
-  const selectedId = employeeTableBody.dataset.selected;
-
-  const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-  if (selectedRow) selectedRow.removeAttribute('selected');
-  employeeTableBody.dataset.selected = '';
-  return;
+  unselectRow(employeeTableBody);
 });
 
 document.addEventListener('dblclick', (event) => {
@@ -205,11 +187,9 @@ document.addEventListener('dblclick', (event) => {
   }
 })
 
-// document.addEventListener('keydown', (event) => {
-//   headerKeydownListeners(event);
-// })
 
 document.addEventListener('submit', async (event) => {
+  // přidej zaměstnance
   const addForm = event.target.closest('#add-form');
   if (addForm) {
     event.preventDefault();
@@ -241,6 +221,8 @@ document.addEventListener('submit', async (event) => {
     return;
   }
 
+
+  // uprav zaměstnance
   const editFrom = event.target.closest('#edit-form');
   if (editFrom) {
     event.preventDefault();
@@ -273,6 +255,7 @@ document.addEventListener('submit', async (event) => {
     return;
   }
 
+  // odstraň zaměstnance
   const deleteForm = event.target.closest('#delete-form');
   if (deleteForm) {
     event.preventDefault();
@@ -495,10 +478,7 @@ async function renderTableRows() {
 
   employeeTableBody.innerHTML = rowsHTML;
 
-  const selectedId = employeeTableBody.dataset.selected;
-
-  const selectedRow = employeeTableBody.querySelector(`[id="${selectedId}"]`);
-  if (selectedRow) selectedRow.setAttribute('selected', '');
+  markSelectedRow(employeeTableBody);
 }
 
 
