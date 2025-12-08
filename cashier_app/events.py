@@ -102,12 +102,13 @@ def get_event(event_id):
                         ) FILTER (WHERE link.employee_id IS NOT NULL),
                         '[]'
                     ) AS booths
-                FROM employees as em
+                FROM employees AS em
                 JOIN employee_event_booth_roles AS link ON link.employee_id = em.id
                 WHERE em.deleted_at IS NULL
+                AND link.event_id = %s
                 GROUP BY em.id
-                ORDER BY em.created_at''', # WHERE link.event_id = %s
-                ).fetchall()
+                ORDER BY em.created_at''',
+                (event_id,)).fetchall()
             
             products = cur.execute('''
                 SELECT p.id, p.name, p.categories, ev_link.price,

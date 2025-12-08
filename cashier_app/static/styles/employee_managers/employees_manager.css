@@ -220,7 +220,7 @@ tbody tr[selected] {
   font-size: 10px;
 }
 
-.created-by div {
+.created-by span {
   padding: 2px 0;
   color: #6b7280;
   cursor: pointer;

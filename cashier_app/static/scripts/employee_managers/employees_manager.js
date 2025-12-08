@@ -151,7 +151,7 @@ document.addEventListener('click', (event) => {
   }
 
   // kliknutí na id zaměstance (u vytvořil)
-  const clickedDirectEl = event.target.closest('div[data-direct-to]');
+  const clickedDirectEl = event.target.closest('span[data-direct-to]');
   if (clickedDirectEl && employeeTableBody.contains(clickedDirectEl)) {
     directTo(clickedDirectEl, employeeTableBody)
     return;
@@ -445,7 +445,7 @@ async function renderTableRows() {
     }
 
     const createdAtHTML = formatDateTimeISOToDisplay(employee.created_at)
-    const createdByHTML = employee.created_by ? `<div data-direct-to="${employee.created_by}">${employee.created_by}</div>` : '-';
+    const createdByHTML = employee.created_by ? `<span data-direct-to="${employee.created_by}">${employee.created_by}</span>` : '-';
 
     if (!isSearchedFor(employee, searchQuery)) {
       return;

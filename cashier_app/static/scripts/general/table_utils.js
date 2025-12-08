@@ -26,6 +26,6 @@ export function directTo(clickedDirectEl, parent) {
   const directToId = clickedDirectEl.dataset.directTo;
   const directToRow = parent.querySelector(`[id="${directToId}"]`);
   if (!directToRow) return;
-  selectRow(directToRow, parent)
+  selectRow(directToRow, parent);
   directToRow.scrollIntoView({ behavior: "smooth", block: "center" });
 }

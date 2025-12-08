@@ -89,7 +89,7 @@ document.addEventListener('click', (event) => {
         const arrow = document.createElement('span');
         arrow.classList.add('order-by-arrow');
         arrow.innerHTML = orderBy.ascending ? '&#8595;' : '&#8593;';
-        headerToMark.querySelector('div').append(arrow);
+        headerToMark.querySelector('div').appendChild(arrow);
       })
     }
 

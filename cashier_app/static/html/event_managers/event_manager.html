@@ -14,21 +14,6 @@
 
 <body>
   <div id="container">
-    <!-- <div id="topbar">
-      <div id="event-search">
-        <input id="search-bar" placeholder="Filtrovat v tabulkách (např. název, stánek ...)">
-      </div>
-    </div> -->
-
-    <div id="search-div">
-      <div id="search-bar-container">
-        <input id="search-bar" placeholder="Vyhledávání" />
-        <div id="search-icon-container">
-          <img id="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
-        </div>
-      </div>
-    </div>
-
     <div id="card">
       <div id="event-head">
         <div id="event-info">
@@ -49,9 +34,17 @@
       </div>
 
       <div class="grid">
-        <section class="panel wide" id="booths-panel">
+        <section class="panel" id="booths-panel">
           <div class="panel-header">
             <h3>Stánky</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="booths-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
             <div><button id="add-booth" class="btn">+ Přidat stánek</button></div>
           </div>
           <div class="table-wrap">
@@ -70,29 +63,17 @@
           </div>
         </section>
 
-        <section class="panel" id="managers-panel">
-          <div class="panel-header">
-            <h3>Manažeři akce</h3>
-            <div><button id="add-manager" class="btn">Přiřadit manažera</button></div>
-          </div>
-          <div class="table-wrap">
-            <table id="managers-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Uživatel</th>
-                  <th class="muted">Email</th>
-                  <th class="actions">Akce</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </section>
-
         <section class="panel" id="employees-panel">
           <div class="panel-header">
-            <h3>Ostatní zaměstnanci</h3>
+            <h3>Zaměstnanci</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="employees-search-bar" placeholder="Vyhledávání"/>
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
             <div><button id="add-employee" class="btn">Přiřadit zaměstnance</button></div>
           </div>
           <div class="table-wrap">
@@ -100,8 +81,8 @@
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Uživatel</th>
-                  <th>Role</th>
+                  <th>Zaměstnanec (prob remove id)</th>
+                  <th>Email</th>
                   <th>Stánky</th>
                   <th class="actions">Akce</th>
                 </tr>
@@ -111,9 +92,17 @@
           </div>
         </section>
 
-        <section class="panel wide" id="products-panel">
+        <section class="panel" id="products-panel">
           <div class="panel-header">
             <h3>Produkty & Ceny</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání"/>
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
             <div><button id="add-product" class="btn">Přidat produkt</button></div>
           </div>
           <div class="table-wrap">
