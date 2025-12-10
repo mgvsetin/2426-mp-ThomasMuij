@@ -63,12 +63,41 @@
           </div>
         </section>
 
+        <section class="panel" id="managers-panel">
+          <div class="panel-header">
+            <h3>Manažeři akce</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="employees-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-manager" class="btn">Přiřadit manažera</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="managers-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Zaměstnanec (prob remove id)</th>
+                  <th>Email</th>
+                  <th>Stánky</th>
+                  <th class="actions">Akce</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="panel" id="employees-panel">
           <div class="panel-header">
             <h3>Zaměstnanci</h3>
             <div class="search-div">
               <div class="search-bar-container">
-                <input class="search-bar" id="employees-search-bar" placeholder="Vyhledávání"/>
+                <input class="search-bar" id="employees-search-bar" placeholder="Vyhledávání" />
                 <div class="search-icon-container">
                   <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
                 </div>
@@ -97,7 +126,7 @@
             <h3>Produkty & Ceny</h3>
             <div class="search-div">
               <div class="search-bar-container">
-                <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání"/>
+                <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání" />
                 <div class="search-icon-container">
                   <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
                 </div>

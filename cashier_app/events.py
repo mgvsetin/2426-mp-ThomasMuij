@@ -130,7 +130,7 @@ def get_event(event_id):
                 FROM booths
                 WHERE event_id = %s
                 AND deleted_at IS NULL''',
-                (event_id,)).fetchall()
+                (event_id,)).fetchall()    
             
     return jsonify(event=event, employees=employees, products=products, booths=booths), 200
 
@@ -341,4 +341,4 @@ def delete_event():
     if rows_affected == 0:
         return jsonify(error='event_not_found'), 404
 
-    return jsonify(), 200
+    return jsonify(), 200[{'id': UUID('40000000-0000-0000-0000-000000000001'), 'name': 'development_booth1_event1_cashier', 'booth_type': 'cashier'}, {'id': UUID('40000000-0000-0000-0000-000000000002'), 'name': 'development_booth2_event1_cashier', 'booth_type': 'cashier'}, {'id': UUID('40000000-0000-0000-0000-000000000003'), 'name': 'development_booth1_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000004'), 'name': 'development_booth2_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000005'), 'name': 'development_booth3_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000006'), 'name': 'development_booth4_event1_seller', 'booth_type': 'seller'}]

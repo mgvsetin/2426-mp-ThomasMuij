@@ -559,7 +559,7 @@ async function loadPage({
   boothsTable = false,
   employeesTable = false,
   productsTable = false } = {}) {
-  fetchEventData
+  if (!_data) await fetchEventData();
   const toLoad = [];
   if (tableHeader) toLoad.push(renderEvent());
   if (header) toLoad.push(renderHeader());
@@ -584,6 +584,8 @@ function getEventIdFromPath() {
 
 
 async function fetchEventData() {
+  console.log('make this return a promise (for repeated calls), add way to clear the _data')
+
   if (!_data.eventId) getEventIdFromPath();
 
   try {
@@ -716,11 +718,14 @@ function renderBooths() {
 }
 
 function renderEmployees() {
+  const managersBody = document.querySelector('#managers-table tbody');
   const employeesBody = document.querySelector('#employees-table tbody');
+  managersBody.innerHTML = '';
   employeesBody.innerHTML = '';
 
   if (!_data.employees || !_data.employees.length) {
-    employeesBody.innerHTML = `<tr><td class="muted" colspan="6">Žádní zaměstnanci.</td></tr>`;
+    managersBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`;
+    employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`;
     return;
   }
 
@@ -738,12 +743,7 @@ function renderEmployees() {
     if (hasManagerRole) managers.push(row); else others.push(row);
   }
 
-  const managerTrSection = document.createElement('tr');
-  managerTrSection.classList.add('employees-section-header');
-  managerTrSection.innerHTML = '<td colspan="5">Manažeři.</td>';
-  employeesBody.appendChild(managerTrSection);
-
-  if (others.length === 0 && managers.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`; }
+  if (managers.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`; }
   managers.forEach((manager, idx) => {
     const tr = document.createElement('tr');
     tr.id = manager.id;
@@ -760,11 +760,7 @@ function renderEmployees() {
     employeesBody.appendChild(tr);
   });
 
-  const employeeTrSection = document.createElement('tr');
-  employeeTrSection.classList.add('employees-section-header');
-  employeeTrSection.innerHTML = '<td colspan="5">Zaměstnanci.</td>';
-  employeesBody.appendChild(employeeTrSection);
-
+  if (others.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`; }
   others.forEach((employee, idx) => {
     const boothsStr = employee.booths.map(b => `<span data-direct-to="${b.id}">${escapeHTML(b.name)}</span>`).join(', ') || '-';
     const tr = document.createElement('tr');
