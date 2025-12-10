@@ -248,8 +248,8 @@ document.addEventListener('click', async (event) => {
           </header>
           <form id="edit-booth-form">
             <div class="form-row">
-              <label for="username">Uživatel</label>
-              <input id="username" type="text" value="${escapeHTML(emp.username)}" disabled/>
+              <label for="emp-username">Uživatel</label>
+              <input id="emp-username" type="text" value="${escapeHTML(emp.username)}" disabled/>
             </div>
             <div class="form-row">
               <label for="employee-booths">Přiřazené stánky (více pro Ctrl/Shift)</label>
