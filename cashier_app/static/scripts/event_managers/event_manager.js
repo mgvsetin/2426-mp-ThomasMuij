@@ -7,9 +7,14 @@ import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/ta
 
 const card = document.querySelector('#card');
 
+let _getEventDataPromise = null;
+const cache_time_ms = 60 * 1000; // 1 minuta
+const eventId = getEventIdFromPath();
 // cache of fetched data
-let _data = { eventId: null, event: null, booths: [], employees: [], products: [] };
-fetchEventData();
+const _eventDataCache = {
+  data: null,
+  expiry: 0
+};
 
 
 loadPage({
@@ -22,7 +27,7 @@ loadPage({
 });
 
 
-document.addEventListener('click', (event) => {
+document.addEventListener('click', async (event) => {
   const headerClick = headerClickListeners(event);
   const sidebarClick = sidebarClickListeners(event);
   if (headerClick || sidebarClick) return;
@@ -40,11 +45,11 @@ document.addEventListener('click', (event) => {
         </header>
         <form id="edit-booth-form">
           <div class="form-row">
-            <label>Název</label>
+            <label for="booth-name">Název</label>
             <input id="booth-name" type="text"/>
           </div>
           <div class="form-row">
-            <label>Typ</label>
+            <label for="booth-type">Typ</label>
             <select id="booth-type">
               <option value="seller">seller</option>
               <option value="cashier">cashier</option></select>
@@ -67,10 +72,11 @@ document.addEventListener('click', (event) => {
         const form = new FormData();
         form.set('name', name);
         form.set('booth_type', type);
-        form.set('event_id', _data.eventId);
+        form.set('event_id', eventId);
         const res = await fetch('/api/booths/create', { method: 'POST', body: form });
         if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-        closeModal(); fetchEventData();
+        closeModal();
+        resetEventDataCache();
       } catch (e) { alert('Nelze vytvořit stánek: ' + e.message); }
     });
     return;
@@ -80,13 +86,13 @@ document.addEventListener('click', (event) => {
   if (event.target.matches('#open-graphs')) {
     // either navigate to a dedicated graphs page or open overlay
     // We'll navigate to /events/<id>/graphs (implement server-side) as requested
-    window.location.href = `/events/${encodeURIComponent(_data.eventId)}/graphs`;
+    window.location.href = `/events/${encodeURIComponent(eventId)}/graphs`;
     return;
   }
 
   // Edit / Delete Event
   if (event.target.matches('#edit-event')) {
-    const ev = _data.event; if (!ev) return;
+    const ev = (await getEventData()).event; if (!ev) return;
     const html = `
         <header>
           <h2>Upravit akci</h2>
@@ -98,15 +104,15 @@ document.addEventListener('click', (event) => {
         </header>
         <form id="edit-booth-form">
           <div class="form-row">
-            <label>Název</label>
+            <label for="event-name-input">Název</label>
             <input id="event-name-input" type="text" value="${escapeHTML(ev.name || '')}"/>
           </div>
           <div class="form-row">
-            <label>Začátek</label>
+            <label for="event-start-input">Začátek</label>
             <input id="event-start-input" type="datetime-local" value="${ev.start_at ? new Date(ev.start_at).toISOString().slice(0, 16) : ''}"/>
           </div>
           <div class="form-row">
-            <label>Konec</label>
+            <label for="event-end-input">Konec</label>
             <input id="event-end-input" type="datetime-local" value="${ev.end_at ? new Date(ev.end_at).toISOString().slice(0, 16) : ''}"/>
           </div>
           <div class="modal-actions">
@@ -124,13 +130,14 @@ document.addEventListener('click', (event) => {
       const end = modal.querySelector('#event-end-input').value;
       if (!name) { alert('Název je povinný'); return; }
       try {
-        const form = new FormData(); form.set('id', _data.eventId); form.set('name', name);
+        const form = new FormData(); form.set('id', eventId); form.set('name', name);
         if (start) form.set('start-at', new Date(start).toISOString());
         if (end) form.set('end-at', new Date(end).toISOString());
         const res = await fetch('/api/events/edit', { method: 'POST', body: form });
         if (res.status === 401) { const j = await res.json(); window.location.href = j.redirect_url; return; }
         if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-        closeModal(); fetchEventData();
+        closeModal();
+        resetEventDataCache();
       } catch (e) { alert('Nelze upravit akci: ' + e.message); }
     });
     return;
@@ -138,6 +145,7 @@ document.addEventListener('click', (event) => {
 
   // Add product and add employee/manager buttons (open small modals)
   if (event.target.matches('#add-product')) {
+    const eventBooths = (await getEventData()).booths
     const html = `
         <header>
           <h2>Přidat produkt / cenu pro akci</h2>
@@ -149,16 +157,16 @@ document.addEventListener('click', (event) => {
         </header>
         <form id="edit-booth-form">
           <div class="form-row">
-            <label>Produkt (existující ID)</label>
+            <label for="prod-id">Produkt (existující ID)</label>
             <input id="prod-id" type="text" placeholder="UUID produktu (pokud nové, vytvořte produkt jinde)"/>
           </div>
           <div class="form-row">
-            <label>Cena (Kč)</label>
+            <label for="prod-price">Cena (Kč)</label>
             <input id="prod-price" type="number"/>
           </div>
           <div class="form-row">
-            <label>Přiřadit stánky (volitelné)</label>
-            <select id="prod-booths" multiple size="6">${_data.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}</select>
+            <label for="prod-booths">Přiřadit stánky (volitelné)</label>
+            <select id="prod-booths" multiple size="6">${eventBooths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}</select>
           </div>
           <div class="modal-actions">
             <button id="cancel" class="btn btn-ghost">Zrušit</button>
@@ -173,10 +181,11 @@ document.addEventListener('click', (event) => {
       const productId = modal.querySelector('#prod-id').value.trim(); const price = modal.querySelector('#prod-price').value; const booths = Array.from(modal.querySelector('#prod-booths').selectedOptions).map(o => o.value);
       if (!productId || !price) { alert('Vyplňte id produktu a cenu'); return; }
       try {
-        const form = new FormData(); form.set('product_id', productId); form.set('event_id', _data.eventId); form.set('price', price); form.set('booth_ids', JSON.stringify(booths));
+        const form = new FormData(); form.set('product_id', productId); form.set('event_id', eventId); form.set('price', price); form.set('booth_ids', JSON.stringify(booths));
         const res = await fetch('/api/product_event_prices/create', { method: 'POST', body: form });
         if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-        closeModal(); fetchEventData();
+        closeModal();
+        resetEventDataCache();
       } catch (e) { alert('Nelze přidat produkt: ' + e.message); }
     });
     return;
@@ -184,13 +193,13 @@ document.addEventListener('click', (event) => {
 
   // add manager
   if (event.target.matches('#add-manager')) {
-    openAssignEmployeeModal(true)
+    await openAssignEmployeeModal(true)
     return;
   }
 
   // add employee
   if (event.target.matches('#add-employee')) {
-    openAssignEmployeeModal(false)
+    await openAssignEmployeeModal(false)
     return;
   }
 
@@ -205,7 +214,7 @@ document.addEventListener('click', (event) => {
   const editBoothBtn = event.target.closest('.edit-booth');
   if (editBoothBtn) {
     const row = editBoothBtn.closest('tr[id]');
-    openEditBoothModal(row);
+    await openEditBoothModal(row);
     return;
   }
 
@@ -223,9 +232,11 @@ document.addEventListener('click', (event) => {
 
   const editEmp = event.target.closest('.edit-employee');
   if (editEmp) {
-    const id = editEmp.dataset.id; const emp = _data.employees.find(x => x.id === id); if (!emp) return;
+    const id = editEmp.dataset.id;
+    const eventData = await getEventData();
+    const emp = eventData.employees.find(x => x.id === id); if (!emp) return;
     // simple modal to change role or booths assignment (UI only)
-    const availableBooths = _data.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+    const availableBooths = eventData.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
     const html = `
           <header>
             <h2>Upravit zaměstnance</h2>
@@ -237,11 +248,11 @@ document.addEventListener('click', (event) => {
           </header>
           <form id="edit-booth-form">
             <div class="form-row">
-              <label>Uživatel</label>
-              <input type="text" value="${escapeHTML(emp.username)}" disabled/>
+              <label for="username">Uživatel</label>
+              <input id="username" type="text" value="${escapeHTML(emp.username)}" disabled/>
             </div>
             <div class="form-row">
-              <label>Přiřazené stánky (více pro Ctrl/Shift)</label>
+              <label for="employee-booths">Přiřazené stánky (více pro Ctrl/Shift)</label>
               <select id="employee-booths" multiple size="6">${availableBooths}</select>
             </div>
             <div class="modal-actions">
@@ -262,10 +273,11 @@ document.addEventListener('click', (event) => {
       const selected = Array.from(sel.selectedOptions).map(o => o.value);
       try {
         // API shape: create role rows for each selected booth or remove others. Implement via backend endpoints.
-        const form = new FormData(); form.set('employee_id', id); form.set('event_id', _data.eventId); form.set('booth_ids', JSON.stringify(selected));
+        const form = new FormData(); form.set('employee_id', id); form.set('event_id', eventId); form.set('booth_ids', JSON.stringify(selected));
         const res = await fetch('/api/employee_event_booth_roles/update_for_employee', { method: 'POST', body: form });
         if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-        closeModal(); fetchEventData();
+        closeModal();
+        resetEventDataCache();
       } catch (e) { alert('Nelze upravit zaměstnance: ' + e.message); }
     });
     return;
@@ -278,7 +290,7 @@ document.addEventListener('click', (event) => {
   //   try {
   //     const form = new FormData();
   //     form.set('employee_id', id);
-  //     form.set('event_id', _data.eventId);
+  //     form.set('event_id', eventId);
   //     const res = await fetch(
   //       '/api/employee_event_booth_roles/delete_for_employee',
   //       { method: 'DELETE', body: form }
@@ -294,7 +306,12 @@ document.addEventListener('click', (event) => {
 
   const editP = event.target.closest('.edit-product');
   if (editP) {
-    const id = editP.dataset.id; const p = _data.products.find(x => x.id === id); if (!p) return; const availableBooths = _data.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join(''); const html = `
+    const id = editP.dataset.id;
+    const eventData = await getEventData();
+    const products = eventData.products.find(x => x.id === id);
+    if (!products) return;
+    const availableBooths = eventData.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+    const html = `
           <header>
             <h2>Upravit produkt</h2>
             <button id="close-modal">
@@ -305,15 +322,15 @@ document.addEventListener('click', (event) => {
           </header>
           <form id="edit-booth-form">
             <div class="form-row">
-              <label>Název</label>
-              <input id="prod-name" type="text" value="${escapeHTML(p.name)}"/>
+              <label for="prod-name">Název</label>
+              <input id="prod-name" type="text" value="${escapeHTML(products.name)}"/>
             </div>
             <div class="form-row">
-              <label>Cena (Kč)</label>
-              <input id="prod-price" type="number" value="${escapeHTML(String(p.price || ''))}"/>
+              <label for="prod-price">Cena (Kč)</label>
+              <input id="prod-price" type="number" value="${escapeHTML(String(products.price || ''))}"/>
             </div>
             <div class="form-row">
-              <label>Přiřadit stánky</label>
+              <label for="prod-booths">Přiřadit stánky</label>
               <select id="prod-booths" multiple size="6">${availableBooths}</select>
             </div>
             <div class="modal-actions">
@@ -321,7 +338,41 @@ document.addEventListener('click', (event) => {
               <button id="save" class="btn btn-primary">Uložit</button>
             </div>
           </form>
-        `; const modal = openModal(html); modal.querySelector('#close-modal').addEventListener('click', closeModal); modal.querySelector('#cancel').addEventListener('click', closeModal); const sel = modal.querySelector('#prod-booths'); const assigned = (p.booths || []).map(b => b.booth_id); for (const opt of sel.options) { if (assigned.includes(opt.value)) opt.selected = true; } modal.querySelector('#save').addEventListener('click', async () => { const name = modal.querySelector('#prod-name').value.trim(); const price = modal.querySelector('#prod-price').value; const booths = Array.from(sel.selectedOptions).map(o => o.value); if (!name || !price) { alert('Vyplňte název a cenu'); return; } try { const form = new FormData(); form.set('product_id', id); form.set('name', name); form.set('price', price); form.set('booth_ids', JSON.stringify(booths)); const res = await fetch('/api/product_event_prices/update_for_product', { method: 'POST', body: form }); if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); } closeModal(); fetchEventData(); } catch (e) { alert('Nelze upravit produkt: ' + e.message); } }); return;
+        `;
+    const modal = openModal(html);
+    modal.querySelector('#close-modal').addEventListener('click', closeModal);
+    modal.querySelector('#cancel').addEventListener('click', closeModal);
+    const sel = modal.querySelector('#prod-booths');
+    const assigned = (products.booths || []).map(b => b.booth_id);
+    for (const opt of sel.options) {
+      if (assigned.includes(opt.value)) opt.selected = true;
+    }
+    modal.querySelector('#save').addEventListener('click', async () => {
+      const name = modal.querySelector('#prod-name').value.trim();
+      const price = modal.querySelector('#prod-price').value;
+      const booths = Array.from(sel.selectedOptions).map(o => o.value);
+      if (!name || !price) {
+        alert('Vyplňte název a cenu');
+        return;
+      }
+      try {
+        const form = new FormData();
+        form.set('product_id', id);
+        form.set('name', name);
+        form.set('price', price);
+        form.set('booth_ids', JSON.stringify(booths));
+        const res = await fetch('/api/product_event_prices/update_for_product', { method: 'POST', body: form });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({ error: 'Chyba' }));
+          throw new Error(j.error || 'Chyba');
+        }
+        closeModal();
+        resetEventDataCache();
+      } catch (e) {
+        alert('Nelze upravit produkt: ' + e.message);
+      }
+    });
+    return;
   }
 
   // const delP = event.target.closest('.delete-product');
@@ -331,7 +382,7 @@ document.addEventListener('click', (event) => {
   //   try {
   //     const form = new FormData();
   //     form.set('product_id', id);
-  //     form.set('event_id', _data.eventId);
+  //     form.set('event_id', eventId);
   //     const res = await fetch('/api/product_event_prices/delete_for_product', { method: 'DELETE', body: form });
   //     if (!res.ok) {
   //       const j = await res.json().catch(() => ({ error: 'Chyba' }));
@@ -524,7 +575,7 @@ document.addEventListener('click', (event) => {
 // document.getElementById('delete-event').addEventListener('click', async () => {
 //   if (!confirm('Smazat tuto akci? (operace je soft-delete)')) return;
 //   try {
-//     const form = new FormData(); form.set('id', _data.eventId);
+//     const form = new FormData(); form.set('id', eventId);
 //     const res = await fetch('/api/events/delete', { method: 'DELETE', body: form });
 //     if (res.status === 401) { const j = await res.json(); window.location.href = j.redirect_url; return; }
 //     if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
@@ -559,14 +610,14 @@ async function loadPage({
   boothsTable = false,
   employeesTable = false,
   productsTable = false } = {}) {
-  if (!_data) await fetchEventData();
+  const eventData = await getEventData();
   const toLoad = [];
-  if (tableHeader) toLoad.push(renderEvent());
+  if (tableHeader) toLoad.push(renderEvent(eventData));
   if (header) toLoad.push(renderHeader());
   if (sidebar) toLoad.push(renderSidebar());
-  if (boothsTable) toLoad.push(renderBooths());
-  if (employeesTable) toLoad.push(renderEmployees());
-  if (productsTable) toLoad.push(renderProducts());
+  if (boothsTable) toLoad.push(renderBooths(eventData));
+  if (employeesTable) toLoad.push(renderEmployees(eventData));
+  if (productsTable) toLoad.push(renderProducts(eventData));
   await Promise.all(toLoad);
 }
 
@@ -576,63 +627,85 @@ function getEventIdFromPath() {
   const parts = window.location.pathname.split('/').filter(Boolean);
   // mělo by být ['events','<id>','manager']
   if (parts[0] === 'events' && parts.length >= 2) {
-    _data.eventId = parts[1];
     return parts[1];
   }
   return null;
 }
 
 
-async function fetchEventData() {
-  console.log('make this return a promise (for repeated calls), add way to clear the _data')
+function resetEventDataCache() {
+  _eventDataCache.data = null;
+  _eventDataCache.expiry = 0;
+  _getEventDataPromise = null;
+}
 
-  if (!_data.eventId) getEventIdFromPath();
+function getEventData() {
+  if (_eventDataCache.data && _eventDataCache.expiry > Date.now()) {
+    return Promise.resolve(_eventDataCache.data);
+  }
 
-  try {
-    if (!_data.eventId) {
-      throw new Error('no_event_id');
-    }
+  if (_getEventDataPromise) return _getEventDataPromise;
 
-    const res = await fetch(`/api/events/${encodeURIComponent(_data.eventId)}`);
+  _getEventDataPromise = (async () => {
+    try {
+      if (!eventId) {
+        throw new Error('no_event_id');
+      }
 
-    if (res.status === 401) {
-      const json = await res.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+      const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
 
-    if (res.status === 403) {
-      throw new Error('insufficient_priviliges');
-    }
+      if (res.status === 401) {
+        const json = await res.json();
+        _getEventDataPromise = null;
+        window.location.href = json.redirect_url;
+        return;
+      }
 
-    if (res.status === 404) {
-      throw new Error('event_not_found');
-    }
+      if (res.status === 403) {
+        throw new Error('insufficient_priviliges');
+      }
 
-    if (!res.ok) {
-      throw new Error('unexpected_error');
-    }
+      if (res.status === 404) {
+        throw new Error('event_not_found');
+      }
 
-    const resData = await res.json();
+      if (!res.ok) {
+        throw new Error('unexpected_error');
+      }
 
-    _data.event = resData.event;
-    _data.booths = resData.booths || [];
-    _data.employees = resData.employees || [];
-    _data.products = resData.products || [];
-  } catch (err) {
-    let errorMessage = '';
-    if (err.message === 'no_event_id') {
-      errorMessage = 'Nelze určit ID akce z URL.';
-    } else if (err.message === 'insufficient_priviliges') {
-      errorMessage = 'Nejste admin nebo manažer akce.';
-    } else {
-      errorMessage = 'Nepovedlo se načíst akci';
-    }
-    card.insertAdjacentHTML('afterbegin', `
+      const resData = await res.json();
+
+      _eventDataCache.data = {};
+      _eventDataCache.data.event = resData.event;
+      _eventDataCache.data.booths = resData.booths;
+      _eventDataCache.data.employees = resData.employees;
+      _eventDataCache.data.products = resData.products;
+
+      _eventDataCache.expiry = Date.now() + cache_time_ms;
+
+      return _eventDataCache.data;
+
+    } catch (err) {
+      let errorMessage = '';
+      if (err.message === 'no_event_id') {
+        errorMessage = 'Nelze určit ID akce z URL.';
+      } else if (err.message === 'insufficient_priviliges') {
+        errorMessage = 'Nejste admin nebo manažer akce.';
+      } else {
+        errorMessage = 'Nepovedlo se načíst akci';
+      }
+      card.insertAdjacentHTML('afterbegin', `
       <div id="load-error-message" class="panel">
         ${escapeHTML(errorMessage)}
       </div>`);
-  }
+
+      return null;
+    } finally {
+      _getEventDataPromise = null;
+    }
+  })();
+
+  return _getEventDataPromise;
 }
 
 
@@ -672,33 +745,34 @@ function isSearchedFor(ev, searchQuery) {
 }
 
 
-function findBoothNameById(id) {
-  const b = _data.booths.find(x => x.id === id);
-  return b ? b.name : id;
+function findBoothNameById(id, booths) {
+  const booth = booths.find(booth => booth.id === id);
+  return booth ? booth.name : id;
 }
 
 
-function renderEvent() {
-  const ev = _data.event;
-  if (!ev) return;
-  document.getElementById('event-name').textContent = ev.name || '-';
-  const start = formatDateTimeISOToDisplay(ev.start_at);
-  const end = formatDateTimeISOToDisplay(ev.end_at);
+function renderEvent(eventData) {
+  const event = eventData.event;
+  if (!event) return;
+  document.getElementById('event-name').textContent = event.name || '-';
+  const start = formatDateTimeISOToDisplay(event.start_at);
+  const end = formatDateTimeISOToDisplay(event.end_at);
   document.getElementById('event-datetime').textContent = start === '-' && end === '-' ? '-' : `${start} - ${end}`;
-  document.getElementById('event-id').textContent = `(${ev.id})`;
-  document.getElementById('event-created-by').textContent = ev.created_by || '-';
-  document.getElementById('event-created-at').textContent = formatDateTimeISOToDisplay(ev.created_at);
+  document.getElementById('event-id').textContent = `(${event.id})`;
+  document.getElementById('event-created-by').textContent = event.created_by || '-';
+  document.getElementById('event-created-at').textContent = formatDateTimeISOToDisplay(event.created_at);
 }
 
 
-function renderBooths() {
+function renderBooths(eventData) {
   const tbody = document.querySelector('#booths-table tbody');
   tbody.innerHTML = '';
-  if (!_data.booths || !_data.booths.length) {
+  const booths = eventData.booths;
+  if (!booths || !booths.length) {
     tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné stánky.</td></tr>`; return;
   }
 
-  _data.booths.forEach((b, i) => {
+  booths.forEach((b, i) => {
     const tr = document.createElement('tr');
     tr.id = b.id;
     tr.innerHTML = `
@@ -717,13 +791,14 @@ function renderBooths() {
   markSelectedRow(card);
 }
 
-function renderEmployees() {
+function renderEmployees(eventData) {
   const managersBody = document.querySelector('#managers-table tbody');
   const employeesBody = document.querySelector('#employees-table tbody');
   managersBody.innerHTML = '';
   employeesBody.innerHTML = '';
+  const employees = eventData.employees;
 
-  if (!_data.employees || !_data.employees.length) {
+  if (!employees || !employees.length) {
     managersBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`;
     employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`;
     return;
@@ -733,17 +808,17 @@ function renderEmployees() {
   const managers = [];
   const others = [];
 
-  for (const emp of _data.employees) {
+  for (const emp of employees) {
     // filter booths for this event: booth ids that exist in _data.booths
-    const boothsForEvent = (emp.booths || []).filter(b => _data.booths.some(x => x.id === b.booth_id));
+    const boothsForEvent = (emp.booths || []).filter(b => eventData.booths.some(x => x.id === b.booth_id));
     const hasManagerRole = boothsForEvent.length === 0; // boothsForEvent.some(b => b.role === 'event_manager');
-    const assignedBooths = boothsForEvent.filter(b => b.booth_id).map(b => ({ id: b.booth_id, name: findBoothNameById(b.booth_id), role: b.role }));
+    const assignedBooths = boothsForEvent.filter(b => b.booth_id).map(b => ({ id: b.booth_id, name: findBoothNameById(b.booth_id, eventData.booths), role: b.role }));
 
     const row = { id: emp.id, username: emp.username, email: emp.email, booths: assignedBooths, role: hasManagerRole ? 'event_manager' : (assignedBooths[0] ? assignedBooths[0].role : '-') };
     if (hasManagerRole) managers.push(row); else others.push(row);
   }
 
-  if (managers.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`; }
+  if (managers.length === 0) { managersBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`; }
   managers.forEach((manager, idx) => {
     const tr = document.createElement('tr');
     tr.id = manager.id;
@@ -757,7 +832,7 @@ function renderEmployees() {
             <button class="icon-btn delete delete-employee" data-id="${manager.id}" title="Odebrat">🗑️</button>
           </td>
         `;
-    employeesBody.appendChild(tr);
+    managersBody.appendChild(tr);
   });
 
   if (others.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`; }
@@ -781,13 +856,14 @@ function renderEmployees() {
   markSelectedRow(card);
 }
 
-function renderProducts() {
+function renderProducts(eventData) {
   const tbody = document.querySelector('#products-table tbody');
   tbody.innerHTML = '';
-  if (!_data.products || !_data.products.length) { tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné produkty nebo ceny.</td></tr>`; return; }
+  const products = eventData.products;
+  if (!products || !products.length) { tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné produkty nebo ceny.</td></tr>`; return; }
 
-  _data.products.forEach((p, i) => {
-    const booths = (p.booths || []).map(b => `<span data-direct-to="${b.booth_id}">${findBoothNameById(b.booth_id)}</span>`).filter(Boolean).join(', ') || '-';
+  products.forEach((p, i) => {
+    const booths = (p.booths || []).map(b => `<span data-direct-to="${b.booth_id}">${findBoothNameById(b.booth_id, eventData.booths)}</span>`).filter(Boolean).join(', ') || '-';
     const tr = document.createElement('tr');
     tr.id = p.id;
     tr.innerHTML = `
@@ -822,7 +898,8 @@ function closeModal() {
 }
 
 
-function openAssignEmployeeModal(asManager) {
+async function openAssignEmployeeModal(asManager) {
+  const booths = (await getEventData()).booths;
   const html = `
         <header>
           <h2>${asManager ? 'Přiřadit manažera' : 'Přiřadit zaměstnance'}</h2>
@@ -834,15 +911,15 @@ function openAssignEmployeeModal(asManager) {
         </header>
         <form id="edit-booth-form">
           <div class="form-row">
-            <label>Employee ID</label>
+            <label for="emp-id">Employee ID</label>
             <input id="emp-id" type="text" placeholder="UUID zaměstnance"/>
           </div>
           ${asManager ? '' :
       `<div class="form-row">
-              <label>Stánek (pokud ne manažer)</label>
+              <label for="emp-booth">Stánek (pokud ne manažer)</label>
               <select id="emp-booth">
                 <option value="">-- vyberte --</option>
-                ${_data.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}'
+                ${booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}'
               </select>
             </div>'`}
           <div class="modal-actions">
@@ -859,19 +936,20 @@ function openAssignEmployeeModal(asManager) {
     const boothId = asManager ? null : (modal.querySelector('#emp-booth').value || null);
     if (!empId) { alert('Zadejte ID zaměstnance'); return; }
     try {
-      const form = new FormData(); form.set('employee_id', empId); form.set('event_id', _data.eventId); if (boothId) form.set('booth_id', boothId);
+      const form = new FormData(); form.set('employee_id', empId); form.set('event_id', eventId); if (boothId) form.set('booth_id', boothId);
       const res = await fetch('/api/employee_event_booth_roles/create', { method: 'POST', body: form });
       if (res.status === 401) { const j = await res.json(); window.location.href = j.redirect_url; return; }
       if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-      closeModal(); fetchEventData();
+      closeModal()
+      resetEventDataCache();
     } catch (e) { alert('Nelze přiřadit zaměstnance: ' + e.message); }
   });
 }
 
 
-function openEditBoothModal(row) {
+async function openEditBoothModal(row) {
   const id = row.id;
-  const booth = _data.booths.find(booth => booth.id === id);
+  const booth = (await getEventData()).booths.find(booth => booth.id === id);
   if (!booth) return;
 
   const html = `
@@ -885,11 +963,11 @@ function openEditBoothModal(row) {
     </header>
     <form id="edit-booth-form">
       <div class="form-row">
-        <label>Název</label>
+        <label for="booth-name">Název</label>
         <input id="booth-name" type="text" value="${escapeHTML(booth.name)}"/>
       </div>
       <div class="form-row">
-        <label>Typ</label>
+        <label for="booth-type">Typ</label>
         <select id="booth-type">
           <option value="seller" ${booth.booth_type === 'seller' ? 'selected' : ''}>seller</option>
           <option value="cashier" ${booth.booth_type === 'cashier' ? 'selected' : ''}>cashier</option>
@@ -912,7 +990,8 @@ function openEditBoothModal(row) {
       const form = new FormData(); form.set('id', id); form.set('name', name); form.set('booth_type', type);
       const res = await fetch('/api/booths/edit', { method: 'POST', body: form });
       if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-      closeModal(); fetchEventData();
+      closeModal();
+      resetEventDataCache();
     } catch (e) { alert('Nelze upravit stánek: ' + e.message); }
   });
 }
