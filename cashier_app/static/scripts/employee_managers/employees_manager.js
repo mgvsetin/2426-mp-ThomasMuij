@@ -313,7 +313,7 @@ function isSearchedFor(employee, searchQuery) {
     return true;
   }
 
-  const searchQueries = searchQuery.toLowerCase().trim().split(' ');
+  const searchQueries = searchQuery.toLowerCase().trim().split(/\s+/);
 
   const id = employee.id.toLowerCase();
   const username = employee.username.toLowerCase();

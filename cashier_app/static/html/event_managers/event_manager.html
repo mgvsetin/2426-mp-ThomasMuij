@@ -17,19 +17,16 @@
     <div id="card">
       <div id="event-head">
         <div id="event-info">
-          <div id="event-name">-</div>
-          <div class="id-muted muted" id="event-id">(-)</div>
+          <div id="event-name">Akce: -</div>
           <div id="event-datetime">-</div>
           <div class="muted-block" style="margin-top:6px;">
-            Vytvořil: <span id="event-created-by" class="muted">-</span>
-            <span class="muted">•</span>
-            <span id="event-created-at" class="muted">-</span>
+            Vytvořena: <span id="event-created-at" class="muted">-</span>
           </div>
         </div>
         <div id="event-actions">
           <button id="open-graphs" class="btn btn-ghost">Zobrazit grafy</button>
           <button id="edit-event" class="btn btn-primary">Upravit akci</button>
-          <button id="delete-event" class="btn">Smazat</button>
+          <button id="delete-event" class="btn btn-delete">Smazat</button>
         </div>
       </div>
 
@@ -45,17 +42,16 @@
                 </div>
               </div>
             </div>
-            <div><button id="add-booth" class="btn">+ Přidat stánek</button></div>
+            <div><button id="add-booth" class="btn btn-primary">+ Přidat stánek</button></div>
           </div>
           <div class="table-wrap">
             <table id="booths-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th class="counter-header">#</th>
                   <th>Název</th>
                   <th>Typ</th>
-                  <th class="muted">ID</th>
-                  <th class="actions">Akce</th>
+                  <th class="actions-header"></th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -74,17 +70,16 @@
                 </div>
               </div>
             </div>
-            <div><button id="add-manager" class="btn">Přiřadit manažera</button></div>
+            <div><button id="add-manager" class="btn btn-primary">+ Přiřadit manažera</button></div>
           </div>
           <div class="table-wrap">
             <table id="managers-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Zaměstnanec (prob remove id)</th>
+                  <th class="counter-header">#</th>
+                  <th>Zaměstnanec</th>
                   <th>Email</th>
-                  <th>Stánky</th>
-                  <th class="actions">Akce</th>
+                  <th class="actions-header"></th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -103,17 +98,17 @@
                 </div>
               </div>
             </div>
-            <div><button id="add-employee" class="btn">Přiřadit zaměstnance</button></div>
+            <div><button id="add-employee" class="btn btn-primary">+ Přiřadit zaměstnance</button></div>
           </div>
           <div class="table-wrap">
             <table id="employees-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Zaměstnanec (prob remove id)</th>
+                  <th class="counter-header">#</th>
+                  <th>Zaměstnanec</th>
                   <th>Email</th>
                   <th>Stánky</th>
-                  <th class="actions">Akce</th>
+                  <th class="actions-header"></th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -132,24 +127,25 @@
                 </div>
               </div>
             </div>
-            <div><button id="add-product" class="btn">Přidat produkt</button></div>
+            <div><button id="add-product" class="btn btn-primary">+ Přidat produkt</button></div>
           </div>
           <div class="table-wrap">
             <table id="products-table">
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th class="counter-header">#</th>
                   <th>Název</th>
                   <th>Cena (Kč)</th>
                   <th>Stánky</th>
-                  <th class="actions">Akce</th>
+                  <th>Kategorie</th>
+                  <th class="actions-header"></th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
         </section>
-
+        
       </div>
     </div>
   </div>

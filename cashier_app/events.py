@@ -97,7 +97,7 @@ def get_event(event_id):
             
             employees = cur.execute('''
                 SELECT em.id, em.username, em.email,
-                    COALESCE(json_agg(
+                    COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('booth_id', link.booth_id, 'role', link.role)
                         ) FILTER (WHERE link.employee_id IS NOT NULL),
                         '[]'
@@ -112,27 +112,52 @@ def get_event(event_id):
             
             products = cur.execute('''
                 SELECT p.id, p.name, p.categories, ev_link.price,
-                    COALESCE(json_agg(
+                    COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('booth_id', bo_link.booth_id)
-                        ),
+                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL),
                         '[]'
                     ) AS booths
                 FROM products as p
                 JOIN product_event_prices AS ev_link ON ev_link.product_id = p.id
-                JOIN event_product_booth_link AS bo_link ON bo_link.product_event_prices_id = ev_link.id
+                LEFT JOIN event_product_booth_link AS bo_link ON bo_link.product_event_prices_id = ev_link.id
                 WHERE ev_link.event_id = %s
                 GROUP BY ev_link.id, p.id
                 ORDER BY ev_link.created_at''',
                 (event_id,)).fetchall()
             
             booths = cur.execute('''
-                SELECT id, name, booth_type
-                FROM booths
-                WHERE event_id = %s
-                AND deleted_at IS NULL''',
-                (event_id,)).fetchall()    
+                SELECT b.id, b.name, b.booth_type,
+                    COALESCE(jsonb_agg(
+                        DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
+                        ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
+                        '[]'
+                    ) AS categories
+                FROM booths AS b
+                LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
+                LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
+                WHERE b.event_id = %s
+                AND b.deleted_at IS NULL
+                GROUP BY b.id,
+                ORDER BY b.created_at''',
+                (event_id,)).fetchall() # currently doing the categories stuff
             
-    return jsonify(event=event, employees=employees, products=products, booths=booths), 200
+            categories = cur.execute('''
+                SELECT b.id, b.name, b.booth_type,
+                    COALESCE(jsonb_agg(
+                        DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
+                        ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
+                        '[]'
+                    ) AS categories
+                FROM booths AS b
+                LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
+                LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
+                WHERE b.event_id = %s
+                AND b.deleted_at IS NULL
+                GROUP BY b.id,
+                ORDER BY b.created_at''',
+                (event_id,)).fetchall()
+            
+    return jsonify(event=event, employees=employees, products=products, booths=booths, categories=categories), 200
 
 
 @api_bp.route('/create', methods=('POST',))

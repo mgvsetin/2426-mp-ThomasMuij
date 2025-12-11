@@ -263,7 +263,7 @@ function isSearchedForEvent(ev, searchQuery) {
     if (!q.includes('=')) {
       if (!searchable.includes(q)) return false;
     } else {
-      // key=value (id=..., name=..., start_at=..., end_at=...)
+      // key=value (id=... name=... start_at=... end_at=...)
       const [k, v] = q.split('=');
       if (['id', 'identifier'].includes(k)) {
         if (!id.includes(v)) return false;

@@ -344,26 +344,42 @@ def get_products_and_categories():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             products = cur.execute('''
-                SELECT products.id, products.name, products.categories, price.price, images.image_path, images.filename
+                SELECT products.id, products.name, price.price, images.image_path, images.filename,
+                  COALESCE(jsonb_agg(
+                      DISTINCT jsonb_build_object('category_name', cat.name)
+                      ) FILTER (WHERE cat_link.selectable_category_id IS NOT NULL),
+                      '[]'
+                  ) AS categories
                 FROM event_product_booth_link as link
                 JOIN product_event_prices as price ON link.product_event_prices_id = price.id
                 JOIN products ON products.id = price.product_id
+                LEFT JOIN selectable_category_product_link AS cat_link ON cat_link.product_id = products.id
+                LEFT JOIN selectable_categories AS cat ON cat.id = cat_link.selectable_category_id
                 LEFT JOIN product_images AS images ON images.product_id = products.id
-                WHERE link.booth_id = %s''', # group by products.id?
+                WHERE link.booth_id = %s
+                GROUP BY products.id, price.id, images.id''',
                 (booth['id'],)).fetchall()
             
-    categories = set()
-    for product in products:
-        categories.update(product['categories'])
-
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
+            # SELECT b.id, b.name, b.booth_type,
+            #         COALESCE(jsonb_agg(
+            #             DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
+            #             ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
+            #             '[]'
+            #         ) AS categories
+            #     FROM booths AS b
+            #     LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
+            #     LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
+            #     WHERE b.event_id = %s
+            #     AND b.deleted_at IS NULL
+            #     GROUP BY b.id,
+            #     ORDER BY b.created_at'''
+            
             selectable_categories = cur.execute('''
-            SELECT name
-            FROM selectable_categories
-            WHERE booth_id = %s
-            AND name = ANY(%s::text[])''',
-            (booth['id'], list(categories))).fetchall()
+                SELECT cat.name
+                FROM selectable_categories AS cat
+                JOIN selectable_category_booth_link AS link ON link.selectable_category_id = cat.id
+                WHERE link.booth_id = %s''',
+                (booth['id'],)).fetchall()
     
     return jsonify(products=products, selectable_categories=selectable_categories), 200
 

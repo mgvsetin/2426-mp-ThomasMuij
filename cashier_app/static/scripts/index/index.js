@@ -10,8 +10,6 @@ const productSide = orderEl.querySelector('#product-side');
 const summarySide = orderEl.querySelector('#summary-side');
 const searchBar = orderEl.querySelector('#search-bar');
 
-let listenersMade = false;
-
 loadPage({
   products: true,
   summary: true,

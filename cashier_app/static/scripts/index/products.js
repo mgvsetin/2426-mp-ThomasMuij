@@ -26,13 +26,13 @@ const cache_time_ms = 60 * 1000; // 1 minuta
 // maybe figure out cache max time so that the slow doenst have to happen
 
 const _productsCache = {
-  products: null,
+  data: null,
   expiry: 0
 };
 
 export async function getProductsAndCategories() {
-  if (_productsCache.products && _productsCache.expiry > Date.now()) {
-    return _productsCache.products;
+  if (_productsCache.data && _productsCache.expiry > Date.now()) {
+    return _productsCache.data;
   }
 
   try {
@@ -54,10 +54,16 @@ export async function getProductsAndCategories() {
       throw new Error('unexpected_error')
     }
 
-    _productsCache.products = data;
+    _productsCache.data = {};
+    _productsCache.data.products = data.products;
+    _productsCache.data.selectableCategories = data.selectable_categories.map(category => category.name);
     _productsCache.expiry = Date.now() + cache_time_ms;
 
-    return data;
+    _productsCache.data.products.forEach(product => {
+      product.categories = product.categories.map(category => category.category_name);
+    })
+
+    return  _productsCache.data;
 
   } catch (error) {
     return 'unexpected_error';
@@ -66,7 +72,7 @@ export async function getProductsAndCategories() {
 
 
 export function resetProductsCache() {
-  _productsCache.products = null;
+  _productsCache.data = null;
   _productsCache.expiry = 0;
 }
 
@@ -224,14 +230,14 @@ export async function renderSelectableCategories() {
     return;
   }
 
-  const selectableCategories = result.selectable_categories;
+  const selectableCategories = result.selectableCategories;
 
   let selectableCategoriesHTML = '';
 
   selectableCategories.forEach((category) => {
     selectableCategoriesHTML += `
-    <button class="selectable-category" data-category="${category.name.toLowerCase().trim()}">
-      ${category.name}
+    <button class="selectable-category" data-category="${category.toLowerCase().trim()}">
+      ${category}
     </button>
     `;
   })

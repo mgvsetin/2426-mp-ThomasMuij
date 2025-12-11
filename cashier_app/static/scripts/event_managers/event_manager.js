@@ -7,6 +7,16 @@ import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/ta
 
 const card = document.querySelector('#card');
 
+const boothsSearchBar = document.querySelector('#booths-search-bar');
+const managersSearchBar = document.querySelector('#managers-search-bar');
+const employeesSearchBar = document.querySelector('#employees-search-bar');
+const productsSearchBar = document.querySelector('#products-search-bar');
+
+const boothsTableBody = document.querySelector('#booths-table tbody');
+const managersTableBody = document.querySelector('#managers-table tbody');
+const employeesTableBody = document.querySelector('#employees-table tbody');
+const productsTableBody = document.querySelector('#products-table tbody');
+
 let _getEventDataPromise = null;
 const cache_time_ms = 60 * 1000; // 1 minuta
 const eventId = getEventIdFromPath();
@@ -22,6 +32,7 @@ loadPage({
   header: true,
   sidebar: true,
   boothsTable: true,
+  managersTable: true,
   employeesTable: true,
   productsTable: true
 });
@@ -234,7 +245,7 @@ document.addEventListener('click', async (event) => {
   if (editEmp) {
     const id = editEmp.dataset.id;
     const eventData = await getEventData();
-    const emp = eventData.employees.find(x => x.id === id); if (!emp) return;
+    const emp = eventData.employees.find(employee => employee.id === id); if (!emp) return;
     // simple modal to change role or booths assignment (UI only)
     const availableBooths = eventData.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
     const html = `
@@ -590,7 +601,15 @@ document.addEventListener('click', async (event) => {
 document.addEventListener('input', (event) => {
   const searchBar = event.target.closest('.search-bar');
   if (searchBar) {
-    const query = searchBar.value.trim().toLowerCase();
+    if (searchBar === boothsSearchBar) {
+      loadPage({ boothsTable: true });
+    } else if (searchBar === managersSearchBar) {
+      loadPage({ managersTable: true });
+    } else if (searchBar === employeesSearchBar) {
+      loadPage({ employeesTable: true });
+    } else if (searchBar === productsSearchBar) {
+      loadPage({ productsTable: true });
+    }
   }
 });
 
@@ -608,6 +627,7 @@ async function loadPage({
   header = false,
   sidebar = false,
   boothsTable = false,
+  managersTable = false,
   employeesTable = false,
   productsTable = false } = {}) {
   const eventData = await getEventData();
@@ -616,6 +636,7 @@ async function loadPage({
   if (header) toLoad.push(renderHeader());
   if (sidebar) toLoad.push(renderSidebar());
   if (boothsTable) toLoad.push(renderBooths(eventData));
+  if (managersTable) toLoad.push(renderManagers(eventData));
   if (employeesTable) toLoad.push(renderEmployees(eventData));
   if (productsTable) toLoad.push(renderProducts(eventData));
   await Promise.all(toLoad);
@@ -681,7 +702,30 @@ function getEventData() {
       _eventDataCache.data.employees = resData.employees;
       _eventDataCache.data.products = resData.products;
 
+      // přidává extra info k zaměstnancům
+      _eventDataCache.data.employees.forEach((emp) => {
+        // filtruje stánky pro tuto akci: id stánků existujících v resData.booths
+        const empBoothsForEvent = (emp.booths || []).filter(empBooth => resData.booths.some(eventBooth => eventBooth.id === empBooth.booth_id));
+        const isManager = empBoothsForEvent.length === 0;
+
+        // přidává název stánku
+        const assignedBooths = empBoothsForEvent.map(booth => ({ id: booth.booth_id, name: findBoothNameById(booth.booth_id, _eventDataCache.data.booths), role: booth.role }));
+
+        // přidává upravené stánky a isManager
+        emp.booths = assignedBooths;
+        emp.isManager = isManager
+      });
+
+      // přidává jméno stánku
+      _eventDataCache.data.products.forEach((product) => {
+        product.booths.forEach(booth => {
+          booth.name = findBoothNameById(booth.booth_id, _eventDataCache.data.booths);
+        });
+      });
+
       _eventDataCache.expiry = Date.now() + cache_time_ms;
+
+      console.log(_eventDataCache.data);
 
       return _eventDataCache.data;
 
@@ -709,35 +753,119 @@ function getEventData() {
 }
 
 
-function isSearchedFor(ev, searchQuery) {
+function boothIsSearchedFor(booth, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  const id = String(ev.id || '').toLowerCase();
-  const name = String(ev.name || '').toLowerCase();
-  const startAt = formatDateTimeISOToDisplay(ev.start_at || '').toLowerCase();
-  const endAt = formatDateTimeISOToDisplay(ev.end_at || '').toLowerCase();
-  const created_at = formatDateTimeISOToDisplay(ev.created_at || '').toLowerCase();
+  const id = String(booth.id || '').toLowerCase();
+  const name = String(booth.name || '').toLowerCase();
+  const type = String(boothTypeToDisplay(booth.booth_type) || '').toLowerCase();
 
-  const searchable = `${id} ${name} ${startAt} ${endAt} ${created_at}`;
+  const searchable = `${id} ${name} ${type}`;
 
-  for (const q of queries) {
-    if (!q.includes('=')) {
-      if (!searchable.includes(q)) return false;
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
     } else {
-      // key=value (id=..., name=..., start_at=..., end_at=...)
-      const [k, v] = q.split('=');
-      if (['id', 'identifier'].includes(k)) {
-        if (!id.includes(v)) return false;
-      } else if (['name', 'akce', 'nazev', 'název'].includes(k)) {
-        if (!name.includes(v)) return false;
-      } else if (['start_at', 'začátek', 'zacatek'].includes(k)) {
-        if (!startAt.includes(v)) return false;
-      } else if (['end_at', 'konec'].includes(k)) {
-        if (!endAt.includes(v)) return false;
-      } else if (['created_at', 'vytvořena', 'vytvorena'].includes(k)) {
-        if (!created_at.includes(v)) return false;
+      // key=value (id=... name=... type=...)
+      const [searchKeyWord, search] = query.split('=');
+      if (['id', 'identifier'].includes(searchKeyWord)) {
+        if (!id.includes(search)) return false;
+      } else if (['name', 'stánek', 'stanek', 'booth', 'nazev', 'název'].includes(searchKeyWord)) {
+        if (!name.includes(search)) return false;
+      } else if (['type', 'typ', 'druh'].includes(searchKeyWord)) {
+        if (!type.includes(search)) return false;
       } else {
-        if (!searchable.includes(q)) return false;
+        if (!searchable.includes(query)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function employeeIsSearchedFor(employee, searchQuery) {
+  if (!searchQuery) return true;
+  const queries = searchQuery.toLowerCase().trim().split(/\s+/);
+  const id = String(employee.id || '').toLowerCase();
+  const username = String(employee.username || '').toLowerCase();
+  const email = String(employee.email || '').toLowerCase();
+  let booths = employee.booths.length === 0 ? '-' : '';
+  for (const booth of employee.booths) {
+    booths += `${booth.name.toLowerCase()}, `;
+  }
+
+  const searchable = `${id} ${username} ${email} ${booths}`;
+
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
+    } else {
+      const [searchKeyWord, search] = query.split('=');
+
+      if (['id', 'identifier'].includes(searchKeyWord)) {
+        if (!id.includes(search)) return false;
+      } else if (['username',
+        'name',
+        'zaměstnanec',
+        'zamestnanec',
+        'jméno',
+        'jmeno',
+        'uživatel',
+        'uzivatel',
+        'uživatelské_jméno',
+        'uzivatelske_jmeno',
+        'uživatelskéjméno',
+        'uzivatelskejmeno',
+        'manager',
+        'manažer',
+        'manazer'].includes(searchKeyWord)) {
+        if (!username.includes(search)) return false;
+      } else if (['email', 'e-mail', 'mail'].includes(searchKeyWord)) {
+        if (!email.includes(search)) return false;
+      } else if (!employee.isManager && ['stánek', 'stanek', 'booth', 'stánky', 'stanky', 'booths'].includes(searchKeyWord)) {
+        if (!booths.includes(search)) return false;
+      } else {
+        if (!searchable.includes(query)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+
+function productIsSearchedFor(product, searchQuery) {
+  if (!searchQuery) return true;
+  const queries = searchQuery.toLowerCase().trim().split(/\s+/);
+  const id = String(product.id || '').toLowerCase();
+  const name = String(product.name || '').toLowerCase();
+  const price = String(product.price || '').toLowerCase();
+  let categories = product.categories.length === 0 ? '-' : '';
+  for (const category of product.categories) {
+    categories += `${category.toLowerCase()}, `;
+  }
+  let booths = product.booths.length === 0 ? '-' : '';
+  for (const booth of product.booths) {
+    booths += `${booth.name.toLowerCase()} `;
+  }
+
+  const searchable = `${id} ${name} ${price} ${categories} ${booths}`;
+
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
+    } else {
+      const [searchKeyWord, search] = query.split('=');
+      if (['id', 'identifier'].includes(searchKeyWord)) {
+        if (!id.includes(search)) return false;
+      } else if (['name', 'produkt', 'product', 'nazev', 'název'].includes(searchKeyWord)) {
+        if (!name.includes(search)) return false;
+      } else if (['price', 'cena'].includes(searchKeyWord)) {
+        if (!price.includes(search)) return false;
+      } else if (['kategorie', 'category', 'categories', 'druh'].includes(searchKeyWord)) {
+        if (!categories.includes(search)) return false;
+      } else if (['stánek', 'stanek', 'booth', 'stánky', 'stanky', 'booths'].includes(searchKeyWord)) {
+        if (!booths.includes(search)) return false;
+      } else {
+        if (!searchable.includes(query)) return false;
       }
     }
   }
@@ -751,168 +879,170 @@ function findBoothNameById(id, booths) {
 }
 
 
+function boothTypeToDisplay(type) {
+  if (type === 'cashier') {
+    return 'pokladna';
+  } else if (type === 'seller') {
+    return 'prodej';
+  } else {
+    return type;
+  }
+}
+
+
 function renderEvent(eventData) {
   const event = eventData.event;
   if (!event) return;
-  document.getElementById('event-name').textContent = event.name || '-';
+  document.getElementById('event-name').textContent = `Akce: ${event.name}` || '-';
   const start = formatDateTimeISOToDisplay(event.start_at);
   const end = formatDateTimeISOToDisplay(event.end_at);
-  document.getElementById('event-datetime').textContent = start === '-' && end === '-' ? '-' : `${start} - ${end}`;
-  document.getElementById('event-id').textContent = `(${event.id})`;
-  document.getElementById('event-created-by').textContent = event.created_by || '-';
+  document.getElementById('event-datetime').textContent = `${start} - ${end}`;
   document.getElementById('event-created-at').textContent = formatDateTimeISOToDisplay(event.created_at);
 }
 
 
 function renderBooths(eventData) {
-  const tbody = document.querySelector('#booths-table tbody');
-  tbody.innerHTML = '';
+  const searchQuery = boothsSearchBar.value;
   const booths = eventData.booths;
-  if (!booths || !booths.length) {
-    tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné stánky.</td></tr>`; return;
-  }
 
-  booths.forEach((b, i) => {
-    const tr = document.createElement('tr');
-    tr.id = b.id;
-    tr.innerHTML = `
-          <td>${i + 1}</td>
-          <td class="event-name">${escapeHTML(b.name)}</td>
-          <td>${escapeHTML(b.booth_type)}</td>
-          <td class="muted">${escapeHTML(b.id)}</td>
-          <td class="actions">
-            <button class="icon-btn edit edit-booth">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              </svg>
-            </button>
-            <button class="icon-btn delete delete-booth">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </td>
-        `;
-    tbody.appendChild(tr);
+  let rows = '';
+
+  booths.forEach((booth, idx) => {
+    if (!boothIsSearchedFor(booth, searchQuery)) return;
+
+    rows += `
+      <tr id="${booth.id}">
+        <td>${idx + 1}</td>
+        <td class="event-name">${escapeHTML(booth.name)}</td>
+        <td>${escapeHTML(boothTypeToDisplay(booth.booth_type))}</td>
+        <td class="actions">
+          <button class="icon-btn edit edit-booth">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete delete-booth">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
   });
 
+  boothsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné stánky.</td></tr>`;
   markSelectedRow(card);
 }
 
-function renderEmployees(eventData) {
-  const managersBody = document.querySelector('#managers-table tbody');
-  const employeesBody = document.querySelector('#employees-table tbody');
-  managersBody.innerHTML = '';
-  employeesBody.innerHTML = '';
-  const employees = eventData.employees;
 
-  if (!employees || !employees.length) {
-    managersBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`;
-    employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`;
-    return;
-  }
+function renderManagers(eventData) {
+  const searchQuery = managersSearchBar.value;
+  // [{id, username, email, booths: [{booth_id, role}, ...]}, ...]
+  const managers = eventData.employees.filter(employee => employee.isManager);
 
-  // employees array: {id, username, email, booths: [{booth_id, role}, ...]}
-  const managers = [];
-  const others = [];
+  let rows = '';
 
-  for (const emp of employees) {
-    // filter booths for this event: booth ids that exist in _data.booths
-    const boothsForEvent = (emp.booths || []).filter(b => eventData.booths.some(x => x.id === b.booth_id));
-    const hasManagerRole = boothsForEvent.length === 0; // boothsForEvent.some(b => b.role === 'event_manager');
-    const assignedBooths = boothsForEvent.filter(b => b.booth_id).map(b => ({ id: b.booth_id, name: findBoothNameById(b.booth_id, eventData.booths), role: b.role }));
-
-    const row = { id: emp.id, username: emp.username, email: emp.email, booths: assignedBooths, role: hasManagerRole ? 'event_manager' : (assignedBooths[0] ? assignedBooths[0].role : '-') };
-    if (hasManagerRole) managers.push(row); else others.push(row);
-  }
-
-  if (managers.length === 0) { managersBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní manažeři.</td></tr>`; }
   managers.forEach((manager, idx) => {
-    const tr = document.createElement('tr');
-    tr.id = manager.id;
-    tr.innerHTML = `
-          <td>${idx + 1}</td>
-          <td>${escapeHTML(manager.username)} <div class="muted" style="font-size:12px">(${escapeHTML(manager.id)})</div></td>
-          <td class="muted">${escapeHTML(manager.email)}</td>
-          <td>-</td>
-          <td class="actions">
-            <button class="icon-btn edit edit-employee" data-id="${manager.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              </svg>
-            </button>
-            <button class="icon-btn delete delete-employee" data-id="${manager.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </td>
-        `;
-    managersBody.appendChild(tr);
+    if (!employeeIsSearchedFor(manager, searchQuery)) return;
+
+    rows += `
+      <tr id="${manager.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHTML(manager.username)}</td>
+        <td>${escapeHTML(manager.email)}</td>
+        <td class="actions">
+          <button class="icon-btn edit edit-employee" data-id="${manager.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete delete-employee" data-id="${manager.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
   });
 
-  if (others.length === 0) { employeesBody.innerHTML = `<tr><td class="muted" colspan="5">Žádní zaměstnanci.</td></tr>`; }
-  others.forEach((employee, idx) => {
-    const boothsStr = employee.booths.map(b => `<span data-direct-to="${b.id}">${escapeHTML(b.name)}</span>`).join(', ') || '-';
-    const tr = document.createElement('tr');
-    tr.id = employee.id;
-    tr.innerHTML = `
-          <td>${idx + 1}</td>
-          <td>${escapeHTML(employee.username)} <div class="muted" style="font-size:12px">(${escapeHTML(employee.id)})</div></td>
-          <td class="muted">${escapeHTML(employee.email)}</td>
-          <td>${boothsStr}</td>
-          <td class="actions">
-            <button class="icon-btn edit edit-employee" data-id="${employee.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              </svg>
-            </button>
-            <button class="icon-btn delete delete-employee" data-id="${employee.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </td>
-        `;
-    employeesBody.appendChild(tr);
+  managersTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádní manažeři.</td></tr>`;
+  markSelectedRow(card);
+}
+
+
+function renderEmployees(eventData) {
+  const searchQuery = employeesSearchBar.value;
+  const employees = eventData.employees.filter(employee => !employee.isManager);
+
+  let rows = '';
+
+  employees.forEach((employee, idx) => {
+    if (!employeeIsSearchedFor(employee, searchQuery)) return;
+    const boothsStr = employee.booths.map(booth => `<span data-direct-to="${booth.id}">${escapeHTML(booth.name)}</span>`).join(', ') || '-';
+
+    rows += `
+      <tr id="${employee.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHTML(employee.username)}</td>
+        <td>${escapeHTML(employee.email)}</td>
+        <td>${boothsStr}</td>
+        <td class="actions">
+          <button class="icon-btn edit edit-employee" data-id="${employee.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete delete-employee" data-id="${employee.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
   });
 
+  employeesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádní zaměstnanci.</td></tr>`;
   markSelectedRow(card);
 }
 
 function renderProducts(eventData) {
-  const tbody = document.querySelector('#products-table tbody');
-  tbody.innerHTML = '';
+  const searchQuery = productsSearchBar.value;
   const products = eventData.products;
-  if (!products || !products.length) { tbody.innerHTML = `<tr><td class="muted" colspan="5">Žádné produkty nebo ceny.</td></tr>`; return; }
 
-  products.forEach((p, i) => {
-    const booths = (p.booths || []).map(b => `<span data-direct-to="${b.booth_id}">${findBoothNameById(b.booth_id, eventData.booths)}</span>`).filter(Boolean).join(', ') || '-';
-    const tr = document.createElement('tr');
-    tr.id = p.id;
-    tr.innerHTML = `
-          <td>${i + 1}</td>
-          <td>${escapeHTML(p.name)}</td>
-          <td>${escapeHTML(String(p.price || '-'))}</td>
-          <td>${booths}</td>
-          <td class="actions">
-            <button class="icon-btn edit edit-product" data-id="${p.id}" title="Upravit">✏️</button>
-            <button class="icon-btn delete delete-product" data-id="${p.id}" title="Odebrat">🗑️</button>
-            <button class="icon-btn edit edit-employee" data-id="${employee.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              </svg>
-            </button>
-            <button class="icon-btn delete delete-employee" data-id="${employee.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </button>
-          </td>
-        `;
-    tbody.appendChild(tr);
+  let rows = '';
+
+  products.forEach((product, idx) => {
+    if (!productIsSearchedFor(product, searchQuery)) return;
+    const booths = (product.booths || []).map(booth => `<span data-direct-to="${booth.booth_id}">${booth.name}</span>`).filter(Boolean).join(', ') || '-';
+    const categories = (product.categories || []).join(', ') || '-';
+
+    rows += `
+      <tr id="${product.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHTML(product.name)}</td>
+        <td>${escapeHTML(String(product.price || '-'))}</td>
+        <td>${booths}</td>
+        <td>${categories}</td>
+        <td class="actions">
+          <button class="icon-btn edit edit-product" data-id="${product.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete delete-product" data-id="${product.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
   });
 
+  productsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="5">Žádné produkty.</td></tr>`;
   markSelectedRow(card);
 }
 
@@ -1003,8 +1133,8 @@ async function openEditBoothModal(row) {
       <div class="form-row">
         <label for="booth-type">Typ</label>
         <select id="booth-type">
-          <option value="seller" ${booth.booth_type === 'seller' ? 'selected' : ''}>seller</option>
-          <option value="cashier" ${booth.booth_type === 'cashier' ? 'selected' : ''}>cashier</option>
+          <option value="seller" ${booth.booth_type === 'seller' ? 'selected' : ''}>${boothTypeToDisplay('seller')}</option>
+          <option value="cashier" ${booth.booth_type === 'cashier' ? 'selected' : ''}>${boothTypeToDisplay('cashier')}</option>
         </select>
       </div>
       <div class="modal-actions">
