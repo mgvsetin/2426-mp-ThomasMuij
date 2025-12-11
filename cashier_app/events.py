@@ -269,7 +269,7 @@ def edit_event():
         return jsonify(error='no_column_to_update'), 400
 
     col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-    
+
     params['id'] = event_id
     # validate start_at end_at from db?
 
@@ -328,7 +328,7 @@ def delete_event():
                     WHERE id = %s
                     AND deleted_at IS NULL''',
                     (event_id,))
-                
+
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
@@ -341,4 +341,4 @@ def delete_event():
     if rows_affected == 0:
         return jsonify(error='event_not_found'), 404
 
-    return jsonify(), 200[{'id': UUID('40000000-0000-0000-0000-000000000001'), 'name': 'development_booth1_event1_cashier', 'booth_type': 'cashier'}, {'id': UUID('40000000-0000-0000-0000-000000000002'), 'name': 'development_booth2_event1_cashier', 'booth_type': 'cashier'}, {'id': UUID('40000000-0000-0000-0000-000000000003'), 'name': 'development_booth1_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000004'), 'name': 'development_booth2_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000005'), 'name': 'development_booth3_event1_seller', 'booth_type': 'seller'}, {'id': UUID('40000000-0000-0000-0000-000000000006'), 'name': 'development_booth4_event1_seller', 'booth_type': 'seller'}]
+    return jsonify(), 200

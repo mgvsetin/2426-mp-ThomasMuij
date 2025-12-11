@@ -781,8 +781,16 @@ function renderBooths(eventData) {
           <td>${escapeHTML(b.booth_type)}</td>
           <td class="muted">${escapeHTML(b.id)}</td>
           <td class="actions">
-            <button class="icon-btn edit edit-booth" title="Upravit">✏️</button>
-            <button class="icon-btn delete delete-booth" title="Smazat">🗑️</button>
+            <button class="icon-btn edit edit-booth">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+            <button class="icon-btn delete delete-booth">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
           </td>
         `;
     tbody.appendChild(tr);
@@ -828,8 +836,16 @@ function renderEmployees(eventData) {
           <td class="muted">${escapeHTML(manager.email)}</td>
           <td>-</td>
           <td class="actions">
-            <button class="icon-btn edit edit-employee" data-id="${manager.id}" title="Upravit">✏️</button>
-            <button class="icon-btn delete delete-employee" data-id="${manager.id}" title="Odebrat">🗑️</button>
+            <button class="icon-btn edit edit-employee" data-id="${manager.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+            <button class="icon-btn delete delete-employee" data-id="${manager.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
           </td>
         `;
     managersBody.appendChild(tr);
@@ -846,8 +862,16 @@ function renderEmployees(eventData) {
           <td class="muted">${escapeHTML(employee.email)}</td>
           <td>${boothsStr}</td>
           <td class="actions">
-            <button class="icon-btn edit edit-employee" data-id="${employee.id}" title="Upravit">✏️</button>
-            <button class="icon-btn delete delete-employee" data-id="${employee.id}" title="Odebrat">🗑️</button>
+            <button class="icon-btn edit edit-employee" data-id="${employee.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+            <button class="icon-btn delete delete-employee" data-id="${employee.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
           </td>
         `;
     employeesBody.appendChild(tr);
@@ -874,6 +898,16 @@ function renderProducts(eventData) {
           <td class="actions">
             <button class="icon-btn edit edit-product" data-id="${p.id}" title="Upravit">✏️</button>
             <button class="icon-btn delete delete-product" data-id="${p.id}" title="Odebrat">🗑️</button>
+            <button class="icon-btn edit edit-employee" data-id="${employee.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              </svg>
+            </button>
+            <button class="icon-btn delete delete-employee" data-id="${employee.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
           </td>
         `;
     tbody.appendChild(tr);
