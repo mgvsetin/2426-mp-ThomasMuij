@@ -7,7 +7,7 @@ from argon2 import PasswordHasher
 from cashier_app.employee_events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
-from cashier_app.utils.events import validate_event_name
+from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.employees import is_manager
 
 bp = Blueprint('events', __name__, url_prefix='/events')
@@ -98,63 +98,77 @@ def get_event(event_id):
             employees = cur.execute('''
                 SELECT em.id, em.username, em.email,
                     COALESCE(jsonb_agg(
-                        DISTINCT jsonb_build_object('booth_id', link.booth_id, 'role', link.role)
-                        ) FILTER (WHERE link.employee_id IS NOT NULL),
+                        DISTINCT jsonb_build_object('id', link.booth_id, 'role', link.role, 'name', booths.name)
+                        ) FILTER (WHERE link.booth_id IS NOT NULL),
                         '[]'
                     ) AS booths
                 FROM employees AS em
                 JOIN employee_event_booth_roles AS link ON link.employee_id = em.id
+                LEFT JOIN booths ON booths.id = link.booth_id
                 WHERE em.deleted_at IS NULL
                 AND link.event_id = %s
                 GROUP BY em.id
                 ORDER BY em.created_at''',
                 (event_id,)).fetchall()
             
+            # i need to show and allow uploads/changes of images on the frontend
             products = cur.execute('''
-                SELECT p.id, p.name, p.categories, ev_link.price,
+                SELECT p.id, p.name, p.price, p.image_path, p.image_filename,
                     COALESCE(jsonb_agg(
-                        DISTINCT jsonb_build_object('booth_id', bo_link.booth_id)
+                        DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
+                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL),
+                        '[]'
+                    ) AS booths,
+                    COALESCE(jsonb_agg(
+                        DISTINCT jsonb_build_object('id', cat_link.selectable_category_id, 'name', cat.name)
+                        ) FILTER (WHERE cat_link.selectable_category_id IS NOT NULL),
+                        '[]'
+                    ) AS categories
+                FROM products as p
+                LEFT JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
+                LEFT JOIN booths ON booths.id = bo_link.booth_id
+                LEFT JOIN selectable_category_product_link AS cat_link ON cat_link.product_id = p.id
+                LEFT JOIN selectable_categories AS cat ON cat.id = cat_link.selectable_category_id
+                WHERE p.event_id = %s
+                GROUP BY p.id
+                ORDER BY p.created_at''',
+                (event_id,)).fetchall()
+            
+            
+            booths = cur.execute('''
+                SELECT id, name, booth_type
+                FROM booths
+                WHERE event_id = %s
+                AND deleted_at IS NULL
+                ORDER BY created_at''',
+                # '''
+                # SELECT b.id, b.name, b.booth_type,
+                #     COALESCE(jsonb_agg(
+                #         DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
+                #         ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
+                #         '[]'
+                #     ) AS categories
+                # FROM booths AS b
+                # LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
+                # LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
+                # WHERE b.event_id = %s
+                # AND b.deleted_at IS NULL
+                # GROUP BY b.id,
+                # ORDER BY b.created_at''',
+                (event_id,)).fetchall()
+            
+            categories = cur.execute('''
+                SELECT cat.id, cat.name,
+                    COALESCE(jsonb_agg(
+                        DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
                         ) FILTER (WHERE bo_link.booth_id IS NOT NULL),
                         '[]'
                     ) AS booths
-                FROM products as p
-                JOIN product_event_prices AS ev_link ON ev_link.product_id = p.id
-                LEFT JOIN event_product_booth_link AS bo_link ON bo_link.product_event_prices_id = ev_link.id
-                WHERE ev_link.event_id = %s
-                GROUP BY ev_link.id, p.id
-                ORDER BY ev_link.created_at''',
-                (event_id,)).fetchall()
-            
-            booths = cur.execute('''
-                SELECT b.id, b.name, b.booth_type,
-                    COALESCE(jsonb_agg(
-                        DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
-                        ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
-                        '[]'
-                    ) AS categories
-                FROM booths AS b
-                LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
-                LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
-                WHERE b.event_id = %s
-                AND b.deleted_at IS NULL
-                GROUP BY b.id,
-                ORDER BY b.created_at''',
-                (event_id,)).fetchall() # currently doing the categories stuff
-            
-            categories = cur.execute('''
-                SELECT b.id, b.name, b.booth_type,
-                    COALESCE(jsonb_agg(
-                        DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
-                        ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
-                        '[]'
-                    ) AS categories
-                FROM booths AS b
-                LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
-                LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
-                WHERE b.event_id = %s
-                AND b.deleted_at IS NULL
-                GROUP BY b.id,
-                ORDER BY b.created_at''',
+                FROM selectable_categories AS cat
+                LEFT JOIN selectable_category_booth_link AS bo_link ON bo_link.selectable_category_id = cat.id
+                LEFT JOIN booths ON booths.id = bo_link.booth_id
+                WHERE cat.event_id = %s
+                GROUP BY cat.id''',
                 (event_id,)).fetchall()
             
     return jsonify(event=event, employees=employees, products=products, booths=booths, categories=categories), 200
@@ -177,7 +191,7 @@ def add_event():
     if not name:
         return jsonify(error='missing_name'), 400
 
-    ok, errors = validate_event_name(name)
+    ok, errors = validate_event_or_booth_name(name)
     if not ok:
         return jsonify(error=errors[0]), 400
 
@@ -223,11 +237,9 @@ def add_event():
                     INSERT INTO events
                     ({cols_str})
                     VALUES ({col_values_placeholders})''',
-                    (params))
+                    params)
     except IntegrityError as e:
-        with open(r'C:\Users\thomas.muijsenberg\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
-            print(str(e), file=f)
-
+        # jméno už existuje: detail = unique_index_events_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
@@ -260,11 +272,13 @@ def edit_event():
     start_at_utc = None
     end_at_utc = None
 
-    if name:
-        ok, errors = validate_event_name(name)
-        if not ok:
-            return jsonify(error=errors[0]), 400
-        params['name'] = name
+    if not name:
+        return jsonify(error='missing_name'), 400
+
+    ok, errors = validate_event_or_booth_name(name)
+    if not ok:
+        return jsonify(error=errors[0]), 400
+    params['name'] = name
 
     if start_at:
         try:
@@ -273,6 +287,8 @@ def edit_event():
         except (ValueError, TypeError):
             return jsonify(error='invalid_start_at'), 400
         params['start_at'] = start_at_utc
+    else:
+        params['start_at'] = None
     
     if end_at:
         try:
@@ -285,13 +301,12 @@ def edit_event():
         #     return jsonify(error='invalid_end_at_date'), 400
 
         params['end_at'] = end_at_utc
+    else:
+        params['end_at'] = None
     
     if start_at_utc and end_at_utc:
         if start_at_utc > end_at_utc:
             return jsonify(error='invalid_start_at_end_at_dates'), 400
-
-    if not params:
-        return jsonify(error='no_column_to_update'), 400
 
     col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
 
@@ -305,15 +320,16 @@ def edit_event():
                 cur.execute(f'''
                     UPDATE events
                     SET {col_updates_str}
-                    WHERE id = %(id)s)
+                    WHERE id = %(id)s
                     AND deleted_at IS NULL''',
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {event_id}')
-    except IntegrityError as e: # can be start_at <= end_at now, do through detail? (add detail check to others?)
-        # with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
-        #     print(e, file=f)
+    except IntegrityError as e:
+        # jestli někdy půjde nastavit start_at nebo end_at, když už je jedna hodnotav db,
+        # tak se musí ověření start_at <= end_at vzít z db (detail=events_start_at_before_end_at_check)
+        # jméno už existuje: detail = unique_index_events_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
         current_app.logger.exception('multiple rows updated for event id %s', event_id)
@@ -366,4 +382,4 @@ def delete_event():
     if rows_affected == 0:
         return jsonify(error='event_not_found'), 404
 
-    return jsonify(), 200
+    return jsonify(redirect_url=url_for('events.get_events_manager_page')), 200

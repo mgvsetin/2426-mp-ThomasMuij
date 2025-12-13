@@ -1,13 +1,9 @@
-/* Base styles inspired by events_manager.css */
 :root {
   --bg-start: #f6f8fb;
   --bg-end: #ffffff;
-  --card-bg: #ffffff;
-  --primary: #0f766e;
   --accent: #1f6feb;
   --muted: #6b7280;
   --panel-border: #e4ecf5;
-  --shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
   --radius: 8px;
   --max-height: 65vh;
 }
@@ -83,7 +79,7 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: #0f766e;;
   color: white;
   box-shadow: 0 6px 18px rgba(15, 118, 110, 0.1)
 }
@@ -122,14 +118,20 @@ body {
   color: #842029
 }
 
-/* Card */
+#event-created-at-container {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+
 #card {
-  background: var(--card-bg);
+  background: #ffffff;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 18px;
   margin-top: 12px;
-  box-shadow: var(--shadow)
+  box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
 }
 
 /* Event header */
@@ -152,17 +154,12 @@ body {
   font-size: 13px
 }
 
-.id-muted {
-  font-size: 12px;
-  color: var(--muted);
-  display: inline-block;
-}
-
-#event-datetime {
+#event-start-at,
+#event-end-at {
   font-weight: 600;
 }
 
-/* Grid layout for tables */
+
 .grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -213,6 +210,18 @@ thead th {
   font-weight: 700
 }
 
+thead th div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+thead th span {
+  cursor: pointer;
+  padding: 3px 0;
+}
+
 tbody td {
   padding: 8px 10px;
   vertical-align: middle;
@@ -239,6 +248,33 @@ tbody tr[selected] {
 
 span[data-direct-to] {
   cursor: pointer;
+}
+
+span[data-direct-to]:hover {
+  color: rgb(19, 50, 109);
+}
+
+.image-cell {
+  padding: 2px 3px;
+  text-align: center;
+}
+
+.image-container {
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  height: 47.34px;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* or contain */
+  display: block;
 }
 
 .actions {
@@ -282,10 +318,6 @@ span[data-direct-to] {
   text-align: left;
 }
 
-.employees-section-header {
-  font-weight: bold;
-}
-
 /* modal overlay */
 .overlay {
   position: fixed;
@@ -295,7 +327,7 @@ span[data-direct-to] {
   align-items: center;
   justify-content: center;
   z-index: 1200;
-  padding: 16px
+  padding: 70px 10px 15px 10px
 }
 
 .modal {
@@ -309,7 +341,7 @@ span[data-direct-to] {
   overflow: auto
 }
 
-#close-modal {
+.cross-close {
   background: transparent;
   border: none;
   height: 22px;
@@ -322,7 +354,7 @@ span[data-direct-to] {
   padding: 0;
 }
 
-#close-modal:hover {
+.cross-close:hover {
   background-color: rgb(245, 245, 245);
 }
 
@@ -330,6 +362,10 @@ span[data-direct-to] {
   display: flex;
   justify-content: space-between;
   align-items: center
+}
+
+.delete-form-text {
+  color: #991b1b;
 }
 
 .modal form {
@@ -371,7 +407,14 @@ label {
   box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
 }
 
-.muted-block {
-  color: var(--muted);
-  font-size: 13px;
+.form-error {
+  color: rgb(194, 14, 26);
+  font-size: 14px;
+  line-height: 1.35;
+  display: none;
+}
+
+
+.show-form-error {
+  display: block;
 }

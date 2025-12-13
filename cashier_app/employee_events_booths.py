@@ -43,7 +43,8 @@ def get_active_events_for_employee():
                     WHERE start_at IS NOT NULL
                     AND start_at < now()
                     AND (end_at IS NULL OR end_at > now())
-                    AND deleted_at IS NULL'''
+                    AND deleted_at IS NULL
+                    ORDER BY name'''
                     ).fetchall()
             else:
                 events = cur.execute('''
@@ -55,7 +56,8 @@ def get_active_events_for_employee():
                     AND (events.end_at IS NULL OR events.end_at > now())
                     AND events.deleted_at IS NULL
                     AND link.employee_id = %s
-                    GROUP BY events.id''',
+                    GROUP BY events.id
+                    ORDER BY name''',
                     (employee['id'],)).fetchall()
             
     return jsonify(events), 200
@@ -218,7 +220,8 @@ def get_event_booths_for_employee():
                         JOIN employee_event_booth_roles AS roles ON roles.booth_id = booths.id
                         WHERE booths.event_id = %s
                         AND booths.deleted_at IS NULL
-                        AND roles.employee_id = %s''',
+                        AND roles.employee_id = %s
+                        ORDER BY name''',
                         (event['id'], employee['id'])).fetchall()
     return jsonify(booths), 200
 
@@ -344,35 +347,19 @@ def get_products_and_categories():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             products = cur.execute('''
-                SELECT products.id, products.name, price.price, images.image_path, images.filename,
+                SELECT p.id, p.name, p.price, p.image_path,
                   COALESCE(jsonb_agg(
-                      DISTINCT jsonb_build_object('category_name', cat.name)
+                      DISTINCT jsonb_build_object('name', cat.name)
                       ) FILTER (WHERE cat_link.selectable_category_id IS NOT NULL),
                       '[]'
                   ) AS categories
-                FROM event_product_booth_link as link
-                JOIN product_event_prices as price ON link.product_event_prices_id = price.id
-                JOIN products ON products.id = price.product_id
-                LEFT JOIN selectable_category_product_link AS cat_link ON cat_link.product_id = products.id
+                FROM products AS p
+                JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
+                LEFT JOIN selectable_category_product_link AS cat_link ON cat_link.product_id = p.id
                 LEFT JOIN selectable_categories AS cat ON cat.id = cat_link.selectable_category_id
-                LEFT JOIN product_images AS images ON images.product_id = products.id
-                WHERE link.booth_id = %s
-                GROUP BY products.id, price.id, images.id''',
+                WHERE bo_link.booth_id = %s
+                GROUP BY p.id''',
                 (booth['id'],)).fetchall()
-            
-            # SELECT b.id, b.name, b.booth_type,
-            #         COALESCE(jsonb_agg(
-            #             DISTINCT jsonb_build_object('category_id', link.selectable_category_id, 'category_name', cat.name)
-            #             ) FILTER (WHERE link.selectable_category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
-            #             '[]'
-            #         ) AS categories
-            #     FROM booths AS b
-            #     LEFT JOIN selectable_category_booth_link AS link ON link.booth_id = b.id
-            #     LEFT JOIN selectable_categories AS cat ON cat.id = link.selectable_category_id
-            #     WHERE b.event_id = %s
-            #     AND b.deleted_at IS NULL
-            #     GROUP BY b.id,
-            #     ORDER BY b.created_at'''
             
             selectable_categories = cur.execute('''
                 SELECT cat.name

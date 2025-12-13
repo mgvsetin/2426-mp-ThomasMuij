@@ -1,3 +1,5 @@
+import { cloneData } from "./cache.js";
+
 const cache_time_ms = 60 * 1000; // 1 minuta
 // maybe figure out cache max time so that the slow doenst have to happen
 
@@ -12,13 +14,12 @@ let _getEmployeesPromise = null;
 export function resetEmployeesCache() {
   _employeesCache.employees = null;
   _employeesCache.expiry = 0;
-  _getEmployeesPromise = null;
 }
 
 
 export function getEmployees() {
   if (_employeesCache.employees && _employeesCache.expiry > Date.now()) {
-    return Promise.resolve(_employeesCache.employees);
+    return Promise.resolve(cloneData(_employeesCache.employees));
   }
 
   if (_getEmployeesPromise) return _getEmployeesPromise;
@@ -47,7 +48,7 @@ export function getEmployees() {
       _employeesCache.employees = data.employees;
       _employeesCache.expiry = Date.now() + cache_time_ms;
 
-      return data.employees;
+      return cloneData(data.employees);
 
     } catch (error) {
       if (error.message === 'insufficient_priviliges') {

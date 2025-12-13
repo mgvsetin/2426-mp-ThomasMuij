@@ -98,6 +98,8 @@ def add_employee():
                     (username, email, password_hash, logged_employee['id']))
 
     except IntegrityError as e:
+        # username už existuje: detail = unique_index_employees_username_active
+        # email už existuje: detail = unique_index_employees_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
@@ -125,22 +127,23 @@ def edit_employee():
     new_email = request.form.get('email', '').strip().lower()
     new_password_raw = request.form.get('password', '')
 
-    col_updates = []
-    params = {'edit_employee_id': edit_employee_id}
+    params = {}
 
-    if new_username:
-        ok, errors = validate_username(new_username)
-        if not ok:
-            return jsonify(error=errors[0]), 400
-        col_updates.append('username = %(new_username)s')
-        params['new_username'] = new_username
+    if not new_username:
+        return jsonify(error='missing_username'), 400
+
+    ok, errors = validate_username(new_username)
+    if not ok:
+        return jsonify(error=errors[0]), 400
+    params['username'] = new_username
+
+    if not new_email:
+        return jsonify(error='missing_email'), 400
     
-    if new_email:
-        ok, errors = validate_email(new_email)
-        if not ok:
-            return jsonify(error="invalid_email"), 400
-        col_updates.append('email = %(new_email)s')
-        params['new_email'] = new_email
+    ok, errors = validate_email(new_email)
+    if not ok:
+        return jsonify(error="invalid_email"), 400
+    params['email'] = new_email
         
     if new_password_raw:
         ok, errors = validate_password(new_password_raw)
@@ -150,15 +153,11 @@ def edit_employee():
         password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
         new_password_hash = password_hasher.hash(new_password_raw)
 
-        col_updates.append('password_hash = %(new_password_hash)s')
-        params['new_password_hash'] = new_password_hash
+        params['password_hash'] = new_password_hash
 
-        
+    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
 
-    if not col_updates:
-        return jsonify(error='no_column_updated'), 400
-
-    col_updates_str = ', '.join(col_updates)
+    params['id'] = edit_employee_id
 
     try:
         with get_pool().connection() as conn:
@@ -166,7 +165,7 @@ def edit_employee():
                 cur.execute(f'''
                     UPDATE employees
                     SET {col_updates_str}
-                    WHERE id = %(edit_employee_id)s
+                    WHERE id = %(id)s
                     AND deleted_at IS NULL''',
                     params)
                 rows_affected = cur.rowcount
@@ -174,6 +173,8 @@ def edit_employee():
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {edit_employee_id}')
     except IntegrityError as e:
+        # username už existuje: detail = unique_index_employees_username_active
+        # email už existuje: detail = unique_index_employees_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
         current_app.logger.exception('multiple rows updated for employee id %s', edit_employee_id)

@@ -1,13 +1,3 @@
 with open('prints.txt', 'a', encoding='utf-8') as f:
     print('here', file=f)
 
-duplicate key value violates unique constraint "unique_index_events_name_active"
-DETAIL:  Key (lower(name))=(abc) already exists.
-duplicate key value violates unique constraint "unique_index_events_name_active"
-DETAIL:  Key (lower(name))=(abc) already exists.
-duplicate key value violates unique constraint "unique_index_events_name_active"
-DETAIL:  Key (lower(name))=(abc) already exists.
-new row for relation "events" violates check constraint "events_check"
-DETAIL:  Failing row contains (ffee6ca5-3b9e-4343-9882-60820a40af2b, abcd, 2025-11-20 08:17:00+00, 2025-11-19 08:17:00+00, 2025-11-20 08:17:26.356272+00, 10000000-0000-0000-0000-000000000001, null).
-new row for relation "events" violates check constraint "events_check"
-DETAIL:  Failing row contains (27eec487-41c7-4ad1-8491-6eb851a6a053, asdf, 2025-11-20 08:17:00+00, 2025-11-19 08:17:00+00, 2025-11-20 08:17:36.482739+00, 10000000-0000-0000-0000-000000000001, null).

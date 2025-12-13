@@ -5,8 +5,6 @@ import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
 
-console.log("here14")
-
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableHeader = document.querySelector('table thead');
 const searchBar = document.querySelector('#search-bar');
@@ -64,7 +62,7 @@ document.addEventListener('click', (event) => {
     if (overlayEl) overlayEl.remove();
     return;
   }
-  
+
   // nastavuje řazení (při kliknutí na span v header)
   const headerEl = event.target.closest('th')
   if (headerEl && event.target.matches('span')) {
@@ -92,7 +90,7 @@ document.addEventListener('click', (event) => {
       const orderByArrow = document.createElement('span');
       orderByArrow.classList.add('order-by-arrow');
       orderByArrow.innerHTML = orderBy.ascending ? '&#8595;' : '&#8593;';
-      headerEl.querySelector('div').append(orderByArrow);
+      headerEl.querySelector('div').appendChild(orderByArrow);
     }
 
     loadPage({
@@ -591,13 +589,13 @@ function openEditOverlay(row) {
 
           <div class="form-row">
             <label for="edit-username">Uživatelské jméno</label>
-            <input id="edit-username" name="username" type="text" placeholder="Nechte prázdné nebo stejné, pokud neměníte jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
+            <input id="edit-username" name="username" type="text" placeholder="Uživatelské jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
             <div id="username-edit-error" class="edit-error"></div>
           </div>
 
           <div class="form-row">
             <label for="edit-email">Email</label>
-            <input id="edit-email" name="email" type="email" placeholder="Nechte prázdné nebo stejné, pokud neměníte email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
+            <input id="edit-email" name="email" type="email" placeholder="Email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
             <div id="email-edit-error" class="edit-error"></div>
           </div>
 
@@ -705,8 +703,14 @@ function showAddErrors(error) {
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'db_integrity_error':
-      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel.');
-      return;
+      if (detail.includes('unique_index_employees_username_active')) {
+        setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+      } else if (detail.includes('unique_index_employees_email_active')) {
+        setErr(usernameError, 'E-mail už má jiný uživatel.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+        return;
+      }
     case 'missing_username':
       setErr(usernameError, 'Chybí uživatelské jméno.');
       return;
@@ -847,11 +851,20 @@ function showEditErrors(error) {
     case 'invalid_id':
       setErr(idError, 'Id zaměstnance není validní.');
       return;
-    case 'no_column_updated':
-      setErr(generalError, 'Nebyla provedena žádná změna.');
-      return;
     case 'db_integrity_error':
-      setErr(generalError, 'Uživatelské jméno nebo e-mail už má jiný uživatel');
+      if (detail.includes('unique_index_employees_username_active')) {
+        setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+      } else if (detail.includes('unique_index_employees_email_active')) {
+        setErr(usernameError, 'E-mail už má jiný uživatel.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+        return;
+      }
+    case 'missing_username':
+      setErr(usernameError, 'Chybí uživatelské jméno.');
+      return;
+    case 'missing_email':
+      setErr(emailError, 'Chybí email.');
       return;
     case 'invalid_email':
       setErr(emailError, 'Neplatný e-mail.');

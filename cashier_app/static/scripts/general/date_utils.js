@@ -13,3 +13,20 @@ export function formatDateTimeISOToDisplay(isoString) {
 export function isValidDate(d) {
   return d instanceof Date && !Number.isNaN(d.getTime());
 }
+
+
+export function formatForDatetimeLocalInput(date) {
+  if (typeof date !== Date) {
+    date = new Date(date);
+  }
+
+  const format = (n) => String(n).padStart(2, '0');
+
+  const Y = date.getFullYear();
+  const M = format(date.getMonth() + 1);
+  const D = format(date.getDate());
+  const h = format(date.getHours());
+  const m = format(date.getMinutes());
+
+  return `${Y}-${M}-${D}T${h}:${m}`;
+}

@@ -1,3 +1,5 @@
+import { cloneData } from "./cache.js";
+
 const cache_time_ms = 60 * 1000; // 1 minuta
 // maybe figure out cache max time so that the slow doenst have to happen
 
@@ -12,13 +14,12 @@ let _getEventsPromise = null;
 export function resetEventsCache() {
   _eventsCache.events = null;
   _eventsCache.expiry = 0;
-  _getEventsPromise = null;
 }
 
 
 export function getEvents() {
   if (_eventsCache.events && _eventsCache.expiry > Date.now()) {
-    return Promise.resolve(_eventsCache.events);
+    return Promise.resolve(cloneData(_eventsCache.events));
   }
 
   if (_getEventsPromise) return _getEventsPromise;
@@ -43,7 +44,7 @@ export function getEvents() {
       _eventsCache.events = data.events;
       _eventsCache.expiry = Date.now() + cache_time_ms;
 
-      return data.events;
+      return cloneData(data.events);
 
     } catch (error) {
       return 'unexpected_error';

@@ -18,9 +18,10 @@
       <div id="event-head">
         <div id="event-info">
           <div id="event-name">Akce: -</div>
-          <div id="event-datetime">-</div>
-          <div class="muted-block" style="margin-top:6px;">
-            Vytvořena: <span id="event-created-at" class="muted">-</span>
+          <div id="event-start-at">Začíná: <span></span></div>
+          <div id="event-end-at">Končí: <span></span></div>
+          <div id="event-created-at-container">
+            Vytvořena: <span id="event-created-at">-</span>
           </div>
         </div>
         <div id="event-actions">
@@ -49,8 +50,12 @@
               <thead>
                 <tr>
                   <th class="counter-header">#</th>
-                  <th>Název</th>
-                  <th>Typ</th>
+                  <th id="booths-name-header">
+                    <div><span>Název</span></div>
+                  </th>
+                  <th id="booths-booth_type-header">
+                    <div><span>Typ</span></div>
+                  </th>
                   <th class="actions-header"></th>
                 </tr>
               </thead>
@@ -77,8 +82,12 @@
               <thead>
                 <tr>
                   <th class="counter-header">#</th>
-                  <th>Zaměstnanec</th>
-                  <th>Email</th>
+                  <th id="managers-username-header">
+                    <div><span>Zaměstnanec</span></div>
+                  </th>
+                  <th id="managers-email-header">
+                    <div><span>Email</span></div>
+                  </th>
                   <th class="actions-header"></th>
                 </tr>
               </thead>
@@ -105,9 +114,15 @@
               <thead>
                 <tr>
                   <th class="counter-header">#</th>
-                  <th>Zaměstnanec</th>
-                  <th>Email</th>
-                  <th>Stánky</th>
+                  <th id="employees-username-header">
+                    <div><span>Zaměstnanec</span></div>
+                  </th>
+                  <th id="employees-email-header">
+                    <div><span>Email</span></div>
+                  </th>
+                  <th id="employees-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
                   <th class="actions-header"></th>
                 </tr>
               </thead>
@@ -134,10 +149,52 @@
               <thead>
                 <tr>
                   <th class="counter-header">#</th>
-                  <th>Název</th>
-                  <th>Cena (Kč)</th>
-                  <th>Stánky</th>
-                  <th>Kategorie</th>
+                  <th id="products-name-header">
+                    <div><span>Název</span></div>
+                  </th>
+                  <th id="products-price-header">
+                    <div><span>Cena (Kč)</span></div>
+                  </th>
+                  <th id="products-image_path-header">
+                    <div><span>Obrázek</span></div>
+                  </th>
+                  <th id="products-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
+                  <th id="products-categories-header">
+                    <div><span>Kategorie</span></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="categories-panel">
+          <div class="panel-header">
+            <h3>Kategorie</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="categories-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-category" class="btn btn-primary">+ Přidat kategorii</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="categories-table">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="categories-name-header">
+                    <div><span>Kategorie</span></div>
+                  </th>
+                  <th id="categories-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
                   <th class="actions-header"></th>
                 </tr>
               </thead>
@@ -145,7 +202,7 @@
             </table>
           </div>
         </section>
-        
+
       </div>
     </div>
   </div>

@@ -251,23 +251,23 @@ function toggleOrder(key) {
 function isSearchedForEvent(ev, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  const id = String(ev.id || '').toLowerCase();
+  // const id = String(ev.id || '').toLowerCase();
   const name = String(ev.name || '').toLowerCase();
   const startAt = formatDateTimeISOToDisplay(ev.start_at || '').toLowerCase();
   const endAt = formatDateTimeISOToDisplay(ev.end_at || '').toLowerCase();
   const created_at = formatDateTimeISOToDisplay(ev.created_at || '').toLowerCase();
 
-  const searchable = `${id} ${name} ${startAt} ${endAt} ${created_at}`;
+  const searchable = `${name} ${startAt} ${endAt} ${created_at}`;
 
   for (const q of queries) {
     if (!q.includes('=')) {
       if (!searchable.includes(q)) return false;
     } else {
-      // key=value (id=... name=... start_at=... end_at=...)
+      // key=value ( name=... start_at=... end_at=...)
       const [k, v] = q.split('=');
-      if (['id', 'identifier'].includes(k)) {
-        if (!id.includes(v)) return false;
-      } else if (['name', 'akce', 'nazev', 'název'].includes(k)) {
+      // if (['id', 'identifier'].includes(k)) {
+      //   if (!id.includes(v)) return false;
+       if (['name', 'akce', 'nazev', 'název'].includes(k)) {
         if (!name.includes(v)) return false;
       } else if (['start_at', 'začátek', 'zacatek'].includes(k)) {
         if (!startAt.includes(v)) return false;
@@ -318,7 +318,7 @@ function renderRowsFromList(list, tbody) {
     rows += `
         <tr id="${escapeHTML(String(ev.id))}" data-event='${safeEv}'>
           <td>${idx}</td>
-          <td class="event-name">${escapeHTML(ev.name || '-')} <span class="id-muted muted">(${escapeHTML(ev.id)})</span></td>
+          <td class="event-name">${escapeHTML(ev.name || '-')} <!-- <span class="id-muted muted">(${escapeHTML(ev.id)})</span> --> </td>
           <td class="datetime">${startAtStr}</td>
           <td class="datetime">${endAtStr}</td>
           <td class="created-at muted">${createdAtStr}</td>
@@ -500,7 +500,8 @@ function showAddEventErrors(error, detail) {
       if (detail.includes('unique_index_events_name_active')) {
         setErr(nameError, 'Název už má jiná akce.');
       } else {
-        showAddEventErrors('unexpected_error');
+        setErr(generalError, 'Něco se nepovedlo.');
+        return;
       }
       return;
     default:

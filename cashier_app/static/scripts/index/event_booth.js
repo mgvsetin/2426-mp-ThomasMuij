@@ -250,7 +250,6 @@ export async function pickBooth(formData) {
       ||(response.status === 404 && data.error === 'booth_not_found')
       ||(response.status === 400 && data.error === 'employee_not_linked_to_event')
       ||(response.status === 400 && data.error === 'employee_not_linked_to_booth')) {
-      console.log(data.error)
       throw new Error('bad_booth');
     }
 

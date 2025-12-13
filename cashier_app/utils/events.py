@@ -5,7 +5,7 @@ from typing import List, Tuple
 from email_validator import validate_email as _validate_email, EmailNotValidError
 
 
-def validate_event_name(
+def validate_event_or_booth_name(
     name: str,
     min_len: int = 3,
     max_len: int = 40,
@@ -14,7 +14,7 @@ def validate_event_name(
     forbidden_substrings: List[str] | None = None
     ) -> Tuple[bool, List[str]]:
     """
-    Validate an event name.
+    Validate an event or booth name.
 
     Rules (defaults):
       - length between min_len and max_len

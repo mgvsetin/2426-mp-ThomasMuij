@@ -13,6 +13,7 @@
 //   }
 // }
 
+import { cloneData } from "../general/cache.js";
 import { renderEventPicker } from "./event_booth.js";
 import { order } from "./order.js";
 
@@ -30,44 +31,58 @@ const _productsCache = {
   expiry: 0
 };
 
-export async function getProductsAndCategories() {
+let _getProductsPromise = null;
+
+export function getProductsAndCategories() {
   if (_productsCache.data && _productsCache.expiry > Date.now()) {
-    return _productsCache.data;
+    return Promise.resolve(cloneData(_productsCache.data));
   }
 
-  try {
-    const response = await fetch('/api/employees/me/events/booths/products+categories');
+  if (_getProductsPromise) return _getProductsPromise;
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return false;
+  _getProductsPromise = (async () => {
+    try {
+      const response = await fetch('/api/employees/me/events/booths/products+categories');
+
+      if (response.status === 401) {
+        const json = await response.json();
+        _getProductsPromise = null;
+        window.location.href = json.redirect_url;
+        return false;
+      }
+
+      const resData = await response.json();
+
+      if (response.status === 400 && ['no_selected_event', 'no_selected_booth'].includes(resData.error)) {
+        return 'event_or_booth_not_selected';
+      }
+
+      if (!response.ok) {
+        throw new Error('unexpected_error')
+      }
+
+      const data = {
+        products: resData.products,
+        selectableCategories: resData.selectable_categories.map(category => category.name),
+      }
+
+      data.products.forEach(product => {
+        product.categories = product.categories.map(category => category.name);
+      })
+
+      _productsCache.data = data;
+      _productsCache.expiry = Date.now() + cache_time_ms;
+
+      return cloneData(_productsCache.data);
+
+    } catch (error) {
+      return 'unexpected_error';
+    } finally {
+      _getProductsPromise = null;
     }
+  })();
 
-    const data = await response.json();
-
-    if (response.status === 400 && ['no_selected_event', 'no_selected_booth'].includes(data.error)) {
-      return 'event_or_booth_not_selected';
-    }
-
-    if (!response.ok) {
-      throw new Error('unexpected_error')
-    }
-
-    _productsCache.data = {};
-    _productsCache.data.products = data.products;
-    _productsCache.data.selectableCategories = data.selectable_categories.map(category => category.name);
-    _productsCache.expiry = Date.now() + cache_time_ms;
-
-    _productsCache.data.products.forEach(product => {
-      product.categories = product.categories.map(category => category.category_name);
-    })
-
-    return  _productsCache.data;
-
-  } catch (error) {
-    return 'unexpected_error';
-  }
+  return _getProductsPromise;
 }
 
 
@@ -137,10 +152,10 @@ export async function renderProducts() {
 
     let imageHTML;
 
-    if (product.image_path && product.filename) {
+    if (product.image_path) {
       imageHTML = `
         <div class="image-container">
-          <img class="product-image" src="${product.image_path}/${product.filename}">
+          <img class="product-image" src="${product.image_path}">
         </div>
       `;
     } else {
@@ -217,7 +232,7 @@ export function saveSelectedCategory(category) {
   if (!category) {
     sessionStorage.removeItem('selectedCategory');
   } else {
-  sessionStorage.setItem('selectedCategory', category.toLowerCase().trim())
+    sessionStorage.setItem('selectedCategory', category.toLowerCase().trim())
   }
 }
 

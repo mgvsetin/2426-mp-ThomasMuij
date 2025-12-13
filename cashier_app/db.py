@@ -181,7 +181,7 @@ def init_app(app: Flask):
         # check=ConnectionPool.check_connection,
         open=True) # if process can be preloaded and then forked, use open=False and call pool.open() after fork
     app.extensions['db_pool'] = pool
-    # with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:
+    # with open('prints.txt', 'a', encoding='utf-8') as f:
     #     print(app.extensions['db_pool'].get_stats(), file=f)
 
     # není nutné

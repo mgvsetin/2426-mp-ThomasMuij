@@ -14,11 +14,18 @@ def get_db(row_factory=dict_row, **kwargs):
 
 with get_db() as conn:
     with conn.cursor() as cur:
-        sessions = cur.execute('''
-            SELECT *
-            FROM sessions''').fetchall()
+        event_id = cur.execute(f'''
+            SELECT event_id
+            FROM booths
+            WHERE id = %s
+            AND deleted_at IS NULL''',
+            ("40000000-0000-0000-0000-000000000001",)).fetchone()
         
-print(sessions)
+if not event_id:
+    print(event_id)
+else:
+    event_id = event_id['event_id']
+    print(str(event_id) == '30000000-0000-0000-0000-000000000001')
 
 
 # import sqlite3

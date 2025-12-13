@@ -226,6 +226,10 @@ tbody tr[selected] {
   cursor: pointer;
 }
 
+.created-by span:hover {
+  color: #556382;
+}
+
 .actions {
   min-width: 120px;
 }

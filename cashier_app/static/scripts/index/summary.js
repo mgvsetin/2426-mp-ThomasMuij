@@ -33,10 +33,10 @@ export async function renderSummary() {
 
     let imageHTML;
 
-    if (matchingProduct.image_path && matchingProduct.filename) {
+    if (matchingProduct.image_path) {
       imageHTML = `
         <div class="summary-image-container">
-          <img class="product-image" src="${matchingProduct.image_path}/${matchingProduct.filename}">
+          <img class="product-image" src="${matchingProduct.image_path}">
         </div>
       `;
     } else {
