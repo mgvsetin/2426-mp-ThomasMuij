@@ -1,5 +1,5 @@
 import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent } from "./event_booth.js";
-import { renderProducts, renderSelectableCategories, saveSelectedCategory } from "./products.js";
+import { renderProducts, renderCategories, saveSelectedCategory } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
@@ -38,7 +38,7 @@ async function loadPage({
   }
 
   if (categories) {
-    toLoad.push(renderSelectableCategories());
+    toLoad.push(renderCategories());
   }
 
   if (sidebar) {
@@ -66,7 +66,7 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  if (event.target.matches('.selectable-category')) {
+  if (event.target.matches('.category')) {
     const categoryButton = event.target;
     if (categoryButton.classList.contains('selected')) {
       saveSelectedCategory(null);

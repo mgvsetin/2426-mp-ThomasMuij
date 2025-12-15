@@ -78,7 +78,7 @@ body {
   display: block;
 }
 
-#selectable-categories {
+#categories {
   display: none;
   background-color: white;
   overflow: auto;
@@ -90,11 +90,11 @@ body {
   padding: 0 15px;
 }
 
-#selectable-categories.show {
+#categories.show {
   display: flex;
 }
 
-.selectable-category {
+.category {
   flex: 0 0 auto;
   min-width: 40px;
   max-width: 200px;
@@ -108,15 +108,15 @@ body {
   font-size: 16px;
 }
 
-.selectable-category:hover {
+.category:hover {
   background-color: rgb(236, 236, 236);
 }
 
-.selectable-category:active {
+.category:active {
   background-color: rgb(221, 221, 221);
 }
 
-.selectable-category.selected {
+.category.selected {
   background-color: rgb(64, 64, 225);
   color: white;
 }
@@ -671,7 +671,7 @@ body {
 
 @media (max-width: 495px) {
   body,
-  .selectable-category {
+  .category {
     font-size: 13px;
   }
 
@@ -694,7 +694,7 @@ body {
     font-size: 10px;
   }
 
-  #selectable-categories {
+  #categories {
     height: 40px;
   }
 

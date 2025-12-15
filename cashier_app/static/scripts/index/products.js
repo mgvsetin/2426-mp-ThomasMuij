@@ -19,7 +19,7 @@ import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = productSide.querySelector('#product-grid-container');
-const selectableCategoriesEl = productSide.querySelector('#selectable-categories')
+const categoriesEl = productSide.querySelector('#categories')
 const searchBar = document.querySelector('#search-bar');
 
 
@@ -63,7 +63,7 @@ export function getProductsAndCategories() {
 
       const data = {
         products: resData.products,
-        selectableCategories: resData.selectable_categories.map(category => category.name),
+        categories: resData.categories.map(category => category.name),
       }
 
       data.products.forEach(product => {
@@ -237,36 +237,36 @@ export function saveSelectedCategory(category) {
 }
 
 
-export async function renderSelectableCategories() {
+export async function renderCategories() {
   const result = await getProductsAndCategories(); // combine awaits here and everywhere else
 
   if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(result)) {
-    selectableCategoriesEl.innerHTML = '';
+    categoriesEl.innerHTML = '';
     return;
   }
 
-  const selectableCategories = result.selectableCategories;
+  const categories = result.categories;
 
-  let selectableCategoriesHTML = '';
+  let categoriesHTML = '';
 
-  selectableCategories.forEach((category) => {
-    selectableCategoriesHTML += `
-    <button class="selectable-category" data-category="${category.toLowerCase().trim()}">
+  categories.forEach((category) => {
+    categoriesHTML += `
+    <button class="category" data-category="${category.toLowerCase().trim()}">
       ${category}
     </button>
     `;
   })
 
-  selectableCategoriesEl.innerHTML = selectableCategoriesHTML;
-  if (selectableCategoriesHTML === '') {
-    selectableCategoriesEl.classList.remove('show');
+  categoriesEl.innerHTML = categoriesHTML;
+  if (categoriesHTML === '') {
+    categoriesEl.classList.remove('show');
   } else {
-    selectableCategoriesEl.classList.add('show');
+    categoriesEl.classList.add('show');
   }
 
   const saved = getSelectedCategory();
   if (saved) {
-    const btn = selectableCategoriesEl.querySelector(`.selectable-category[data-category="${saved}"]`);
+    const btn = categoriesEl.querySelector(`.category[data-category="${saved}"]`);
     if (btn) btn.classList.add('selected');
   }
 }

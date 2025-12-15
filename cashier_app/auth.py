@@ -54,7 +54,8 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            employee = cur.execute('''
+            employee = cur.execute(
+                '''
                 SELECT id, password_hash
                 FROM employees
                 WHERE (username = %s OR email = %s)
@@ -75,7 +76,8 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
         new_hash = password_hasher.hash(password)
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute('''
+                cur.execute(
+                    '''
                     UPDATE employees
                     SET password_hash = %s
                     WHERE id = %s''',
@@ -133,7 +135,8 @@ def load_logged_in_employee() -> dict | None:
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            g.employee = cur.execute('''
+            g.employee = cur.execute(
+                '''
                 SELECT id, username, email, is_admin
                 FROM employees
                 WHERE id = %s AND deleted_at IS NULL''',

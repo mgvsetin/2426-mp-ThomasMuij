@@ -4,6 +4,7 @@ import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } from "../general/date_utils.js";
 import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
 import { cloneData } from "../general/cache.js";
+import { getEmployees } from "../general/employees.js";
 
 
 const card = document.querySelector('#card');
@@ -55,10 +56,8 @@ document.addEventListener('click', async (event) => {
   const sidebarClick = sidebarClickListeners(event);
   if (headerClick || sidebarClick) return;
 
-  // open graphs, probably just add the graphs to the page itself (maybe under something like show graphs)
+  // open graphs
   if (event.target.matches('#open-graphs')) {
-    // either navigate to a dedicated graphs page or open overlay
-    // We'll navigate to /events/<id>/graphs (implement server-side) as requested
     window.location.href = `/events/${encodeURIComponent(eventId)}/graphs`;
     return;
   }
@@ -118,7 +117,7 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  // odendat zaměstnance z akce
+  // odendat zaměstnance/managera z akce
   const removeEmployeeBtn = event.target.closest('.remove-employee');
   if (removeEmployeeBtn) {
     const row = removeEmployeeBtn.closest('tr[id]');
@@ -150,7 +149,7 @@ document.addEventListener('click', async (event) => {
 
   // přidat kategorii
   if (event.target.matches('#add-category')) {
-    openAddCategoryModal();
+    await openAddCategoryModal();
     return;
   }
 
@@ -158,7 +157,7 @@ document.addEventListener('click', async (event) => {
   const editCategoryButton = event.target.closest('.edit-category');
   if (editCategoryButton) {
     const row = editCategoryButton.closest('tr[id]');
-    openEditCategoryModal(row);
+    await openEditCategoryModal(row);
     return;
   }
 
@@ -166,7 +165,7 @@ document.addEventListener('click', async (event) => {
   const deleteCategoryBtn = event.target.closest('.delete-category');
   if (deleteCategoryBtn) {
     const row = deleteCategoryBtn.closest('tr[id]');
-    openDeleteCategoryModal(row);
+    await openDeleteCategoryModal(row);
     return;
   }
 
@@ -219,7 +218,6 @@ document.addEventListener('dblclick', async (event) => {
       await openEditBoothModal(row);
       return;
     } else if (parentTable.id === 'managers-table') {
-      await openEditEmployeeModal(row);
       return;
     } else if (parentTable.id === 'employees-table') {
       await openEditEmployeeModal(row);
@@ -228,7 +226,7 @@ document.addEventListener('dblclick', async (event) => {
       await openEditProductModal(row);
       return;
     } else if (parentTable.id === 'categories-table') {
-      openEditCategoryModal(row);
+      await openEditCategoryModal(row);
       return;
     }
   }
@@ -236,6 +234,7 @@ document.addEventListener('dblclick', async (event) => {
 
 
 document.addEventListener('submit', async (event) => {
+  // EDIT EVENT FORM
   const editEventForm = event.target.closest('#edit-event-form');
   if (editEventForm) {
     event.preventDefault();
@@ -329,6 +328,7 @@ document.addEventListener('submit', async (event) => {
     return;
   }
 
+  // DELETE EVENT FORM
   const deleteEventForm = event.target.closest('#delete-event-form');
   if (deleteEventForm) {
     event.preventDefault();
@@ -391,87 +391,731 @@ document.addEventListener('submit', async (event) => {
     return;
   }
 
+  // ADD BOOTH FORM
+  const addBoothForm = event.target.closest('#add-booth-form');
+  if (addBoothForm) {
+    event.preventDefault();
+    const saveButton = addBoothForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
 
-  //   return;
-  // }
+    clearModalErrors();
 
-  // // uprav zaměstnance
-  // const editFrom = event.target.closest('#edit-form');
-  // if (editFrom) {
-  //   event.preventDefault();
-  //   const saveButton = editFrom.querySelector('#edit-save');
-  //   saveButton.disabled = true;
+    const formData = new FormData(addBoothForm);
+    formData.set('name', formData.get('name').trim());
+    formData.set('event-id', eventId);
 
-  //   clearEditErrors();
+    try {
+      const response = await fetch('/api/events/booths/create', {
+        method: 'post',
+        body: formData
+      });
 
-  //   const formData = new FormData(editFrom);
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
 
-  //   formData.set('username', formData.get('username').trim());
-  //   formData.set('email', formData.get('email').trim());
+      const data = await response.json();
 
-  //   const result = await editEmployee(formData);
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showAddBoothErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
 
-  //   saveButton.disabled = false;
+      if (response.status === 400) {
+        showAddBoothErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
 
-  //   if (result === true) {
-  //     const overlayEl = document.querySelector('#edit-overlay');
-  //     if (overlayEl) overlayEl.remove();
-  //     resetEmployeesCache();
-  //     loadPage({
-  //       table: true,
-  //       header: true
-  //     });
-  //     return;
-  //   }
+      if (!response.ok) {
+        showAddBoothErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
 
-  //   showEditErrors(result);
-  //   return;
-  // }
+      closeModal();
+      resetEventDataCache();
+      loadPage({ boothsTable: true });
 
-  // // odstraň zaměstnance
-  // const deleteForm = event.target.closest('#delete-form');
-  // if (deleteForm) {
-  //   event.preventDefault();
-  //   const deleteButton = deleteForm.querySelector('#delete-confirm');
-  //   deleteButton.disabled = true;
+    } catch (err) {
+      showAddBoothErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
 
-  //   clearDeleteErrors();
+  // EDIT BOOTH FORM
+  const editBoothForm = event.target.closest('#edit-booth-form');
+  if (editBoothForm) {
+    event.preventDefault();
+    const saveButton = editBoothForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
 
-  //   const formData = new FormData(deleteForm);
+    clearModalErrors();
 
-  //   const result = await deleteEmployee(formData);
+    const formData = new FormData(editBoothForm);
+    formData.set('name', formData.get('name').trim());
 
-  //   deleteButton.disabled = false;
+    try {
+      const response = await fetch('/api/events/booths/edit', {
+        method: 'post',
+        body: formData
+      });
 
-  //   if (result === true) {
-  //     const overlayEl = document.querySelector('#delete-overlay');
-  //     if (overlayEl) overlayEl.remove();
-  //     resetEmployeesCache();
-  //     loadPage({
-  //       table: true
-  //     });
-  //     return;
-  //   }
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
 
-  //   showDeleteErrors(result);
-  //   return;
-  // }
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showEditBoothErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'booth_not_found') {
+        showEditBoothErrors('booth_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditBoothErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditBoothErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ boothsTable: true });
+
+    } catch (err) {
+      showEditBoothErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // DELETE BOOTH FORM
+  const deleteBoothForm = event.target.closest('#delete-booth-form');
+  if (deleteBoothForm) {
+    event.preventDefault();
+    const saveButton = deleteBoothForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(deleteBoothForm);
+
+    try {
+      const response = await fetch('/api/events/booths/delete', {
+        method: 'delete',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showDeleteBoothErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'booth_not_found') {
+        showDeleteBoothErrors('booth_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showDeleteBoothErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showDeleteBoothErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ boothsTable: true });
+
+    } catch (err) {
+      showDeleteBoothErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // ASSIGN MANAGER/EMPLOYEE FORM
+  const assignEmployeeForm = event.target.closest('#assign-employee-form');
+  if (assignEmployeeForm) {
+    event.preventDefault();
+    const saveButton = assignEmployeeForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(assignEmployeeForm);
+    formData.set('username-or-email', formData.get('username-or-email').trim());
+    formData.set('event-id', eventId);
+
+    const isManager = formData.get('is-manager') === 'true';
+
+    try {
+      const endpoint = isManager ? '/api/events/employees/assign-manager' : '/api/events/employees/assign-employee';
+      const response = await fetch(endpoint, {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showAssignEmployeeErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showAssignEmployeeErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showAssignEmployeeErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ managersTable: true, employeesTable: true });
+
+    } catch (err) {
+      showAssignEmployeeErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // EDIT EMPLOYEE FORM
+  const editEmployeeForm = event.target.closest('#edit-employee-form');
+  if (editEmployeeForm) {
+    event.preventDefault();
+    const saveButton = editEmployeeForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(editEmployeeForm);
+    formData.set('username-or-email', formData.get('username-or-email'));
+    formData.set('event-id', eventId);
+
+    try {
+      const response = await fetch('/api/events/employees/assign-employee', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showEditEmployeeErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditEmployeeErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditEmployeeErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ employeesTable: true });
+
+    } catch (err) {
+      showEditEmployeeErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // REMOVE EMPLOYEE FORM
+  const removeEmployeeForm = event.target.closest('#remove-employee-form');
+  if (removeEmployeeForm) {
+    event.preventDefault();
+    const saveButton = removeEmployeeForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(removeEmployeeForm);
+    formData.set('event-id', eventId);
+
+    try {
+      const response = await fetch('/api/events/employees/unassign', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showRemoveEmployeeErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showRemoveEmployeeErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showRemoveEmployeeErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ managersTable: true, employeesTable: true });
+
+    } catch (err) {
+      showRemoveEmployeeErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // ADD PRODUCT FORM
+  const addProductForm = event.target.closest('#add-product-form');
+  if (addProductForm) {
+    event.preventDefault();
+    const saveButton = addProductForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(addProductForm);
+    formData.set('name', formData.get('name').trim());
+    formData.set('event-id', eventId);
+
+    try {
+      const response = await fetch('/api/events/products/create', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showAddProductErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 413 && data.error === 'file_too_large') {
+        showAddProductErrors('file_too_large');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showAddProductErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showAddProductErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ productsTable: true });
+
+    } catch (err) {
+      showAddProductErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // EDIT PRODUCT FORM
+  const editProductForm = event.target.closest('#edit-product-form');
+  if (editProductForm) {
+    event.preventDefault();
+    const saveButton = editProductForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(editProductForm);
+    formData.set('name', formData.get('name').trim());
+
+    try {
+      const response = await fetch('/api/events/products/edit', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showEditProductErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'product_not_found') {
+        showEditProductErrors('product_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 413 && data.error === 'file_too_large') {
+        showEditProductErrors('file_too_large');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditProductErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditProductErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ productsTable: true });
+
+    } catch (err) {
+      showEditProductErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // DELETE PRODUCT FORM
+  const deleteProductForm = event.target.closest('#delete-product-form');
+  if (deleteProductForm) {
+    event.preventDefault();
+    const saveButton = deleteProductForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(deleteProductForm);
+
+    try {
+      const response = await fetch('/api/events/products/delete', {
+        method: 'delete',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showDeleteProductErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'product_not_found') {
+        showDeleteProductErrors('product_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showDeleteProductErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showDeleteProductErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ productsTable: true });
+
+    } catch (err) {
+      showDeleteProductErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // ADD CATEGORY FORM
+  const addCategoryForm = event.target.closest('#add-category-form');
+  if (addCategoryForm) {
+    event.preventDefault();
+    const saveButton = addCategoryForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(addCategoryForm);
+    formData.set('name', formData.get('name').trim());
+    formData.set('event-id', eventId);
+
+    try {
+      const response = await fetch('/api/events/categories/create', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showAddCategoryErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showAddCategoryErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showAddCategoryErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ categoriesTable: true });
+
+    } catch (err) {
+      showAddCategoryErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // EDIT CATEGORY FORM
+  const editCategoryForm = event.target.closest('#edit-category-form');
+  if (editCategoryForm) {
+    event.preventDefault();
+    const saveButton = editCategoryForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(editCategoryForm);
+    formData.set('name', formData.get('name').trim());
+
+    try {
+      const response = await fetch('/api/events/categories/edit', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showEditCategoryErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'category_not_found') {
+        showEditCategoryErrors('category_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditCategoryErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditCategoryErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ categoriesTable: true });
+
+    } catch (err) {
+      showEditCategoryErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // DELETE CATEGORY FORM
+  const deleteCategoryForm = event.target.closest('#delete-category-form');
+  if (deleteCategoryForm) {
+    event.preventDefault();
+    const saveButton = deleteCategoryForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(deleteCategoryForm);
+
+    try {
+      const response = await fetch('/api/events/categories/delete', {
+        method: 'delete',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_priviliges') {
+        showDeleteCategoryErrors('insufficient_priviliges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'category_not_found') {
+        showDeleteCategoryErrors('category_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showDeleteCategoryErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showDeleteCategoryErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ categoriesTable: true });
+
+    } catch (err) {
+      showDeleteCategoryErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
 });
-
-
-// document.getElementById('delete-event').addEventListener('click', async () => {
-//   if (!confirm('Smazat tuto akci? (operace je soft-delete)')) return;
-//   try {
-//     const form = new FormData(); form.set('id', eventId);
-//     const res = await fetch('/api/events/delete', { method: 'DELETE', body: form });
-//     if (res.status === 401) { const j = await res.json(); window.location.href = j.redirect_url; return; }
-//     if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-//     // go back to events list
-//     window.location.href = '/events/manager';
-//   } catch (e) { alert('Nelze smazat akci: ' + e.message); }
-// });
-
-// Delegated actions for booth/edit/delete product/employee
 
 
 document.addEventListener('input', (event) => {
@@ -490,14 +1134,6 @@ document.addEventListener('input', (event) => {
     }
   }
 });
-
-// document.getElementById('search-bar').addEventListener('input', (event) => {
-//   const query = event.target.value.trim().toLowerCase();
-//   document.querySelectorAll('table tbody tr').forEach(tr => {
-//     const text = tr.textContent.toLowerCase();
-//     tr.style.display = (!query || text.includes(query)) ? '' : 'none';
-//   });
-// });
 
 
 async function loadPage({
@@ -739,9 +1375,6 @@ function sorterFactory(dict) {
       bValue = String(bValue).toLowerCase();
     }
 
-    console.log(aValue);
-    console.log(bValue);
-
     return aValue.localeCompare(bValue) * (dict.ascending ? 1 : -1);
   }
 
@@ -752,7 +1385,6 @@ function sorterFactory(dict) {
 function boothIsSearchedFor(booth, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  // const id = String(booth.id || '').toLowerCase();
   const name = String(booth.name || '').toLowerCase();
   const type = String(boothTypeToDisplay(booth.booth_type) || '').toLowerCase();
 
@@ -762,10 +1394,7 @@ function boothIsSearchedFor(booth, searchQuery) {
     if (!query.includes('=')) {
       if (!searchable.includes(query)) return false;
     } else {
-      // key=value (id=... name=... type=...)
       const [searchKeyWord, search] = query.split('=');
-      // if (['id', 'identifier'].includes(searchKeyWord)) {
-      //   if (!id.includes(search)) return false;
       if (['name', 'stánek', 'stanek', 'booth', 'nazev', 'název'].includes(searchKeyWord)) {
         if (!name.includes(search)) return false;
       } else if (['type', 'typ', 'druh'].includes(searchKeyWord)) {
@@ -781,7 +1410,6 @@ function boothIsSearchedFor(booth, searchQuery) {
 function employeeIsSearchedFor(employee, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  // const id = String(employee.id || '').toLowerCase();
   const username = String(employee.username || '').toLowerCase();
   const email = String(employee.email || '').toLowerCase();
   let booths = employee.booths.length === 0 ? '-' : '';
@@ -797,8 +1425,6 @@ function employeeIsSearchedFor(employee, searchQuery) {
     } else {
       const [searchKeyWord, search] = query.split('=');
 
-      // if (['id', 'identifier'].includes(searchKeyWord)) {
-      //   if (!id.includes(search)) return false;
       if (['username',
         'name',
         'zaměstnanec',
@@ -831,7 +1457,6 @@ function employeeIsSearchedFor(employee, searchQuery) {
 function productIsSearchedFor(product, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  // const id = String(product.id || '').toLowerCase();
   const name = String(product.name || '').toLowerCase();
   const price = String(product.price || '').toLowerCase();
   const imageName = String(product.image_filename || '').toLowerCase();
@@ -851,8 +1476,6 @@ function productIsSearchedFor(product, searchQuery) {
       if (!searchable.includes(query)) return false;
     } else {
       const [searchKeyWord, search] = query.split('=');
-      // if (['id', 'identifier'].includes(searchKeyWord)) {
-      //   if (!id.includes(search)) return false;
       if (['name', 'produkt', 'product', 'nazev', 'název'].includes(searchKeyWord)) {
         if (!name.includes(search)) return false;
       } else if (['price', 'cena'].includes(searchKeyWord)) {
@@ -875,7 +1498,6 @@ function productIsSearchedFor(product, searchQuery) {
 function categoryIsSearchedFor(category, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
-  // const id = String(category.id || '').toLowerCase();
   const name = String(category.name || '').toLowerCase();
   let booths = category.booths.length === 0 ? '-' : '';
   for (const booth of category.booths) {
@@ -889,8 +1511,6 @@ function categoryIsSearchedFor(category, searchQuery) {
       if (!searchable.includes(query)) return false;
     } else {
       const [searchKeyWord, search] = query.split('=');
-      // if (['id', 'identifier'].includes(searchKeyWord)) {
-      //   if (!id.includes(search)) return false;
       if (['name', 'kategorie', 'category', 'categories', 'název', 'nazev'].includes(searchKeyWord)) {
         if (!name.includes(search)) return false;
       } else if (['stánek', 'stanek', 'booth', 'stánky', 'stanky', 'booths'].includes(searchKeyWord)) {
@@ -906,15 +1526,11 @@ function categoryIsSearchedFor(category, searchQuery) {
 
 function belongingBoothsToDisplay(booths) {
   return booths.map(booth => `<span data-direct-to="${booth.id}">${escapeHTML(booth.name)}</span>`).join(', ') || '-';
-
-  // (product.booths || []).map(booth => `<span data-direct-to="${booth.id}">${booth.name}</span>`).filter(Boolean).join(', ') || '-';
 }
 
 
 function belongingCategoriesToDisplay(categories) {
   return categories.map(category => `<span data-direct-to="${category.id}">${escapeHTML(category.name)}</span>`).join(', ') || '-';
-
-  // (product.categories || []).map(category => `<span data-direct-to="${category.id}">${category.name}</span>`).filter(Boolean).join(', ') || '-';
 }
 
 
@@ -979,7 +1595,6 @@ function renderBooths(eventData) {
 
 function renderManagers(eventData) {
   const searchQuery = managersSearchBar.value;
-  // [{id, username, email, booths: [{id, role}, ...]}, ...]
   const managers = eventData.employees.filter(employee => employee.isManager);
 
   const sorter = sorterFactory(orderBy.managers);
@@ -996,11 +1611,6 @@ function renderManagers(eventData) {
         <td>${escapeHTML(manager.username)}</td>
         <td>${escapeHTML(manager.email)}</td>
         <td class="actions">
-          <button class="icon-btn edit edit-employee" data-id="${manager.id}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            </svg>
-          </button>
           <button class="icon-btn delete remove-employee" data-id="${manager.id}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
@@ -1101,7 +1711,7 @@ function renderProducts(eventData) {
     `;
   });
 
-  productsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="6">Žádné produkty.</td></tr>`;
+  productsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="7">Žádné produkty.</td></tr>`;
   markSelectedRow(card);
 }
 
@@ -1138,8 +1748,62 @@ function renderCategories(eventData) {
     `;
   });
 
-  categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="3">Žádné kategorie.</td></tr>`;
+  categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné kategorie.</td></tr>`;
   markSelectedRow(card);
+}
+
+
+function makeBoothsPicker(booths, checkBooths=[], boothType='all') {
+  let checkboxesHTML = '';
+  const checkBoothIds = checkBooths.map(booth => booth.id);
+
+  booths.forEach(booth => {
+    if (boothType !== 'all' && booth.booth_type !== boothType) {
+      return;
+    }
+
+    const checkedStr = checkBoothIds.includes(booth.id) ? 'checked' : ''
+
+    checkboxesHTML += `
+      <div class="checkbox-container">
+        <label class="checkbox-label">
+          <input type="checkbox" name="booths" value="${booth.id}" ${checkedStr}> ${escapeHTML(booth.name)}
+        </label>
+      </div>
+    `;
+  });
+
+  return `
+    <fieldset>
+      <legend>Stánky</legend>
+      ${checkboxesHTML || '<div class="muted">Žádné stánky k dispozici.</div>'}
+    </fieldset>
+  `;
+}
+
+
+function makeCategoriesPicker(categories, checkCategories) {
+  let checkboxesHTML = '';
+  const checkCategoryIds = checkCategories.map(category => category.id);
+
+  categories.forEach(category => {
+    const checkedStr = checkCategoryIds.includes(category.id) ? 'checked' : ''
+
+    checkboxesHTML += `
+      <div class="checkbox-container">
+        <label class="checkbox-label">
+          <input type="checkbox" name="categories" value="${category.id}" ${checkedStr}> ${escapeHTML(category.name)}
+        </label>
+      </div>
+    `;
+  });
+
+  return `
+    <fieldset>
+      <legend>Kategorie</legend>
+      ${checkboxesHTML || '<div class="muted">Žádné kategorie k dispozici.</div>'}
+    </fieldset>
+  `;
 }
 
 
@@ -1149,12 +1813,14 @@ function openModal(html) {
   div.className = 'overlay';
   div.innerHTML = `<div class="modal">${html}</div>`;
   document.body.appendChild(div);
+  document.body.classList.add('no-scroll');
   return div;
 }
 
 function closeModal() {
   const overlay = document.querySelector('.overlay');
   if (overlay) overlay.remove();
+  document.body.classList.remove('no-scroll');
 }
 
 
@@ -1248,38 +1914,30 @@ function openAddBoothModal() {
         </header>
         <form id="add-booth-form">
           <div class="form-row">
-            <label for="booth-name">Název</label>
-            <input id="booth-name" type="text"/>
+            <label for="booth-name-input">Název</label>
+            <input id="booth-name-input" name="name" type="text"/>
+            <div id="add-booth-name-error" class="form-error"></div>
           </div>
           <div class="form-row">
-            <label for="booth-type">Typ</label>
-            <select id="booth-type">
-              <option value="seller">seller</option>
-              <option value="cashier">cashier</option></select>
-            </div>
+            <label for="booth-type-input">Typ</label>
+            <select id="booth-type-input" name="type">
+              <option value="seller">${boothTypeToDisplay('seller')}</option>
+              <option value="cashier">${boothTypeToDisplay('cashier')}</option>
+            </select>
+            <div id="add-booth-type-error" class="form-error"></div>
+          </div>
+          
+          <div class="form-row">
+            <div id="add-booth-general-error" class="form-error"></div>
+          </div>
+
           <div class="modal-actions">
             <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
             <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
           </div>
         </form>
       `;
-  const modal = openModal(html);
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const name = modal.querySelector('#booth-name').value.trim();
-    const type = modal.querySelector('#booth-type').value;
-    if (!name) { alert('Zadejte název'); return; }
-    // call API to create booth (endpoint may vary - adjust to your backend)
-    try {
-      const form = new FormData();
-      form.set('name', name);
-      form.set('booth_type', type);
-      form.set('event_id', eventId);
-      const res = await fetch('/api/booths/create', { method: 'POST', body: form });
-      if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-      closeModal();
-      resetEventDataCache();
-    } catch (e) { alert('Nelze vytvořit stánek: ' + e.message); }
-  });
+  openModal(html);
 }
 
 
@@ -1298,62 +1956,68 @@ async function openEditBoothModal(row) {
       </button>
     </header>
     <form id="edit-booth-form">
+      <input type="hidden" name="id" value="${id}"/>
       <div class="form-row">
-        <label for="booth-name">Název</label>
-        <input id="booth-name" type="text" value="${escapeHTML(booth.name)}"/>
+        <label for="booth-name-input">Název</label>
+        <input id="booth-name-input" name="name" type="text" value="${escapeHTML(booth.name)}"/>
+        <div id="edit-booth-name-error" class="form-error"></div>
       </div>
+
       <div class="form-row">
-        <label for="booth-type">Typ</label>
-        <select id="booth-type">
-          <option value="seller" ${booth.booth_type === 'seller' ? 'selected' : ''}>${boothTypeToDisplay('seller')}</option>
-          <option value="cashier" ${booth.booth_type === 'cashier' ? 'selected' : ''}>${boothTypeToDisplay('cashier')}</option>
-        </select>
+        <div id="edit-booth-general-error" class="form-error"></div>
       </div>
+
       <div class="modal-actions">
         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
         <button type="submit" class="save-form btn btn-primary">Uložit</button>
       </div>
     </form>
   `;
-  const modal = openModal(html);
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const name = modal.querySelector('#booth-name').value.trim();
-    const type = modal.querySelector('#booth-type').value;
-    if (!name) { alert('Název je povinný'); return; }
-    try {
-      const form = new FormData(); form.set('id', id); form.set('name', name); form.set('booth_type', type);
-      const res = await fetch('/api/booths/edit', { method: 'POST', body: form });
-      if (!res.ok) { const j = await res.json().catch(() => ({ error: 'Chyba' })); throw new Error(j.error || 'Chyba'); }
-      closeModal();
-      resetEventDataCache();
-    } catch (e) { alert('Nelze upravit stánek: ' + e.message); }
-  });
+  openModal(html);
 }
 
 
 async function openDeleteBoothModal(row) {
   const id = row.id;
-  if (!confirm('Opravdu chcete smazat stánek?')) return;
-  try {
-    const form = new FormData();
-    form.set('id', id);
+  const booth = (await getEventData()).booths.find(booth => booth.id === id);
+  if (!booth) return;
 
-    const res = await fetch('/api/booths/delete', { method: 'DELETE', body: form });
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Smazat stánek</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="delete-booth-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <div>Opravdu chcete smazat stánek "${escapeHTML(booth.name)}"?</div>
+      </div>
 
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({ error: 'Chyba' }));
-      throw new Error(j.error || 'Chyba');
-    }
+      <div class="form-row">
+        <div id="delete-booth-general-error" class="form-error"></div>
+      </div>
 
-    resetEventDataCache();
-  } catch (error) {
-    alert('Nelze smazat stánek: ' + error.message);
-  }
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Smazat</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
 }
 
 
 async function openAssignEmployeeModal(assignManager) {
-  const booths = (await getEventData()).booths;
+  const eventData = await getEventData();
+  const allEmployees = await getEmployees();
+  const booths = eventData.booths;
+
+  const boothsPickerStr = assignManager ? '' : makeBoothsPicker(booths);
+
   const html = `
         <header>
           <h2>${assignManager ? 'Přiřadit manažera' : 'Přiřadit zaměstnance'}</h2>
@@ -1364,48 +2028,33 @@ async function openAssignEmployeeModal(assignManager) {
           </button>
         </header>
         <form id="assign-employee-form">
+          <input type="hidden" name="is-manager" value="${assignManager}"/>
           <div class="form-row">
-            <label for="emp-id">Employee ID</label>
-            <input id="emp-id" type="text" placeholder="UUID zaměstnance"/>
+            <label for="emp-username-or-email-input">Uživatelské jméno nebo email</label>
+            <input id="emp-username-or-email-input" name="username-or-email" type="text" list="employee-options" placeholder="Uživatelské jméno nebo email"/>
+            <datalist id="employee-options">
+              ${allEmployees.map(employee => `<option value="${employee.username}"></option><option value="${employee.email}"></option>`).join('')}
+            </datalist>
+            <div id="assign-employee-username-or-email-error" class="form-error"></div>
           </div>
           ${assignManager ? '' : `
-            <div class="form-row">
-              <label for="emp-booth">Stánek (pokud ne manažer)</label>
-              <select id="emp-booth">
-                <option value="">-- vyberte --</option>
-                ${booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}'
-              </select>
-            </div>'`}
+          <div class="form-row">
+            ${boothsPickerStr}
+            <div id="assign-employee-booths-error" class="form-error"></div>
+          </div>
+          `}
+
+          <div class="form-row">
+            <div id="assign-employee-general-error" class="form-error"></div>
+          </div>
+
           <div class="modal-actions">
             <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
             <button type="submit" class="save-form btn btn-primary">Přiřadit</button>
           </div>
         </form>
       `;
-  const modal = openModal(html);
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const empId = modal.querySelector('#emp-id').value.trim();
-    const boothId = assignManager ? null : (modal.querySelector('#emp-booth').value || null);
-    if (!empId) { alert('Zadejte ID zaměstnance'); return; }
-    try {
-      const form = new FormData();
-      form.set('employee_id', empId);
-      form.set('event_id', eventId);
-      if (boothId) form.set('booth_id', boothId);
-      const res = await fetch('/api/employee_event_booth_roles/create', { method: 'POST', body: form });
-      if (res.status === 401) {
-        const j = await res.json();
-        window.location.href = j.redirect_url;
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'Chyba' }));
-        throw new Error(j.error || 'Chyba');
-      }
-      closeModal()
-      resetEventDataCache();
-    } catch (e) { alert('Nelze přiřadit zaměstnance: ' + e.message); }
-  });
+  openModal(html);
 }
 
 
@@ -1414,8 +2063,8 @@ async function openEditEmployeeModal(row) {
   const eventData = await getEventData();
   const emp = eventData.employees.find(employee => employee.id === id);
   if (!emp) return;
-  // simple modal to change role or booths assignment (UI only)
-  const availableBooths = eventData.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+  const boothsPickerStr = makeBoothsPicker(eventData.booths, emp.booths);
+
   const html = `
           <header>
             <h2>Upravit zaměstnance</h2>
@@ -1426,75 +2075,75 @@ async function openEditEmployeeModal(row) {
             </button>
           </header>
           <form id="edit-employee-form">
+            <input type="hidden" name="username-or-email" value="${escapeHTML(emp.username)}"/>
             <div class="form-row">
-              <label for="emp-username">Uživatel</label>
-              <input id="emp-username" type="text" value="${escapeHTML(emp.username)}" disabled/>
+              <label for="emp-username-input">Uživatel</label>
+              <input id="emp-username-input" type="text" value="${escapeHTML(emp.username)}" disabled/>
             </div>
             <div class="form-row">
-              <label for="employee-booths">Přiřazené stánky (více pro Ctrl/Shift)</label>
-              <select id="employee-booths" multiple size="6">${availableBooths}</select>
+              ${boothsPickerStr}
+              <div id="edit-employee-booths-error" class="form-error"></div>
             </div>
+
+            <div class="form-row">
+              <div id="edit-employee-general-error" class="form-error"></div>
+            </div>
+
             <div class="modal-actions">
               <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
               <button type="submit" class="save-form btn btn-primary">Uložit</button>
             </div>
           </form>
         `;
-  const modal = openModal(html);
-  // preselect current booths
-  const sel = modal.querySelector('#employee-booths');
-  const assigned = (emp.booths || []).map(b => b.id);
-  for (const opt of sel.options) { if (assigned.includes(opt.value)) opt.selected = true; }
-
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const selected = Array.from(sel.selectedOptions).map(o => o.value);
-    try {
-      // API shape: create role rows for each selected booth or remove others. Implement via backend endpoints.
-      const form = new FormData();
-      form.set('employee_id', id);
-      form.set('event_id', eventId);
-      form.set('booth_ids', JSON.stringify(selected));
-      const res = await fetch('/api/employee_event_booth_roles/update_for_employee', { method: 'POST', body: form });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'Chyba' }));
-        throw new Error(j.error || 'Chyba');
-      }
-      closeModal();
-      resetEventDataCache();
-    } catch (e) { alert('Nelze upravit zaměstnance: ' + e.message); }
-  });
+  openModal(html);
 }
 
 
 async function openRemoveEmployeeModal(row) {
   const id = row.id;
-  if (!confirm('Odebrat přiřazení zaměstnance?')) return;
-  try {
-    const form = new FormData();
-    form.set('employee_id', id);
-    form.set('event_id', eventId);
+  const eventData = await getEventData();
+  const emp = eventData.employees.find(employee => employee.id === id);
+  if (!emp) return;
 
-    const res = await fetch('/api/employee_event_booth_roles/delete_for_employee',
-      { method: 'DELETE', body: form }
-    );
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({ error: 'Chyba' }));
-      throw new Error(j.error || 'Chyba');
-    }
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Odebrat ${emp.isManager ? 'manažera' : 'zaměstnance'}</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="remove-employee-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <div>Opravdu chcete odebrat ${emp.isManager ? 'manažera' : 'zaměstnance'} "${escapeHTML(emp.username)}" z této akce?</div>
+      </div>
 
-    resetEventDataCache();
-  } catch (error) {
-    alert('Nelze odebrat zaměstnance: ' + error.message);
-  }
-  return;
+      <div class="form-row">
+        <div id="remove-employee-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Odebrat</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
 }
 
 
 async function openAddProductModal() {
-  const eventBooths = (await getEventData()).booths
+  const eventData = await getEventData();
+  const booths = eventData.booths;
+  const categories = eventData.categories;
+  const boothsPickerStr = makeBoothsPicker(booths, [], 'seller');
+  const categoriesPickerStr = makeCategoriesPicker(categories, []);
+
   const html = `
         <header>
-          <h2>Přidat produkt / cenu pro akci</h2>
+          <h2>Přidat produkt</h2>
           <button class="close-modal cross-close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1503,51 +2152,55 @@ async function openAddProductModal() {
         </header>
         <form id="add-product-form">
           <div class="form-row">
-            <label for="prod-id">Produkt (existující ID)</label>
-            <input id="prod-id" type="text" placeholder="UUID produktu (pokud nové, vytvořte produkt jinde)"/>
+            <label for="product-name-input">Název</label>
+            <input id="product-name-input" name="name" type="text"/>
+            <div id="add-product-name-error" class="form-error"></div>
           </div>
           <div class="form-row">
-            <label for="prod-price">Cena (Kč)</label>
-            <input id="prod-price" type="number"/>
+            <label for="product-price-input">Cena (Kč)</label>
+            <input id="product-price-input" name="price" type="number" step="0.01" min="0"/>
+            <div id="add-product-price-error" class="form-error"></div>
+          </div>
+          <div class="form-row image-form-row">
+            <label for="product-image-input" class="image-upload-label">Obrázek</label>
+            <input
+              id="product-image-input"
+              type="file"
+              name="image"
+              accept="image/jpeg,image/png,image/webp"/>
+            <div id="add-product-image-error" class="form-error"></div>
           </div>
           <div class="form-row">
-            <label for="prod-booths">Přiřadit stánky (volitelné)</label>
-            <select id="prod-booths" multiple size="6">${eventBooths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}</select>
+            ${boothsPickerStr}
+            <div id="add-product-booths-error" class="form-error"></div>
           </div>
+          <div class="form-row">
+            ${categoriesPickerStr}
+            <div id="add-product-categories-error" class="form-error"></div>
+          </div>
+
+          <div class="form-row">
+            <div id="add-product-general-error" class="form-error"></div>
+          </div>
+
           <div class="modal-actions">
             <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
             <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
           </div>
         </form>
       `;
-  const modal = openModal(html);
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const productId = modal.querySelector('#prod-id').value.trim(); const price = modal.querySelector('#prod-price').value; const booths = Array.from(modal.querySelector('#prod-booths').selectedOptions).map(o => o.value);
-    if (!productId || !price) { alert('Vyplňte id produktu a cenu'); return; }
-    try {
-      const form = new FormData();
-      form.set('product_id', productId);
-      form.set('event_id', eventId);
-      form.set('price', price);
-      form.set('booth_ids', JSON.stringify(booths));
-      const res = await fetch('/api/product_event_prices/create', { method: 'POST', body: form });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'Chyba' }));
-        throw new Error(j.error || 'Chyba');
-      }
-      closeModal();
-      resetEventDataCache();
-    } catch (e) { alert('Nelze přidat produkt: ' + e.message); }
-  });
+  openModal(html);
 }
 
 
 async function openEditProductModal(row) {
   const id = row.id;
   const eventData = await getEventData();
-  const products = eventData.products.find(x => x.id === id);
-  if (!products) return;
-  const availableBooths = eventData.booths.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+  const product = eventData.products.find(product => product.id === id);
+  if (!product) return;
+  const boothsPickerStr = makeBoothsPicker(eventData.booths, product.booths, 'seller');
+  const categoriesPickerStr = makeCategoriesPicker(eventData.categories, product.categories);
+
   const html = `
           <header>
             <h2>Upravit produkt</h2>
@@ -1558,92 +2211,207 @@ async function openEditProductModal(row) {
             </button>
           </header>
           <form id="edit-product-form">
+            <input type="hidden" name="id" value="${id}"/>
             <div class="form-row">
-              <label for="prod-name">Název</label>
-              <input id="prod-name" type="text" value="${escapeHTML(products.name)}"/>
+              <label for="product-name-input">Název</label>
+              <input id="product-name-input" name="name" type="text" value="${escapeHTML(product.name)}"/>
+              <div id="edit-product-name-error" class="form-error"></div>
             </div>
             <div class="form-row">
-              <label for="prod-price">Cena (Kč)</label>
-              <input id="prod-price" type="number" value="${escapeHTML(String(products.price))}"/>
+              <label for="product-price-input">Cena (Kč)</label>
+              <input id="product-price-input" name="price" type="number" step="0.01" min="0" value="${escapeHTML(String(product.price))}"/>
+              <div id="edit-product-price-error" class="form-error"></div>
             </div>
             <div class="form-row">
-              <label for="prod-booths">Přiřadit stánky</label>
-              <select id="prod-booths" multiple size="6">${availableBooths}</select>
+              <label for="product-image-input" class="image-upload-label">Změnit obrázek</label>
+              <input
+                id="product-image-input"
+                type="file"
+                name="image"
+                accept="image/jpeg,image/png,image/webp"/>
+              <div id="edit-product-image-error" class="form-error"></div>
             </div>
+            <div class="form-row">
+              <label class="remove-product-image-label">
+                <input id="remove-product-image-input" type="checkbox" name="remove-curent-image"/>
+                Odstranit aktuální obrázek
+              </label>
+            </div>
+            <div class="form-row">
+              ${boothsPickerStr}
+              <div id="edit-product-booths-error" class="form-error"></div>
+            </div>
+            <div class="form-row">
+              ${categoriesPickerStr}
+              <div id="edit-product-categories-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <div id="edit-product-general-error" class="form-error"></div>
+            </div>
+
             <div class="modal-actions">
               <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
               <button type="submit" class="save-form btn btn-primary">Uložit</button>
             </div>
           </form>
         `;
-  const modal = openModal(html);
-  const sel = modal.querySelector('#prod-booths');
-  const assigned = (products.booths || []).map(b => b.id);
-  for (const opt of sel.options) {
-    if (assigned.includes(opt.value)) opt.selected = true;
-  }
-  modal.querySelector('#save').addEventListener('click', async () => {
-    const name = modal.querySelector('#prod-name').value.trim();
-    const price = modal.querySelector('#prod-price').value;
-    const booths = Array.from(sel.selectedOptions).map(o => o.value);
-    if (!name || !price) {
-      alert('Vyplňte název a cenu');
-      return;
-    }
-    try {
-      const form = new FormData();
-      form.set('product_id', id);
-      form.set('name', name);
-      form.set('price', price);
-      form.set('booth_ids', JSON.stringify(booths));
-      const res = await fetch('/api/product_event_prices/update_for_product', { method: 'POST', body: form });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'Chyba' }));
-        throw new Error(j.error || 'Chyba');
-      }
-      closeModal();
-      resetEventDataCache();
-    } catch (e) {
-      alert('Nelze upravit produkt: ' + e.message);
-    }
-  });
-  return;
+  openModal(html);
 }
 
 
 async function openDeleteProductModal(row) {
   const id = row.id;
-  if (!confirm('Odebrat tento produkt z akce?')) return;
-  try {
-    const form = new FormData();
-    form.set('product_id', id);
-    form.set('event_id', eventId);
-    const res = await fetch('/api/product_event_prices/delete_for_product', { method: 'DELETE', body: form });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({ error: 'Chyba' }));
-      throw new Error(j.error || 'Chyba');
-    }
-    resetEventDataCache();
-  } catch (error) {
-    alert('Nelze odebrat produkt: ' + error.message);
-  }
+  const eventData = await getEventData();
+  const product = eventData.products.find(product => product.id === id);
+  if (!product) return;
+
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Smazat produkt</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="delete-product-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <div>Opravdu chcete smazat produkt "${escapeHTML(product.name)}"?</div>
+      </div>
+
+      <div class="form-row">
+        <div id="delete-product-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Smazat</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
 }
 
 
-function openAddCategoryModal() {
+async function openAddCategoryModal() {
+  const eventData = await getEventData();
+  const booths = eventData.booths;
+  const boothsPickerStr = makeBoothsPicker(booths, [], 'seller');
 
+  const html = `
+        <header>
+          <h2>Přidat kategorii</h2>
+          <button class="close-modal cross-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+        <form id="add-category-form">
+          <div class="form-row">
+            <label for="category-name-input">Název</label>
+            <input id="category-name-input" name="name" type="text"/>
+            <div id="add-category-name-error" class="form-error"></div>
+          </div>
+          <div class="form-row">
+            ${boothsPickerStr}
+            <div id="add-category-booths-error" class="form-error"></div>
+          </div>
+
+          <div class="form-row">
+            <div id="add-category-general-error" class="form-error"></div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+            <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+          </div>
+        </form>
+      `;
+  openModal(html);
 }
 
 
-function openEditCategoryModal(row) {
+async function openEditCategoryModal(row) {
+  const id = row.id;
+  const eventData = await getEventData();
+  const category = eventData.categories.find(category => category.id === id);
+  if (!category) return;
+  const boothsPickerStr = makeBoothsPicker(eventData.booths, category.booths, 'seller');
 
+  const html = `
+          <header>
+            <h2>Upravit kategorii</h2>
+            <button class="close-modal cross-close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </header>
+          <form id="edit-category-form">
+            <input type="hidden" name="id" value="${id}"/>
+            <div class="form-row">
+              <label for="category-name-input">Název</label>
+              <input id="category-name-input" name="name" type="text" value="${escapeHTML(category.name)}"/>
+              <div id="edit-category-name-error" class="form-error"></div>
+            </div>
+            <div class="form-row">
+              ${boothsPickerStr}
+              <div id="edit-category-booths-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <div id="edit-category-general-error" class="form-error"></div>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+              <button type="submit" class="save-form btn btn-primary">Uložit</button>
+            </div>
+          </form>
+        `;
+  openModal(html);
 }
 
 
-function openDeleteCategoryModal(row) {
+async function openDeleteCategoryModal(row) {
+  const id = row.id;
+  const eventData = await getEventData();
+  const category = eventData.categories.find(category => category.id === id);
+  if (!category) return;
 
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Smazat kategorii</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="delete-category-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <div>Opravdu chcete smazat kategorii "${escapeHTML(category.name)}"?</div>
+      </div>
+
+      <div class="form-row">
+        <div id="delete-category-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Smazat</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
 }
 
+
+// ERROR HANDLING FUNCTIONS
 
 function clearModalErrors() {
   const els = document.querySelectorAll('.form-error');
@@ -1701,11 +2469,10 @@ function showEditEventErrors(error, detail) {
       setErr(generalError, 'Začátek musí být dříve než konec.');
       return;
     case 'db_integrity_error':
-      if (detail.includes('unique_index_events_name_active')) {
+      if (detail && detail.includes('unique_index_events_name_active')) {
         setErr(nameError, 'Název už má jiná akce.');
       } else {
         setErr(generalError, 'Něco se nepovedlo.');
-        return;
       }
       return;
     default:
@@ -1748,7 +2515,7 @@ function showEditEventErrors(error, detail) {
 
 
 function showDeleteEventErrors(error, detail) {
-  const generalError = document.querySelector('#edit-event-general-error');
+  const generalError = document.querySelector('#delete-event-general-error');
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -1777,6 +2544,858 @@ function showDeleteEventErrors(error, detail) {
       return;
     case 'event_not_found':
       setErr(generalError, 'Akce nebyla pomocí ID nalezena.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showAddBoothErrors(error, detail) {
+  const nameError = document.querySelector('#add-booth-name-error');
+  const typeError = document.querySelector('#add-booth-type-error');
+  const generalError = document.querySelector('#add-booth-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění přidat stánek.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'missing_type':
+      setErr(typeError, 'Chybí typ.');
+      return;
+    case 'invalid_type':
+      setErr(typeError, 'Neplatný typ.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
+        setErr(nameError, 'Název už má jiný stánek v této akci.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showEditBoothErrors(error, detail) {
+  const nameError = document.querySelector('#edit-booth-name-error');
+  const generalError = document.querySelector('#edit-booth-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění upravit stánek.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID stánku není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID stánku.');
+      return;
+    case 'booth_not_found':
+      setErr(generalError, 'Stánek nebyl pomocí ID nalezen.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
+        setErr(nameError, 'Název už má jiný stánek v této akci.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showDeleteBoothErrors(error, detail) {
+  const generalError = document.querySelector('#delete-booth-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění smazat stánek.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID stánku není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID stánku.');
+      return;
+    case 'booth_not_found':
+      setErr(generalError, 'Stánek nebyl pomocí ID nalezen.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showAssignEmployeeErrors(error, detail) {
+  const usernameOrEmailError = document.querySelector('#assign-employee-username-or-email-error');
+  const boothsError = document.querySelector('#assign-employee-booths-error');
+  const generalError = document.querySelector('#assign-employee-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění přiřadit zaměstnance.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'missing_username_or_email':
+      setErr(usernameOrEmailError, 'Chybí uživatelské jméno nebo email.');
+      return;
+    case 'event_not_found':
+      setErr(generalError, 'Akce nebyla nalezena.');
+      return;
+    case 'employee_not_found':
+      setErr(usernameOrEmailError, 'Zaměstnanec nebyl nalezen.');
+      return;
+    case 'can_not_assign_admin':
+      setErr(generalError, 'Nelze přiřadit admina.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'can_not_assign_manager_to_booths':
+      setErr(generalError, 'Nelze přiřadit manažera ke stánkům.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showEditEmployeeErrors(error, detail) {
+  const boothsError = document.querySelector('#edit-employee-booths-error');
+  const generalError = document.querySelector('#edit-employee-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění upravit zaměstnance.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'missing_username_or_email':
+      setErr(generalError, 'Chybí uživatelské jméno nebo email.');
+      return;
+    case 'event_not_found':
+      setErr(generalError, 'Akce nebyla nalezena.');
+      return;
+    case 'employee_not_found':
+      setErr(generalError, 'Zaměstnanec nebyl nalezen.');
+      return;
+    case 'can_not_assign_admin':
+      setErr(generalError, 'Nelze upravit admina.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'can_not_assign_manager_to_booths':
+      setErr(generalError, 'Nelze přiřadit manažera ke stánkům.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showRemoveEmployeeErrors(error, detail) {
+  const generalError = document.querySelector('#remove-employee-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění odebrat zaměstnance.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID zaměstnance není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID zaměstnance.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showAddProductErrors(error, detail) {
+  const nameError = document.querySelector('#add-product-name-error');
+  const priceError = document.querySelector('#add-product-price-error');
+  const imageError = document.querySelector('#add-product-image-error');
+  const boothsError = document.querySelector('#add-product-booths-error');
+  const categoriesError = document.querySelector('#add-product-categories-error');
+  const generalError = document.querySelector('#add-product-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění přidat produkt.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'event_not_found':
+      setErr(generalError, 'Akce nebyla nalezena.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'missing_price':
+      setErr(priceError, 'Chybí cena.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'category_not_found':
+      setErr(categoriesError, 'Jedna z kategorií nebyla nalezena.');
+      return;
+    case 'invalid_category_id':
+      setErr(categoriesError, 'ID kategorie není správné.');
+      return;
+    case 'file_too_large':
+      setErr(imageError, 'Soubor je příliš velký.');
+      return;
+    case 'disallowed_image_extension':
+      setErr(imageError, 'Nepodporovaný formát obrázku.');
+      return;
+    case 'image_file_is_invalid':
+      setErr(imageError, 'Soubor obrázku není validní.');
+      return;
+    case 'unable_to_save_file':
+      setErr(imageError, 'Nepodařilo se uložit soubor.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_products_name')) {
+        setErr(nameError, 'Název už má jiný produkt.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  if (errorStr.includes('price must be')) {
+    setErr(priceError, 'Cena musí být kladné číslo.');
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showEditProductErrors(error, detail) {
+  const nameError = document.querySelector('#edit-product-name-error');
+  const priceError = document.querySelector('#edit-product-price-error');
+  const imageError = document.querySelector('#edit-product-image-error');
+  const boothsError = document.querySelector('#edit-product-booths-error');
+  const categoriesError = document.querySelector('#edit-product-categories-error');
+  const generalError = document.querySelector('#edit-product-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění upravit produkt.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID produktu není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID produktu.');
+      return;
+    case 'product_not_found':
+      setErr(generalError, 'Produkt nebyl pomocí ID nalezen.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'missing_price':
+      setErr(priceError, 'Chybí cena.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'category_not_found':
+      setErr(categoriesError, 'Jedna z kategorií nebyla nalezena.');
+      return;
+    case 'invalid_category_id':
+      setErr(categoriesError, 'ID kategorie není správné.');
+      return;
+    case 'file_too_large':
+      setErr(imageError, 'Soubor je příliš velký.');
+      return;
+    case 'disallowed_image_extension':
+      setErr(imageError, 'Nepodporovaný formát obrázku.');
+      return;
+    case 'image_file_is_invalid':
+      setErr(imageError, 'Soubor obrázku není validní.');
+      return;
+    case 'unable_to_save_file':
+      setErr(imageError, 'Nepodařilo se uložit soubor.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_products_name')) {
+        setErr(nameError, 'Název už má jiný produkt.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  if (errorStr.includes('price must be')) {
+    setErr(priceError, 'Cena musí být kladné číslo.');
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showDeleteProductErrors(error, detail) {
+  const generalError = document.querySelector('#delete-product-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění smazat produkt.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID produktu není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID produktu.');
+      return;
+    case 'product_not_found':
+      setErr(generalError, 'Produkt nebyl pomocí ID nalezen.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showAddCategoryErrors(error, detail) {
+  const nameError = document.querySelector('#add-category-name-error');
+  const boothsError = document.querySelector('#add-category-booths-error');
+  const generalError = document.querySelector('#add-category-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění přidat kategorii.');
+      return;
+    case 'invalid_event_id':
+      setErr(generalError, 'ID akce není správné.');
+      return;
+    case 'missing_event_id':
+      setErr(generalError, 'Chybí ID akce.');
+      return;
+    case 'event_not_found':
+      setErr(generalError, 'Akce nebyla nalezena.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_categories_name')) {
+        setErr(nameError, 'Název už má jiná kategorie.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showEditCategoryErrors(error, detail) {
+  const nameError = document.querySelector('#edit-category-name-error');
+  const boothsError = document.querySelector('#edit-category-booths-error');
+  const generalError = document.querySelector('#edit-category-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění upravit kategorii.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID kategorie není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID kategorie.');
+      return;
+    case 'category_not_found':
+      setErr(generalError, 'Kategorie nebyla pomocí ID nalezena.');
+      return;
+    case 'missing_name':
+      setErr(nameError, 'Chybí název.');
+      return;
+    case 'booth_not_found':
+      setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
+      return;
+    case 'invalid_booth_id':
+      setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_categories_name')) {
+        setErr(nameError, 'Název už má jiná kategorie.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Minimální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ');
+    limit = limit[1].split(' characters')[0];
+    setErr(nameError, `Maximální délka názvu je ${limit}.`);
+    return;
+  }
+  if (errorStr.includes('name must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not contain')) {
+    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
+    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
+    return;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+function showDeleteCategoryErrors(error, detail) {
+  const generalError = document.querySelector('#delete-category-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_priviliges':
+      setErr(generalError, 'Nemáte oprávnění smazat kategorii.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID kategorie není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID kategorie.');
+      return;
+    case 'category_not_found':
+      setErr(generalError, 'Kategorie nebyla pomocí ID nalezena.');
       return;
     default:
       break;

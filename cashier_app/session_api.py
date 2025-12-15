@@ -25,7 +25,8 @@ def session_info():
     if event:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                is_manager = bool(cur.execute('''
+                is_manager = bool(cur.execute(
+                    '''
                     SELECT 1
                     FROM employee_event_booth_roles
                     WHERE employee_id = %s

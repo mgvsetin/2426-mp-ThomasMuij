@@ -166,7 +166,8 @@ class PgSessionInterface(SessionInterface):
         pool = self.get_pool()
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                row = cur.execute(f'''
+                row = cur.execute(
+                    f'''
                     SELECT data, employee_id, ip, ua_hash, expires_at
                     FROM {self.table}
                     WHERE id = %s''',
@@ -178,7 +179,8 @@ class PgSessionInterface(SessionInterface):
             # expired
             with pool.connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(f'''
+                    cur.execute(
+                        f'''
                         DELETE FROM {self.table}
                         WHERE id = %s''',
                         (sid,))
@@ -228,7 +230,8 @@ class PgSessionInterface(SessionInterface):
                 pool = self.get_pool()
                 with pool.connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute(f'''
+                        cur.execute(
+                            f'''
                             DELETE FROM {self.table}
                             WHERE id = %s''',
                             (session.sid,))
@@ -258,7 +261,8 @@ class PgSessionInterface(SessionInterface):
         pool = self.get_pool()
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(f"""
+                cur.execute(
+                    f"""
                     INSERT INTO {self.table} (id, data, employee_id, ip, ua_hash, modified_at, expires_at)
                     VALUES (%s, %s, %s, %s, %s, now(), %s)
                     ON CONFLICT (id) DO UPDATE
@@ -273,7 +277,8 @@ class PgSessionInterface(SessionInterface):
 
                 if (new_sid != sid) and sid:
                     try:
-                        cur.execute(f"""
+                        cur.execute(
+                            f"""
                             DELETE FROM {self.table}
                             WHERE id = %s""",
                             (sid,))
@@ -339,7 +344,8 @@ def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> 
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 DELETE FROM sessions
                 WHERE expires_at IS NOT NULL AND expires_at < now()
                 RETURNING id;
@@ -348,7 +354,8 @@ def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> 
 
             if max_inactive_days is not None:
                 days = float(max_inactive_days)
-                cur.execute(f"""
+                cur.execute(
+                    f"""
                     DELETE FROM sessions
                     WHERE expires_at IS NULL
                       AND modified_at < now() - interval '{days} days'

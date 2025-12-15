@@ -40,7 +40,8 @@ def get_employees():
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            employees = cur.execute('''
+            employees = cur.execute(
+                '''
                 SELECT e.id, e.username, e.email, e.is_admin, e.created_by, e.created_at
                 FROM employees as e
                 WHERE e.deleted_at IS NULL
@@ -91,15 +92,16 @@ def add_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute('''
+                cur.execute(
+                    '''
                     INSERT INTO employees
                     (username, email, password_hash, created_by)
                     VALUES (%s, %s, %s, %s)''',
                     (username, email, password_hash, logged_employee['id']))
 
     except IntegrityError as e:
-        # username už existuje: detail = unique_index_employees_username_active
-        # email už existuje: detail = unique_index_employees_email_active
+        # username už existuje: detail obsahuje unique_index_employees_username_active
+        # email už existuje: detail obsahuje unique_index_employees_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
@@ -162,7 +164,8 @@ def edit_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(f'''
+                cur.execute(
+                    f'''
                     UPDATE employees
                     SET {col_updates_str}
                     WHERE id = %(id)s
@@ -173,8 +176,8 @@ def edit_employee():
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {edit_employee_id}')
     except IntegrityError as e:
-        # username už existuje: detail = unique_index_employees_username_active
-        # email už existuje: detail = unique_index_employees_email_active
+        # username už existuje: detail obsahuje unique_index_employees_username_active
+        # email už existuje: detail obsahuje unique_index_employees_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
         current_app.logger.exception('multiple rows updated for employee id %s', edit_employee_id)
@@ -208,7 +211,8 @@ def delete_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute('''
+                cur.execute(
+                    '''
                     UPDATE employees
                     SET deleted_at = now()
                     WHERE id = %s

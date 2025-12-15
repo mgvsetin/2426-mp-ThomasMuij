@@ -1,4 +1,5 @@
 import psycopg
+from psycopg import IntegrityError
 from psycopg.rows import dict_row
 
 def get_db(row_factory=dict_row, **kwargs):
@@ -14,18 +15,16 @@ def get_db(row_factory=dict_row, **kwargs):
 
 with get_db() as conn:
     with conn.cursor() as cur:
-        event_id = cur.execute(f'''
-            SELECT event_id
-            FROM booths
-            WHERE id = %s
-            AND deleted_at IS NULL''',
-            ("40000000-0000-0000-0000-000000000001",)).fetchone()
+        returning = cur.execute(
+            f'''
+            INSERT INTO products
+            (event_id, name, price)
+            VALUES ('30000000000000000000000000000001', 'a product name d', 2000)
+            RETURNING id''').fetchone()
         
-if not event_id:
-    print(event_id)
-else:
-    event_id = event_id['event_id']
-    print(str(event_id) == '30000000-0000-0000-0000-000000000001')
+print(returning)
+        
+
 
 
 # import sqlite3

@@ -325,13 +325,13 @@ CREATE TABLE IF NOT EXISTS products (
 
   image_path          text, -- obsahuje celý path i s filename
   image_filename      text,
-  image_content_type  text, 
+  image_mime_type  text, 
   image_size_bytes    int,
   image_width         int,
   image_height        int,
   image_alt_text      text,
-  CONSTRAINT image_content_type_check --Validate by reading file header/magic bytes, not only extension
-    CHECK (image_content_type IN ('image/jpeg', 'image/png', 'image/webp'))
+  CONSTRAINT image_mime_type_check
+    CHECK (image_mime_type IN ('image/jpeg', 'image/png', 'image/webp'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (event_id, LOWER(name));
 
@@ -356,14 +356,8 @@ CREATE OR REPLACE TRIGGER trg_products_edit_insert_update
 
 
 -- product_images:
--- User uploads via HTML form or AJAX.
 -- Validate file (MIME type, magic bytes, max size (max: 5-10MB?)).
--- Sanitize filename, generate unique name (UUID), and save to storage.
--- Optionally create resized versions / thumbnails and save those too.
--- Store metadata + path/URL in DB.
--- Serve images via CDN or static server. Use cache headers. 
 
--- Use werkzeug.utils.secure_filename() plus prefix with UUID (avoid collisions and path traversal).
 -- Strip/normalize EXIF if you care about privacy/location.
 -- Set proper permissions on saved files (read by web server only).
 -- Prevent users from uploading HTML or scripts disguised as images.
@@ -431,17 +425,17 @@ CREATE OR REPLACE TRIGGER trg_product_booth_link_limit_update_insert
 
 
 
--- ======================== selectable_categories ========================
-CREATE TABLE IF NOT EXISTS selectable_categories (
+-- ======================== categories ========================
+CREATE TABLE IF NOT EXISTS categories (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name       text NOT NULL,
   event_id   uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_selectable_categories_name ON selectable_categories (event_id, LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_categories_name ON categories (event_id, LOWER(name));
 
 
 -- u insert/update odendává extra mezery ze začátku a konce
-CREATE OR REPLACE FUNCTION selectable_categories_edit_update_insert()
+CREATE OR REPLACE FUNCTION categories_edit_update_insert()
 RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
@@ -451,72 +445,80 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_selectable_categories_edit_update_insert
-  BEFORE UPDATE OR INSERT ON selectable_categories
+CREATE OR REPLACE TRIGGER trg_categories_edit_update_insert
+  BEFORE UPDATE OR INSERT ON categories
   FOR EACH ROW
-  EXECUTE FUNCTION selectable_categories_edit_update_insert();
+  EXECUTE FUNCTION categories_edit_update_insert();
 
 
 
--- ======================== selectable_category_booth_link ========================
-CREATE TABLE IF NOT EXISTS selectable_category_booth_link (
-  selectable_category_id  uuid NOT NULL REFERENCES selectable_categories(id) ON DELETE CASCADE,
+-- ======================== category_booth_link ========================
+CREATE TABLE IF NOT EXISTS category_booth_link (
+  category_id  uuid NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   booth_id                uuid NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
-  PRIMARY KEY (selectable_category_id, booth_id)
+  PRIMARY KEY (category_id, booth_id)
 );
 
 
 -- u insert/update kontroluje: 
---   - jestli je event stejný u selectable_categories i booth a booth existuje
-CREATE OR REPLACE FUNCTION selectable_category_booth_link_limit_insert_update()
+--   - jestli je event stejný u categories i booth a booth existuje
+--   - zkontroluje, že booth existuje
+--   - kontroluje že booth je seller
+CREATE OR REPLACE FUNCTION category_booth_link_limit_insert_update()
 RETURNS trigger AS $$
 DECLARE
-  selectable_category_event_id uuid;
+  category_event_id uuid;
   booth_event_id uuid;
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     SELECT event_id INTO booth_event_id
     FROM booths
     WHERE id = NEW.booth_id
+    AND deleted_at IS NULL
+    AND booth_type = 'seller'
     AND deleted_at IS NULL;
 
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'booth % does not exist or is deleted', NEW.booth_id;
+      RAISE EXCEPTION 'booth % does not exist, is not a seller or is deleted', NEW.booth_id;
     END IF;
 
-    SELECT event_id INTO selectable_category_event_id
-    FROM selectable_categories
-    WHERE id = NEW.selectable_category_id;
+    SELECT event_id INTO category_event_id
+    FROM categories
+    WHERE id = NEW.category_id;
 
-    IF selectable_category_event_id IS DISTINCT FROM booth_event_id THEN
-      RAISE EXCEPTION 'booths event_id % and selectable_category event_id % do not match', booth_event_id, selectable_category_event_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'category % does not exist', NEW.category_id;
+    END IF;
+
+    IF category_event_id IS DISTINCT FROM booth_event_id THEN
+      RAISE EXCEPTION 'booths event_id % and category event_id % do not match', booth_event_id, category_event_id;
     END IF;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_selectable_category_booth_link_limit_insert_update
-  BEFORE INSERT OR UPDATE ON selectable_category_booth_link
+CREATE OR REPLACE TRIGGER trg_category_booth_link_limit_insert_update
+  BEFORE INSERT OR UPDATE ON category_booth_link
   FOR EACH ROW
-  EXECUTE FUNCTION selectable_category_booth_link_limit_insert_update();
+  EXECUTE FUNCTION category_booth_link_limit_insert_update();
 
 
 
--- ======================== selectable_category_product_link ========================
-CREATE TABLE IF NOT EXISTS selectable_category_product_link (
-  selectable_category_id  uuid NOT NULL REFERENCES selectable_categories(id) ON DELETE CASCADE,
+-- ======================== category_product_link ========================
+CREATE TABLE IF NOT EXISTS category_product_link (
+  category_id  uuid NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   product_id              uuid REFERENCES products(id) ON DELETE CASCADE,
-  PRIMARY KEY (selectable_category_id, product_id)
+  PRIMARY KEY (category_id, product_id)
 );
 
 
 -- u insert/update kontroluje: 
---   - jestli je event stejný u selectable_categories i products
-CREATE OR REPLACE FUNCTION selectable_category_product_link_limit_insert_update()
+--   - jestli je event stejný u categories i products
+CREATE OR REPLACE FUNCTION category_product_link_limit_insert_update()
 RETURNS trigger AS $$
 DECLARE
-  selectable_category_event_id uuid;
+  category_event_id uuid;
   product_event_id uuid;
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
@@ -524,22 +526,22 @@ BEGIN
     FROM products
     WHERE id = NEW.product_id;
 
-    SELECT event_id INTO selectable_category_event_id
-    FROM selectable_categories
-    WHERE id = NEW.selectable_category_id;
+    SELECT event_id INTO category_event_id
+    FROM categories
+    WHERE id = NEW.category_id;
 
-    IF selectable_category_event_id IS DISTINCT FROM product_event_id THEN
-      RAISE EXCEPTION 'products event_id % and selectable_category event_id % do not match', product_event_id, selectable_category_event_id;
+    IF category_event_id IS DISTINCT FROM product_event_id THEN
+      RAISE EXCEPTION 'products event_id % and category event_id % do not match', product_event_id, category_event_id;
     END IF;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_selectable_category_product_link_limit_insert_update
-  BEFORE INSERT OR UPDATE ON selectable_category_product_link
+CREATE OR REPLACE TRIGGER trg_category_product_link_limit_insert_update
+  BEFORE INSERT OR UPDATE ON category_product_link
   FOR EACH ROW
-  EXECUTE FUNCTION selectable_category_product_link_limit_insert_update();
+  EXECUTE FUNCTION category_product_link_limit_insert_update();
 
 
 
@@ -992,15 +994,15 @@ VALUES
 
 ('40000000000000000000000000000008', 'development_booth1_event2_seller', '30000000000000000000000000000002', 'seller', '10000000000000000000000000000001');
 
-INSERT INTO products (id, event_id, name, price, image_path, image_filename, image_content_type, image_size_bytes, image_width, image_height, image_alt_text)
+INSERT INTO products (id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
 VALUES
-('20000000000000000000000000000001', '30000000000000000000000000000001', 'event1_2000_booth1', 2000, '/static/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
-('20000000000000000000000000000003', '30000000000000000000000000000001', 'event1_7_booth1 imageless', 7, '/static/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
-('20000000000000000000000000000004', '30000000000000000000000000000001', 'event1_10000_booth2', 10000, '/static/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture'),
-('20000000000000000000000000000005', '30000000000000000000000000000001', 'event1_345_booth1_2_kofola', 345, '/static/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333, 'Kofola picture'),
-('20000000000000000000000000000006', '30000000000000000000000000000002', 'event2_123_booth1_rohlík', 123, '/static/images/products/rohlík.png', 'rohlík.png', 'image/png', 53810, 250, 177, 'Rohlík picture'),
-('20000000000000000000000000000007', '30000000000000000000000000000001', 'event1_11111_2_22222_booth1', 11111, '/static/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
-('20000000000000000000000000000008', '30000000000000000000000000000002', 'event1_11111_2_22222_booth1', 22222, '/static/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture');
+('20000000000000000000000000000001', '30000000000000000000000000000001', 'event1_2000_booth1', 2000, '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
+('20000000000000000000000000000003', '30000000000000000000000000000001', 'event1_7_booth1 imageless', 7, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
+('20000000000000000000000000000004', '30000000000000000000000000000001', 'event1_10000_booth2', 10000, '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture'),
+('20000000000000000000000000000005', '30000000000000000000000000000001', 'event1_345_booth1_2_kofola', 345, '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333, 'Kofola picture'),
+('20000000000000000000000000000006', '30000000000000000000000000000002', 'event2_123_booth1_rohlík', 123, '/images/products/rohlík.png', 'rohlík.png', 'image/png', 53810, 250, 177, 'Rohlík picture'),
+('20000000000000000000000000000007', '30000000000000000000000000000001', 'event1_11111_2_22222_booth1', 11111, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
+('20000000000000000000000000000008', '30000000000000000000000000000002', 'event1_11111_2_22222_booth1', 22222, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture');
 
 INSERT INTO products (id, event_id, name, price)
 VALUES
@@ -1020,7 +1022,7 @@ VALUES
 ('20000000000000000000000000000007', '40000000000000000000000000000003'),
 ('20000000000000000000000000000008', '40000000000000000000000000000008');
 
-INSERT INTO selectable_categories (id, name, event_id)
+INSERT INTO categories (id, name, event_id)
 VALUES
 ('90000000000000000000000000000001', 'Jídlo', '30000000000000000000000000000001'),
 ('90000000000000000000000000000002', 'Hamburger', '30000000000000000000000000000001'),
@@ -1028,7 +1030,7 @@ VALUES
 ('90000000000000000000000000000004', 'Pečivo', '30000000000000000000000000000001'),
 ('90000000000000000000000000000005', 'Jídlo', '30000000000000000000000000000002');
 
-INSERT INTO selectable_category_booth_link (selectable_category_id, booth_id)
+INSERT INTO category_booth_link (category_id, booth_id)
 VALUES
 ('90000000000000000000000000000001', '40000000000000000000000000000003'),
 ('90000000000000000000000000000001', '40000000000000000000000000000004'),
@@ -1037,7 +1039,7 @@ VALUES
 ('90000000000000000000000000000004', '40000000000000000000000000000003'),
 ('90000000000000000000000000000005', '40000000000000000000000000000008');
 
-INSERT INTO selectable_category_product_link (selectable_category_id, product_id)
+INSERT INTO category_product_link (category_id, product_id)
 VALUES
 ('90000000000000000000000000000001', '20000000000000000000000000000001'),
 ('90000000000000000000000000000001', '20000000000000000000000000000003'),

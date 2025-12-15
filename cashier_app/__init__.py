@@ -3,7 +3,8 @@ Obsahuje funkci create_app, ktera vytvori a nakonfiguruje Flask aplikaci,
 registruje blueprinty a nastavuje session interface.
 """
 
-from flask import Flask
+from flask import Flask, jsonify
+from werkzeug.exceptions import RequestEntityTooLarge
 import os
 from datetime import datetime, date, timezone
 from flask.json.provider import DefaultJSONProvider
@@ -45,6 +46,11 @@ def create_app(test_config=None):
             'hash_len': 32,
             'salt_len':16
         },
+        UPLOAD_FOLDER = os.path.join(app.static_folder, 'images', 'products'),
+        UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
+        ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},
+        ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'},
+        MAX_CONTENT_LENGTH = 16 * 1024 * 1024,  # 16MB
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
         SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can
         SESSION_COOKIE_SECURE = False,
@@ -57,6 +63,7 @@ def create_app(test_config=None):
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
+    os.makedirs(app.config.get('UPLOAD_FOLDER'), exist_ok=True)
     with open(os.path.join(app.instance_path, 'config.py'), 'a') as f:
         pass
 
@@ -79,6 +86,18 @@ def create_app(test_config=None):
         # from flask import request
         # with open(r'/home/thoma/code/2426-mp-ThomasMuij/prints.txt', 'a', encoding='utf-8') as f:
         #     print(request, file=f)
+
+
+
+    @app.route('/test', methods=('POST', 'GET'))
+    def test():
+        from flask import url_for, jsonify, request
+        with open('prints.txt', 'a', encoding='utf-8') as f:
+            print(request.form.get('remove-image'), file=f)
+
+        return jsonify(), 200
+
+        
 
     # není nutné, ale js teoreticky bere pouze ISO 8601
     # prakticky funguje i default, ale nemusí vždy fungovat
@@ -107,6 +126,10 @@ def create_app(test_config=None):
 
     from cashier_app.pg_session import clear_sessions_command
     app.cli.add_command(clear_sessions_command)
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_too_large(e):
+        return jsonify(error="file_too_large"), 413
 
     from cashier_app import auth
     app.register_blueprint(auth.bp)

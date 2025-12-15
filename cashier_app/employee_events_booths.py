@@ -10,6 +10,7 @@ from flask import Blueprint, request, session, g, jsonify, make_response, url_fo
 from cashier_app.db import get_pool
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.employees import is_manager
+from cashier_app.utils.products import convert_image_paths_from_relative
 
 api_bp = Blueprint('employee_events_api', __name__, url_prefix='/api/employees/me/events')
 
@@ -37,7 +38,8 @@ def get_active_events_for_employee():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             if employee['is_admin']:
-                events = cur.execute('''
+                events = cur.execute(
+                    '''
                     SELECT id, name
                     FROM events
                     WHERE start_at IS NOT NULL
@@ -47,7 +49,8 @@ def get_active_events_for_employee():
                     ORDER BY name'''
                     ).fetchall()
             else:
-                events = cur.execute('''
+                events = cur.execute(
+                    '''
                     SELECT events.id, events.name
                     FROM events
                     JOIN employee_event_booth_roles AS link ON link.event_id = events.id
@@ -90,7 +93,8 @@ def select_event():
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            event = cur.execute('''
+            event = cur.execute(
+                '''
                 SELECT id
                 FROM events
                 WHERE id = %s
@@ -104,7 +108,8 @@ def select_event():
     if not employee['is_admin']:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                role = cur.execute('''
+                role = cur.execute(
+                    '''
                     SELECT role
                     FROM employee_event_booth_roles
                     WHERE employee_id = %s
@@ -148,7 +153,8 @@ def load_selected_event() -> dict | None:
     
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            g.event = cur.execute('''
+            g.event = cur.execute(
+                '''
                 SELECT id, name, start_at, end_at
                 FROM events
                 WHERE id = %s
@@ -214,7 +220,8 @@ def get_event_booths_for_employee():
                     booths = cur.execute(all_event_booths_sql,
                     (event['id'],)).fetchall()
                 else:
-                    booths = cur.execute('''
+                    booths = cur.execute(
+                        '''
                         SELECT booths.id, booths.name
                         FROM booths
                         JOIN employee_event_booth_roles AS roles ON roles.booth_id = booths.id
@@ -254,7 +261,8 @@ def select_booth():
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            booth = cur.execute('''
+            booth = cur.execute(
+                '''
                 SELECT booth_type
                 FROM booths
                 WHERE id = %s
@@ -269,7 +277,8 @@ def select_booth():
     if not employee['is_admin']:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                event_link = cur.execute('''
+                event_link = cur.execute(
+                    '''
                     SELECT role
                     FROM employee_event_booth_roles
                     WHERE employee_id = %s
@@ -280,7 +289,8 @@ def select_booth():
                     return jsonify(error='employee_not_linked_to_event'), 400
                 
                 if event_link[0]['role'] != 'event_manager':
-                    booth_link = cur.execute('''
+                    booth_link = cur.execute(
+                        '''
                         SELECT role
                         FROM employee_event_booth_roles
                         WHERE employee_id = %s
@@ -311,7 +321,8 @@ def load_selected_booth():
     
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            g.booth = cur.execute('''
+            g.booth = cur.execute(
+                '''
                 SELECT id, name, event_id, booth_type
                 FROM booths
                 WHERE id = %s
@@ -328,7 +339,7 @@ def get_products_and_categories():
 
 
     Sloučí informace z tabulek link, product_event_prices, products a product_images
-    a získá seznam vybraných kategorií (selectable_categories), které se vrátí.
+    a získá seznam vybraných kategorií (categories), které se vrátí.
     """
     employee = load_logged_in_employee()
     event = load_selected_event()
@@ -346,29 +357,33 @@ def get_products_and_categories():
     
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            products = cur.execute('''
+            products = cur.execute(
+                '''
                 SELECT p.id, p.name, p.price, p.image_path,
                   COALESCE(jsonb_agg(
                       DISTINCT jsonb_build_object('name', cat.name)
-                      ) FILTER (WHERE cat_link.selectable_category_id IS NOT NULL),
+                      ) FILTER (WHERE cat_link.category_id IS NOT NULL),
                       '[]'
                   ) AS categories
                 FROM products AS p
                 JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
-                LEFT JOIN selectable_category_product_link AS cat_link ON cat_link.product_id = p.id
-                LEFT JOIN selectable_categories AS cat ON cat.id = cat_link.selectable_category_id
+                LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
+                LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
                 WHERE bo_link.booth_id = %s
                 GROUP BY p.id''',
                 (booth['id'],)).fetchall()
             
-            selectable_categories = cur.execute('''
+            categories = cur.execute(
+                '''
                 SELECT cat.name
-                FROM selectable_categories AS cat
-                JOIN selectable_category_booth_link AS link ON link.selectable_category_id = cat.id
+                FROM categories AS cat
+                JOIN category_booth_link AS link ON link.category_id = cat.id
                 WHERE link.booth_id = %s''',
                 (booth['id'],)).fetchall()
+            
+    convert_image_paths_from_relative(products)
     
-    return jsonify(products=products, selectable_categories=selectable_categories), 200
+    return jsonify(products=products, categories=categories), 200
 
 
 api_bp.register_blueprint(api_booths_bp)
