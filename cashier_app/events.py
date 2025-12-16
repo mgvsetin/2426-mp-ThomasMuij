@@ -1298,21 +1298,22 @@ def delete_product():
         return jsonify(error='product_not_found'), 404
     
     # odstraň předchozí obrázek
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            number_of_image_uses = len(cur.execute(
-                '''
-                SELECT image_path
-                FROM products
-                WHERE image_path = %s''',
-                (product['image_path'],)).fetchall())
-            
-    if number_of_image_uses == 0:
+    if product['image_path']:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                number_of_image_uses = len(cur.execute(
+                    '''
+                    SELECT image_path
+                    FROM products
+                    WHERE image_path = %s''',
+                    (product['image_path'],)).fetchall())
+                
+        if number_of_image_uses == 0:
 
-        previous_image_path = os.path.join(current_app.static_folder, product['image_path'])
+            previous_image_path = os.path.join(current_app.static_folder, product['image_path'])
 
-        if os.path.exists(previous_image_path):
-            os.remove(previous_image_path)
+            if os.path.exists(previous_image_path):
+                os.remove(previous_image_path)
 
     return jsonify(), 200
 

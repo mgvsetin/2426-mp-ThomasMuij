@@ -1680,7 +1680,7 @@ function renderProducts(eventData) {
     let imageHTML;
     if (product.image_path) {
       imageHTML = `
-        <div class="image-container">
+        <div class="image-container table-image-container">
           <img class="product-image" src="${product.image_path}">
         </div>
       `;
@@ -1754,7 +1754,7 @@ function renderCategories(eventData) {
 }
 
 
-function makeBoothsPicker(booths, checkBooths=[], boothType='all') {
+function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
   let checkboxesHTML = '';
   const checkBoothIds = checkBooths.map(booth => booth.id);
 
@@ -2202,6 +2202,17 @@ async function openEditProductModal(row) {
   const boothsPickerStr = makeBoothsPicker(eventData.booths, product.booths, 'seller');
   const categoriesPickerStr = makeCategoriesPicker(eventData.categories, product.categories);
 
+  let imageHTML;
+  if (product.image_path) {
+    imageHTML = `
+      <div class="image-container edit-product-image-container">
+        <img class="product-image" src="${product.image_path}">
+      </div>
+    `;
+  } else {
+    imageHTML = '-';
+  }
+
   const html = `
           <header>
             <h2>Upravit produkt</h2>
@@ -2237,6 +2248,9 @@ async function openEditProductModal(row) {
                 <input id="remove-product-image-input" type="checkbox" name="remove-curent-image"/>
                 Odstranit aktuální obrázek
               </label>
+              <div>
+                ${imageHTML}
+              </div>
             </div>
             <div class="form-row">
               ${boothsPickerStr}
