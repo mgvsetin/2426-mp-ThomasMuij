@@ -317,7 +317,8 @@ document.addEventListener('submit', async (event) => {
 
       resetEventDataCache();
       loadPage({
-        eventInfo: true
+        eventInfo: true,
+        header: true
       });
 
     } catch (err) {
@@ -500,7 +501,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ boothsTable: true });
+      loadPage({ boothsTable: true, employeesTable: true, productsTable: true, categoriesTable: true, header: true });
 
     } catch (err) {
       showEditBoothErrors('unexpected_error');
@@ -561,7 +562,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ boothsTable: true });
+      loadPage({ boothsTable: true, employeesTable: true, productsTable: true, categoriesTable: true, header: true });
 
     } catch (err) {
       showDeleteBoothErrors('unexpected_error');
@@ -983,7 +984,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ categoriesTable: true });
+      loadPage({ categoriesTable: true, productsTable: true });
 
     } catch (err) {
       showAddCategoryErrors('unexpected_error');
@@ -1045,7 +1046,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ categoriesTable: true });
+      loadPage({ categoriesTable: true, productsTable: true });
 
     } catch (err) {
       showEditCategoryErrors('unexpected_error');
@@ -1106,7 +1107,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ categoriesTable: true });
+      loadPage({ categoriesTable: true, productsTable: true });
 
     } catch (err) {
       showDeleteCategoryErrors('unexpected_error');
@@ -2158,7 +2159,7 @@ async function openAddProductModal() {
           </div>
           <div class="form-row">
             <label for="product-price-input">Cena (Kč)</label>
-            <input id="product-price-input" name="price" type="number" step="0.01" min="0"/>
+            <input id="product-price-input" name="price" type="number" step="1" min="0"/>
             <div id="add-product-price-error" class="form-error"></div>
           </div>
           <div class="form-row image-form-row">
@@ -2219,7 +2220,7 @@ async function openEditProductModal(row) {
             </div>
             <div class="form-row">
               <label for="product-price-input">Cena (Kč)</label>
-              <input id="product-price-input" name="price" type="number" step="0.01" min="0" value="${escapeHTML(String(product.price))}"/>
+              <input id="product-price-input" name="price" type="number" step="1" min="0" value="${escapeHTML(String(product.price))}"/>
               <div id="edit-product-price-error" class="form-error"></div>
             </div>
             <div class="form-row">
