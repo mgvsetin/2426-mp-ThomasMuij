@@ -820,6 +820,8 @@ document.addEventListener('submit', async (event) => {
     const formData = new FormData(editProductForm);
     formData.set('name', formData.get('name').trim());
 
+    console.log(formData.get('image'));
+
     try {
       const response = await fetch('/api/events/products/edit', {
         method: 'post',

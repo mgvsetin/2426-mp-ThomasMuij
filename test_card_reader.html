@@ -2,13 +2,48 @@
 <html>
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reader test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reader test</title>
 </head>
 
 <body>
+  <!-- <button id="usb" onclick="webUSB()">USB</button>
+  <button id="hid" onclick="webHID()">HID</button> -->
+  <button id="serial" onclick="webSerial()">Serial</button>
 
+
+  <script>
+    // async function webUSB() {
+    //   // must be invoked by a user gesture (click)
+    //   const filters = [{ vendorId: 0x1234 }, { vendorId: 0xabcd }]; // optional
+    //   const device = await navigator.usb.requestDevice({ filters });
+    //   await device.open();
+    //   if (device.configuration === null) await device.selectConfiguration(1);
+    //   await device.claimInterface(0);
+    //   // now you can perform controlTransferIn/Out, transferIn/Out on endpoints
+    //   const result = await device.transferIn(1, 64);
+    //   console.log(new Uint8Array(result.data.buffer));
+    // }
+
+    // async function webHID() {
+    //   const devices = await navigator.hid.requestDevice({ filters: [{ vendorId: 0x1234 }] });
+    //   const device = devices[0];
+    //   await device.open();
+    //   device.addEventListener('inputreport', e => {
+    //     const data = new Uint8Array(e.data.buffer);
+    //     console.log('hid data', data);
+    //   });
+    // }
+
+    async function webSerial() {
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      const reader = port.readable.getReader();
+      const { value, done } = await reader.read();
+      console.log(value);
+    }
+  </script>
 </body>
 
 </html>
