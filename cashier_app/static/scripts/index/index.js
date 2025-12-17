@@ -5,6 +5,7 @@ import { renderSummary } from "./summary.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 
+const pageContainer = document.querySelector('#page-container');
 const orderEl = document.querySelector('#order');
 const productSide = orderEl.querySelector('#product-side');
 const summarySide = orderEl.querySelector('#summary-side');
@@ -119,7 +120,7 @@ document.addEventListener('click', async (event) => {
   }
 
   const returnButton = event.target.closest('#return-to-event-picker-button');
-  if (returnButton && productSide.contains(returnButton)) {
+  if (returnButton) {
     await unselectEventBooth();
     loadPage({
       categories: true,
@@ -177,7 +178,7 @@ document.addEventListener('keydown', (event) => {
 
 productSide.addEventListener('submit', async (event) => {
   const eventForm = event.target.closest('#event-selector-form');
-  if (eventForm && productSide.contains(eventForm)) {
+  if (eventForm) {
     event.preventDefault();
     const formData = new FormData(eventForm);
 
@@ -195,12 +196,13 @@ productSide.addEventListener('submit', async (event) => {
 
 
   const boothForm = event.target.closest('#booth-selector-form');
-  if (boothForm && productSide.contains(boothForm)) {
+  if (boothForm) {
     event.preventDefault();
     const formData = new FormData(boothForm);
-    const ok = await pickBooth(formData);
+    const booth_type = await pickBooth(formData);
 
-    if (ok) {
+    if (booth_type === 'seller') {
+      pageContainer.setAttribute('show', 'order');
       loadPage({
         categories: true,
         products: true,
@@ -208,6 +210,8 @@ productSide.addEventListener('submit', async (event) => {
         // sidebar: true,
         header: true
       });
+    } else if (booth_type === 'cashier') {
+      pageContainer.setAttribute('show', 'cashier');
     }
     return;
   }

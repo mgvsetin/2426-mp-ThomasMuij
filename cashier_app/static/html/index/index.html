@@ -13,54 +13,60 @@
 </head>
 
 <body>
-  <main id="order">
-    <div id="product-side">
-      <div id="search-div">
-        <div id="search-bar-container">
-          <input id="search-bar" placeholder="Vyhledávání">
-          <div id="search-icon-container">
-            <img id="search-icon" src="/static/images/icons/search_icon.png">
+  <div id="page-container" show="order">
+    <div id="order">
+      <div id="product-side">
+        <div id="search-div">
+          <div id="search-bar-container">
+            <input id="search-bar" placeholder="Vyhledávání">
+            <div id="search-icon-container">
+              <img id="search-icon" src="/static/images/icons/search_icon.png">
+            </div>
           </div>
         </div>
-      </div>
-      <div id="categories"></div>
+        <div id="categories"></div>
 
-      <div id="product-grid-container"></div>
+        <div id="product-grid-container"></div>
+      </div>
+
+      <div id="summary-side">
+        <div id="customer-details">
+          <div id="customer-details-title">
+            Zákazník
+          </div>
+          <div id="tag-id">
+            Karta: 20000000-0000-0000-0000-000000000001
+          </div>
+          <div id="balance">
+            Zůstatek: 3456 Kč
+          </div>
+        </div>
+        <div id="order-summary-container">
+          <div id="order-summary-title">
+            Objednávka
+          </div>
+          <div id="order-summary"></div>
+        </div>
+        <div id="payment-summary">
+          <div id="order-cost-row">
+            <div id="order-cost-message">
+              Celkem:
+            </div>
+            <div id="order-cost">
+              3405 Kč
+            </div>
+          </div>
+          <button id="pay-button">
+            Zaplatit
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div id="summary-side">
-      <div id="customer-details">
-        <div id="customer-details-title">
-          Zákazník
-        </div>
-        <div id="tag-id">
-          Karta: 20000000-0000-0000-0000-000000000001
-        </div>
-        <div id="balance">
-          Zůstatek: 3456 Kč
-        </div>
-      </div>
-      <div id="order-summary-container">
-        <div id="order-summary-title">
-          Objednávka
-        </div>
-        <div id="order-summary"></div>
-      </div>
-      <div id="payment-summary">
-        <div id="order-cost-row">
-          <div id="order-cost-message">
-            Celkem:
-          </div>
-          <div id="order-cost">
-            3405 Kč
-          </div>
-        </div>
-        <button id="pay-button">
-          Zaplatit
-        </button>
-      </div>
+    <div id="cashier">
+
     </div>
-  </main>
+  </div>
 
   <script src="/static/scripts/index/index.js" type="module"></script>
 </body>

@@ -17,7 +17,7 @@ import { resetProductsCache, saveSelectedCategory } from "./products.js";
 //   }
 // }
 
-const productSide = document.querySelector('#product-side');
+const pageContainer = document.querySelector('#page-container');
 
 export let selectingEvent = false;
 
@@ -69,7 +69,7 @@ export async function renderEventPicker() {
   data = await response.json();
 
   } catch (error) {
-    const overlay = makeEventBoothOverlay(productSide);
+    const overlay = makeEventBoothOverlay(pageContainer);
     overlay.innerHTML = `
     <div id="event-selector-form-container">
       <div id="event-error-message">
@@ -79,7 +79,7 @@ export async function renderEventPicker() {
     return;
   }
 
-  const overlay = makeEventBoothOverlay(productSide);
+  const overlay = makeEventBoothOverlay(pageContainer);
 
   let html_event_options = ''
   if (data) {
@@ -190,7 +190,7 @@ export async function renderBoothPicker() {
     return;
   }
 
-  const overlay = makeEventBoothOverlay(productSide);
+  const overlay = makeEventBoothOverlay(pageContainer);
 
     let html_booth_options = ''
     if (data) {
@@ -228,6 +228,7 @@ export async function renderBoothPicker() {
 
 
 export async function pickBooth(formData) {
+  let booth_type = null;
   try {
     const response = await fetch('/api/employees/me/events/booths/select', {
       method: 'PUT',
@@ -237,7 +238,7 @@ export async function pickBooth(formData) {
     if (response.status === 401) {
       const json = await response.json();
       window.location.href = json.redirect_url;
-      return false;
+      return null;
     }
 
     const data = await response.json();
@@ -257,10 +258,16 @@ export async function pickBooth(formData) {
       throw new Error('unexpected_error');
     }
 
+    try {
+      booth_type = data.booth_type;
+    } catch {
+      throw new Error('unexpected_error');
+    }
+
   } catch(error) {
     if (error.message === 'no_selected_event') {
       renderEventPicker();
-      return false;
+      return null;
     }
     const errorMessageEl = document.querySelector('.booth-submit-error-message');
     if (error.message === 'bad_booth') {
@@ -270,10 +277,10 @@ export async function pickBooth(formData) {
     }
     errorMessageEl.classList.add('display-block');
 
-    return false;
+    return null;
   }
   removeEventBoothOverlay();
-  return true;
+  return booth_type;
 }
 
 

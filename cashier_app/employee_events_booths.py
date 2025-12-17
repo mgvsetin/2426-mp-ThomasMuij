@@ -302,7 +302,7 @@ def select_booth():
                         return jsonify(error='employee_not_linked_to_booth'), 400
     
     session['booth_id'] = str(booth_id)
-    return jsonify(), 200
+    return jsonify(booth_type=booth['booth_type']), 200
 
 
 
