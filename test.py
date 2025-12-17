@@ -1,6 +1,7 @@
+pocet = 0
 
+def pricti():
+    pocet1 = pocet + 1
+    print(pocet1)
 
-try:
-    a = float('2.0')
-except (ValueError, TypeError):
-    print('he')
+pricti()
