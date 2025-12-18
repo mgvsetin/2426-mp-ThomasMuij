@@ -1196,7 +1196,6 @@ function getEventData() {
 
       if (res.status === 401) {
         const json = await res.json();
-        _getEventDataPromise = null;
         window.location.href = json.redirect_url;
         return;
       }
@@ -2942,6 +2941,9 @@ function showAddProductErrors(error, detail) {
   const categoriesError = document.querySelector('#add-product-categories-error');
   const generalError = document.querySelector('#add-product-general-error');
 
+  console.log(error)
+  console.log(detail)
+
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));
@@ -3023,27 +3025,20 @@ function showAddProductErrors(error, detail) {
     setErr(nameError, `Maximální délka názvu je ${limit}.`);
     return;
   }
-  if (errorStr.includes('name must start and end with')) {
-    const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
-    return;
-  }
-  if (errorStr.includes('name must not contain')) {
-    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
-  if (errorStr.includes('name must not be all numeric')) {
-    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
-    return;
-  }
-  if (errorStr.includes('name must not contain the reserved words')) {
-    const reservedWords = errorStr.split('reserved words: ')[1];
-    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
-    return;
-  }
 
-  if (errorStr.includes('price must be')) {
-    setErr(priceError, 'Cena musí být kladné číslo.');
+  if (errorStr.includes('price must be a number') || errorStr.includes('price must be a whole number') || errorStr.includes('price must be positive')) {
+    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    return;
+  } else if (errorStr.includes('price must be a number')) {
+    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    return;
+  } if (errorStr.includes('price must be more than or equal to')) {
+    let limit = errorStr.split('price must be more than or equal to ')[1];
+    setErr(priceError, `Minimální cena je ${limit}.`);
+    return;
+  }  if (errorStr.includes('price must be less than or equal to')) {
+    let limit = errorStr.split('price must be less than or equal to ')[1];
+    setErr(priceError, `Maximální cena je ${limit}.`);
     return;
   }
 
@@ -3159,8 +3154,19 @@ function showEditProductErrors(error, detail) {
     return;
   }
 
-  if (errorStr.includes('price must be')) {
-    setErr(priceError, 'Cena musí být kladné číslo.');
+  if (errorStr.includes('price must be a number') || errorStr.includes('price must be a whole number') || errorStr.includes('price must be positive')) {
+    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    return;
+  } else if (errorStr.includes('price must be a number')) {
+    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    return;
+  } if (errorStr.includes('price must be more than or equal to')) {
+    let limit = errorStr.split('price must be more than or equal to ')[1];
+    setErr(priceError, `Minimální cena je ${limit}.`);
+    return;
+  }  if (errorStr.includes('price must be less than or equal to')) {
+    let limit = errorStr.split('price must be less than or equal to ')[1];
+    setErr(priceError, `Maximální cena je ${limit}.`);
     return;
   }
 
@@ -3272,24 +3278,6 @@ function showAddCategoryErrors(error, detail) {
     setErr(nameError, `Maximální délka názvu je ${limit}.`);
     return;
   }
-  if (errorStr.includes('name must start and end with')) {
-    const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
-    return;
-  }
-  if (errorStr.includes('name must not contain')) {
-    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
-  if (errorStr.includes('name must not be all numeric')) {
-    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
-    return;
-  }
-  if (errorStr.includes('name must not contain the reserved words')) {
-    const reservedWords = errorStr.split('reserved words: ')[1];
-    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
-    return;
-  }
 
   setErr(generalError, errorStr);
 }
@@ -3358,24 +3346,6 @@ function showEditCategoryErrors(error, detail) {
     let limit = errorStr.split('name must be at most ');
     limit = limit[1].split(' characters')[0];
     setErr(nameError, `Maximální délka názvu je ${limit}.`);
-    return;
-  }
-  if (errorStr.includes('name must start and end with')) {
-    const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
-    return;
-  }
-  if (errorStr.includes('name must not contain')) {
-    setErr(nameError, 'Název nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
-  if (errorStr.includes('name must not be all numeric')) {
-    setErr(nameError, 'Název nesmí obsahovat pouze čísla.');
-    return;
-  }
-  if (errorStr.includes('name must not contain the reserved words')) {
-    const reservedWords = errorStr.split('reserved words: ')[1];
-    setErr(nameError, `Název nesmí obsahovat: ${reservedWords}`);
     return;
   }
 

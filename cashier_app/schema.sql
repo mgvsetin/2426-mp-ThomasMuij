@@ -335,7 +335,7 @@ CREATE TABLE IF NOT EXISTS products (
   price         int NOT NULL,
   created_at    timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT price_is_positive_check
-    CHECK (price > 0),
+    CHECK (price >= 0),
 
   image_path          text, -- obsahuje celý path i s filename
   image_filename      text,
@@ -712,7 +712,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   id                            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id                      uuid REFERENCES events(id) NOT NULL,
   -- tag_id                        uuid REFERENCES tags(id) ON DELETE SET NULL,
-  tag_id                        uuid,
+  tag_id                        uuid NOT NULL,
   owner_id                      uuid REFERENCES users(id) NOT NULL,
   balance_czk                   int NOT NULL DEFAULT 0, -- cache, není zdroj pravdy
   created_by                    uuid REFERENCES employees(id) NOT NULL,
@@ -775,8 +775,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   -- metadata          jsonb DEFAULT '{}'::jsonb, -- keep?, info about product?
   CONSTRAINT transaction_type_matches_amount_czk_check
     CHECK (
-      (transaction_type IN ('deposit', 'refund') AND amount_czk > 0)
-      OR (transaction_type IN ('payment','withdrawal') AND amount_czk < 0)
+      (transaction_type IN ('deposit', 'refund') AND amount_czk >= 0)
+      OR (transaction_type IN ('payment','withdrawal') AND amount_czk <= 0)
     ),
   CONSTRAINT balance_after_matches_balance_before_and_amount_czk_check
     CHECK (balance_after = balance_before + amount_czk),
@@ -1081,10 +1081,18 @@ VALUES
 ('50000000000000000000000000000014', '10000000000000000000000000000013', '30000000000000000000000000000001', '40000000000000000000000000000003'),
 ('50000000000000000000000000000015', '10000000000000000000000000000013', '30000000000000000000000000000001', '40000000000000000000000000000001');
 
+INSERT INTO users (id, created_at, username, email, password_hash, is_admin, created_by, deleted_at)
+VALUES 
+('10000000000000000000000000000017', '2023-1-1 11:11:54.767705+01','development_seller_old1', 'development_seller_old@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000018', '2023-12-30 11:11:54.767705+01','development_seller_old2', 'development_seller_old2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000019', '2027-1-1 11:11:54.767705+01','development_seller_future1', 'development_seller_future1@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
+('10000000000000000000000000000020', '2027-12-30 11:11:54.767705+01','development_seller_future2', 'development_seller_future2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL);
+
 INSERT INTO wallets (id, event_id, tag_id, balance_czk, created_by)
 VALUES
 ('80000000000000000000000000000001', '30000000000000000000000000000001', '90000000000000000000000000000001', 5340, '10000000000000000000000000000003'),
-('80000000000000000000000000000002', '30000000000000000000000000000001', '90000000000000000000000000000002', 21, '10000000000000000000000000000003');
+('80000000000000000000000000000002', '30000000000000000000000000000001', '90000000000000000000000000000002', 21, '10000000000000000000000000000003'),
+('80000000000000000000000000000003', '30000000000000000000000000000002', '90000000000000000000000000000003', 0, '10000000000000000000000000000003');
 
 
 
