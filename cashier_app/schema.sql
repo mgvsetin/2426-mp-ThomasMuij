@@ -114,18 +114,25 @@ CREATE OR REPLACE TRIGGER trg_employees_block_delete_limit_update_insert
 
 -- ======================== users ========================
 CREATE TABLE IF NOT EXISTS users (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  username        text NOT NULL,
-  email           citext NOT NULL, -- add verification
-  password_hash   text NOT NULL, -- Argon2 hash string (contains salt)
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  deleted_at      timestamptz -- NULL -> existuje, NOT NULL -> smazáno
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  first_name        text NOT NULL,
+  last_name         text NOT NULL,
+  email             citext, -- add verification
+  phone_number      text, -- +[country code][number] (CZ: +420123456789) -- Use a validation library in your application layer (like libphonenumber) to normalize numbers to E.164 before storing
+  other_identifier  text,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  deleted_at        timestamptz, -- NULL -> existuje, NOT NULL -> smazáno
+  CONSTRAINT valid_phone_number_check
+    CHECK (phone_number ~ '^\+[1-9]\d{1,14}$')
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_username_active ON users (LOWER(username)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_names_email_phone_identifier ON users (LOWER(first_name), LOWER(last_name), email, phone_number, LOWER(other_identifier)) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (email) WHERE deleted_at IS NULL;
 
 -- blokuje delete a změnu created_at a znovu nastavení deleted_at, když není null:
--- u insert/update odstraní mezery na začátku a konci pro email/username
+-- u insert/update:
+  -- odstraní mezery na začátku a konci pro email/first_name/last_name/phone_number/other_identifier
+  -- first_name a last_name dá první písmeno velké a zbytek malé
+  -- kontroluje že aspoň jedno z email, phone_number a other_identifier je vyplněné
 CREATE OR REPLACE FUNCTION users_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
@@ -148,8 +155,15 @@ BEGIN
   END IF;
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
-    NEW.username := trim(NEW.username);
+    NEW.first_name := initcap(trim(NEW.first_name));
+    NEW.last_name := initcap(trim(NEW.last_name));
     NEW.email := trim(NEW.email);
+    NEW.phone_number := trim(NEW.phone_number);
+    NEW.other_identifier := trim(NEW.other_identifier);
+
+    IF (NEW.email IS NULL AND NEW.phone_number IS NULL AND NEW.other_identifier IS NULL) THEN
+      RAISE EXCEPTION 'at least one of email, phone_number, other_identifier have to be set';
+    END IF;
   END IF;
   RETURN NEW;
 END;
@@ -699,9 +713,8 @@ CREATE TABLE IF NOT EXISTS wallets (
   event_id                      uuid REFERENCES events(id) NOT NULL,
   -- tag_id                        uuid REFERENCES tags(id) ON DELETE SET NULL,
   tag_id                        uuid,
-  owner_id                      uuid REFERENCES users(id) ON DELETE SET NULL,
+  owner_id                      uuid REFERENCES users(id) NOT NULL,
   balance_czk                   int NOT NULL DEFAULT 0, -- cache, není zdroj pravdy
-  accountless_owner_identifier  text, -- nejspíš celé jméno, pro vrácení peněz na konci akce
   created_by                    uuid REFERENCES employees(id) NOT NULL,
   created_at                    timestamptz NOT NULL DEFAULT now(),
   deleted_at                    timestamptz

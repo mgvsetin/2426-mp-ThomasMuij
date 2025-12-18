@@ -1,3 +1,5 @@
+import { order } from "../index/order.js";
+import { saveSelectedCategory } from "../index/products.js";
 import { getSessionInfo } from "./session.js";
 
 
@@ -129,6 +131,7 @@ export function headerClickListeners(event) {
     // musí se zavolat před await
     // jestli bude potřeba await tak se prní
     // musí zavolat preventDefault()
+    // event.preventDefault(); /////
     order.reset();
     saveSelectedCategory(null);
     // sessionStorage.clear();

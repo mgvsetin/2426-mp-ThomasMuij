@@ -2,15 +2,15 @@ body {
   padding-top: 60px;
 }
 
-#page-container[show="order"] #order {
+#page-container[show="seller"] #seller-page {
   display: flex;
 }
 
-#page-container[show="cashier"] #cashier {
+#page-container[show="cashier"] #cashier-page {
   display: flex;
 }
 
-#order {
+#seller-page {
   height: calc(100vh - 60px);
   display: none;
   align-items: stretch;
@@ -763,7 +763,7 @@ body {
 }
 
 
-#cashier {
+#cashier-page {
   height: calc(100vh - 60px);
   display: none;
   align-items: stretch;

@@ -1,5 +1,3 @@
 with open('prints.txt', 'a', encoding='utf-8') as f:
     print('here', file=f)
 
-here1
-here2

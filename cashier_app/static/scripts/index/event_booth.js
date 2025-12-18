@@ -46,7 +46,7 @@ function removeEventBoothOverlay() {
   if (overlay.parentElement) {
     // productSide.classList.remove('disable-children');
   }
-  
+
   if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
 }
 
@@ -54,19 +54,19 @@ function removeEventBoothOverlay() {
 export async function renderEventPicker() {
   let data;
   try {
-  const response = await fetch('/api/employees/me/events/active');
+    const response = await fetch('/api/employees/me/events/active');
 
-  if (response.status === 401) {
-    const json = await response.json();
-    window.location.href = json.redirect_url;
-    return;
-  }
+    if (response.status === 401) {
+      const json = await response.json();
+      window.location.href = json.redirect_url;
+      return;
+    }
 
-  if (!response.ok) {
-    throw new Error('unexpected_error');
-  }
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
 
-  data = await response.json();
+    data = await response.json();
 
   } catch (error) {
     const overlay = makeEventBoothOverlay(pageContainer);
@@ -108,7 +108,7 @@ export async function renderEventPicker() {
   // proti nechtěnému stisknutí:
   const submit = overlay.querySelector('#submit-event-choice');
   setTimeout(() => {
-    try { submit.disabled = false; } catch {} // už bylo odendáno
+    try { submit.disabled = false; } catch { } // už bylo odendáno
   }, 150);
 }
 
@@ -129,8 +129,8 @@ export async function pickEvent(formData) {
     const data = await response.json();
 
     if ((response.status === 400 && data.error === 'invalid_event_id')
-      ||(response.status === 404 && data.error === 'event_not_found_or_inactive')
-      ||(response.status === 403 && data.error === 'employee_not_linked_to_event')) {
+      || (response.status === 404 && data.error === 'event_not_found_or_inactive')
+      || (response.status === 403 && data.error === 'employee_not_linked_to_event')) {
       throw new Error('bad_event');
     }
 
@@ -138,7 +138,7 @@ export async function pickEvent(formData) {
       throw new Error('unexpected_error');
     }
 
-  } catch(error) {
+  } catch (error) {
     const errorMessageEl = document.querySelector('.event-submit-error-message');
     if (error.message === 'bad_event') {
       errorMessageEl.innerHTML = 'Něco se nepovedlo. Zkuste načíst stránku a vybrat akci ještě jednou.';
@@ -192,17 +192,17 @@ export async function renderBoothPicker() {
 
   const overlay = makeEventBoothOverlay(pageContainer);
 
-    let html_booth_options = ''
-    if (data) {
-      data.forEach((booth) => {
-        html_booth_options += `
+  let html_booth_options = ''
+  if (data) {
+    data.forEach((booth) => {
+      html_booth_options += `
           <option value="${booth.id}">
             ${booth.name}
           </option>`
-      })
-    }
+    })
+  }
 
-    overlay.innerHTML = `
+  overlay.innerHTML = `
       <div id="booth-selector-form-container">
         <form id="booth-selector-form">
           <label for="booth-selector" id="booth-selector-label">Vyberte stánek</label>
@@ -217,13 +217,13 @@ export async function renderBoothPicker() {
         <div class="booth-submit-error-message"></div>
       </div>`;
 
-    // proti nechtěnému stisknutí:
-    const submit = overlay.querySelector('#submit-booth-choice');
-    const returnButton = overlay.querySelector('#return-to-event-picker-button');
-    setTimeout(() => {
-      try { submit.disabled = false; } catch {} // už bylo odendáno
-      try { returnButton.disabled = false; } catch {} // už bylo odendáno
-    }, 150);
+  // proti nechtěnému stisknutí:
+  const submit = overlay.querySelector('#submit-booth-choice');
+  const returnButton = overlay.querySelector('#return-to-event-picker-button');
+  setTimeout(() => {
+    try { submit.disabled = false; } catch { } // už bylo odendáno
+    try { returnButton.disabled = false; } catch { } // už bylo odendáno
+  }, 150);
 }
 
 
@@ -248,9 +248,9 @@ export async function pickBooth(formData) {
     }
 
     if ((response.status === 400 && data.error === 'invalid_booth_id')
-      ||(response.status === 404 && data.error === 'booth_not_found')
-      ||(response.status === 400 && data.error === 'employee_not_linked_to_event')
-      ||(response.status === 400 && data.error === 'employee_not_linked_to_booth')) {
+      || (response.status === 404 && data.error === 'booth_not_found')
+      || (response.status === 400 && data.error === 'employee_not_linked_to_event')
+      || (response.status === 400 && data.error === 'employee_not_linked_to_booth')) {
       throw new Error('bad_booth');
     }
 
@@ -264,7 +264,7 @@ export async function pickBooth(formData) {
       throw new Error('unexpected_error');
     }
 
-  } catch(error) {
+  } catch (error) {
     if (error.message === 'no_selected_event') {
       renderEventPicker();
       return null;
@@ -299,7 +299,7 @@ export async function unselectEventBooth() {
 
     return true;
 
-  } catch(error) {
+  } catch (error) {
     return false;
   }
 }

@@ -119,12 +119,13 @@ def select_event():
         if not role:
             return jsonify(error='employee_not_linked_to_event'), 403
 
-    if event:
-        session.pop('booth_id', None)
-        session['event_id'] = str(event_id)
-        return jsonify(), 200
-    else:
+    if not event:
         return jsonify(error='event_not_found_or_inactive'), 404
+
+    session.pop('booth_id', None)
+    session['event_id'] = str(event_id)
+    return jsonify(), 200
+        
 
 
 @api_bp.route('/remove', methods=('DELETE',))

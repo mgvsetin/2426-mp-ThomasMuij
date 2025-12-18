@@ -4,12 +4,15 @@ import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
+import { getSessionInfo } from "../general/session.js";
 
 const pageContainer = document.querySelector('#page-container');
-const orderEl = document.querySelector('#order');
-const productSide = orderEl.querySelector('#product-side');
-const summarySide = orderEl.querySelector('#summary-side');
-const searchBar = orderEl.querySelector('#search-bar');
+const sellerPage = document.querySelector('#seller-page');
+const productSide = sellerPage.querySelector('#product-side');
+const summarySide = sellerPage.querySelector('#summary-side');
+const searchBar = sellerPage.querySelector('#search-bar');
+
+choosePage();
 
 loadPage({
   products: true,
@@ -51,6 +54,17 @@ async function loadPage({
   }
 
   await Promise.all(toLoad);
+}
+
+
+async function choosePage() {
+  const sessionInfo = await getSessionInfo();
+
+  if (sessionInfo && sessionInfo.booth) {
+    pageContainer.setAttribute('show', sessionInfo.booth.booth_type === 'seller' ? 'seller' : 'cashier');
+  } else {
+    pageContainer.setAttribute('show', '');
+  }
 }
 
 
@@ -138,6 +152,7 @@ document.addEventListener('click', async (event) => {
       return;
     }
     await unselectEventBooth();
+    choosePage();
     loadPage({
       categories: true,
       products: true,
@@ -176,7 +191,7 @@ document.addEventListener('keydown', (event) => {
   }
 })
 
-productSide.addEventListener('submit', async (event) => {
+document.addEventListener('submit', async (event) => {
   const eventForm = event.target.closest('#event-selector-form');
   if (eventForm) {
     event.preventDefault();
@@ -202,7 +217,7 @@ productSide.addEventListener('submit', async (event) => {
     const booth_type = await pickBooth(formData);
 
     if (booth_type === 'seller') {
-      pageContainer.setAttribute('show', 'order');
+      pageContainer.setAttribute('show', 'seller');
       loadPage({
         categories: true,
         products: true,
@@ -227,7 +242,7 @@ searchBar.addEventListener('input', (event) => {
 })
 
 
-orderEl.addEventListener('focusout', (event) => {
+sellerPage.addEventListener('focusout', (event) => {
   if (event.target.matches('.productQuantity, .summary-productQuantity')) {
     const quantityInput = event.target;
     const productId = quantityInput.dataset.productId;
