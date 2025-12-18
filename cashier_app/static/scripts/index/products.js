@@ -46,7 +46,6 @@ export function getProductsAndCategories() {
 
       if (response.status === 401) {
         const json = await response.json();
-        _getProductsPromise = null;
         window.location.href = json.redirect_url;
         return false;
       }

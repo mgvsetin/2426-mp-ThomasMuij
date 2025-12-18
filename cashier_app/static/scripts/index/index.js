@@ -119,6 +119,11 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const payButton = event.target.closest('#pay-button');
+  if (payButton) {
+    payButton.disabled = true;
+  }
+
   const returnButton = event.target.closest('#return-to-event-picker-button');
   if (returnButton) {
     await unselectEventBooth();
@@ -176,7 +181,7 @@ document.addEventListener('keydown', (event) => {
   }
 })
 
-productSide.addEventListener('submit', async (event) => {
+document.addEventListener('submit', async (event) => {
   const eventForm = event.target.closest('#event-selector-form');
   if (eventForm) {
     event.preventDefault();

@@ -53,7 +53,7 @@ def get_events_to_manage():
 
     if employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
+    
     if employee['is_admin']:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:

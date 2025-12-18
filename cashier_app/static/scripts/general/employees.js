@@ -30,7 +30,6 @@ export function getEmployees() {
 
       if (response.status === 401) {
         const json = await response.json();
-        _getEmployeesPromise = null;
         window.location.href = json.redirect_url;
         return;
       }
