@@ -3,6 +3,7 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
+import { resetWalletsCache } from "./cards.js";
 import { order } from "./order.js";
 import { resetProductsCache, saveSelectedCategory } from "./products.js";
 
@@ -22,11 +23,11 @@ const pageContainer = document.querySelector('#page-container');
 export let selectingEvent = false;
 
 function makeEventBoothOverlay(container) {
-  const existing = container.querySelector(':scope > .event-booth-selector-centerer');
+  const existing = document.querySelector('.overlay');
   if (existing) container.removeChild(existing);
 
   const overlay = document.createElement('div')
-  overlay.className = 'event-booth-selector-centerer';
+  overlay.className = 'overlay';
 
   // container.classList.add('disable-children');
 
@@ -37,7 +38,7 @@ function makeEventBoothOverlay(container) {
 
 
 function removeEventBoothOverlay() {
-  const overlay = document.querySelector('.event-booth-selector-centerer');
+  const overlay = document.querySelector('.overlay');
 
   if (!overlay) {
     return;
@@ -286,6 +287,7 @@ export async function pickBooth(formData) {
 
 export async function unselectEventBooth() {
   order.reset();
+  resetWalletsCache();
   resetProductsCache();
   saveSelectedCategory(null);
   try {

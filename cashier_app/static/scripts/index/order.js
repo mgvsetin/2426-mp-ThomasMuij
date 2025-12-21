@@ -1,9 +1,11 @@
+import { findProduct } from "./products.js";
+
 // let _orderCache = null;
 // let _orderInitPromise = null;
 
 
 class Order {
-  constructor(key='order') {
+  constructor(key = 'order') {
     this._key = key;
     this.items = [];
     this._loadOrderFromStorage();
@@ -69,6 +71,15 @@ class Order {
     // sessionStorage.removeItem(this._key);
   }
 
+  getTotalPrice(products) {
+    let totalPrice = 0;
+    for (const item of this.items) {
+      const product = findProduct(products, item.productId);
+      totalPrice += product.price * item.quantity;
+    }
+    return totalPrice;
+  }
+
   getItem(productId) {
     for (const item of this.items) {
       if (item.productId === productId) {
@@ -112,7 +123,7 @@ class Order {
     this._saveOrderToStorage();
   }
 
-  updateQuantity(productId, quantity=1) {
+  updateQuantity(productId, quantity = 1) {
     quantity = Number(quantity);
     if (Number.isNaN(quantity)) {
       throw new Error('Item quantity has to be a number')

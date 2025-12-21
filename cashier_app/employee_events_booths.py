@@ -182,6 +182,7 @@ def load_selected_event() -> dict | None:
 
 
 api_booths_bp = Blueprint('booths', __name__, url_prefix='/booths')
+api_bp.register_blueprint(api_booths_bp)
 
 
 @api_booths_bp.route('/active')
@@ -332,59 +333,3 @@ def load_selected_booth():
                 (booth_id, event['id'])).fetchone()
 
     return g.booth
-
-
-@api_booths_bp.route('/products+categories')
-def get_products_and_categories():
-    """Vrátí produkty a kategorie dostupné pro vybraný stánek.
-
-
-    Sloučí informace z tabulek link, product_event_prices, products a product_images
-    a získá seznam vybraných kategorií (categories), které se vrátí.
-    """
-    employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-    
-    
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            products = cur.execute(
-                '''
-                SELECT p.id, p.name, p.price, p.image_path,
-                  COALESCE(jsonb_agg(
-                      DISTINCT jsonb_build_object('name', cat.name)
-                      ) FILTER (WHERE cat_link.category_id IS NOT NULL),
-                      '[]'
-                  ) AS categories
-                FROM products AS p
-                JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
-                LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
-                LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
-                WHERE bo_link.booth_id = %s
-                GROUP BY p.id''',
-                (booth['id'],)).fetchall()
-            
-            categories = cur.execute(
-                '''
-                SELECT cat.name
-                FROM categories AS cat
-                JOIN category_booth_link AS link ON link.category_id = cat.id
-                WHERE link.booth_id = %s''',
-                (booth['id'],)).fetchall()
-            
-    convert_image_paths_from_relative(products)
-    
-    return jsonify(products=products, categories=categories), 200
-
-
-api_bp.register_blueprint(api_booths_bp)

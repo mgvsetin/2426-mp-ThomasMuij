@@ -18,8 +18,8 @@ import { renderEventPicker } from "./event_booth.js";
 import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
-const productGridContainer = productSide.querySelector('#product-grid-container');
-const categoriesEl = productSide.querySelector('#categories')
+const productGridContainer = document.querySelector('#product-grid-container');
+const categoriesEl = document.querySelector('#categories')
 const searchBar = document.querySelector('#search-bar');
 
 
@@ -33,7 +33,7 @@ const _productsCache = {
 
 let _getProductsPromise = null;
 
-export function getProductsAndCategories() {
+export function getProductsAndCategories() { // make sure that if this changes it also changes order
   if (_productsCache.data && _productsCache.expiry > Date.now()) {
     return Promise.resolve(cloneData(_productsCache.data));
   }
@@ -42,7 +42,7 @@ export function getProductsAndCategories() {
 
   _getProductsPromise = (async () => {
     try {
-      const response = await fetch('/api/employees/me/events/booths/products+categories');
+      const response = await fetch('/api/events/booths/products+categories');
 
       if (response.status === 401) {
         const json = await response.json();

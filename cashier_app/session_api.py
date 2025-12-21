@@ -15,7 +15,7 @@ api_bp = Blueprint('session_api', __name__, url_prefix='/api/session')
 #   "exp": 169YYY
 # }
 
-@api_bp.route('') #/ why does it work with a slash (different from others)??
+@api_bp.route('')
 def session_info():
     employee = load_logged_in_employee()
     event = load_selected_event()

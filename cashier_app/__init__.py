@@ -46,6 +46,16 @@ def create_app(test_config=None):
             'hash_len': 32,
             'salt_len':16
         },
+        READER_INFO = {
+            'connection_type': 'serial',
+            'serial_port_options': {
+                'baudRate': 9600, 
+                'dataBits': 8,
+                'stopBits': 1,
+                'parity': 'none',
+                'flowControl': 'none'
+            }
+        },
         UPLOAD_FOLDER = os.path.join(app.static_folder, 'images', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
         ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},
@@ -152,6 +162,12 @@ def create_app(test_config=None):
     from cashier_app import events
     app.register_blueprint(events.bp)
     app.register_blueprint(events.api_bp)
+
+    from cashier_app import reader_info
+    app.register_blueprint(reader_info.api_bp)
+
+    from cashier_app import transactions
+    app.register_blueprint(transactions.api_bp)
 
     # @app.after_request
     # def print_sum(a):

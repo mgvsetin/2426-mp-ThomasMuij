@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto; -- pro gen_random_uuid()
-CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
+-- CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 
 
 -- // metadata / reference_id / notes
@@ -61,7 +61,7 @@ CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 CREATE TABLE IF NOT EXISTS employees (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   username        text NOT NULL,
-  email           citext NOT NULL, -- add verification
+  email           text NOT NULL, -- add verification
   password_hash   text NOT NULL, -- Argon2 hash string (contains salt)
   is_admin        boolean NOT NULL DEFAULT FALSE,
   created_by      uuid REFERENCES employees(id),
@@ -69,10 +69,10 @@ CREATE TABLE IF NOT EXISTS employees (
   deleted_at      timestamptz -- NULL -> existuje, NOT NULL -> smazáno
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_username_active ON employees (LOWER(username)) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_email_active ON employees (email) WHERE deleted_at IS NULL; -- email je citext -> lower
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_email_active ON employees (email) WHERE deleted_at IS NULL;
 
 -- blokuje delete a změnu created_at, created_by a znovu nastavení deleted_at, když není null:
--- u insert/update odstraní mezery na začátku a konci pro email/username
+-- u insert/update odstraní mezery na začátku a konci pro email/username a u email dá všchno malým
 CREATE OR REPLACE FUNCTION employees_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
@@ -99,7 +99,7 @@ BEGIN
 
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     NEW.username := trim(NEW.username);
-    NEW.email := trim(NEW.email);
+    NEW.email := lower(trim(NEW.email));
   END IF;
   RETURN NEW;
 END;
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS users (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name        text NOT NULL,
   last_name         text NOT NULL,
-  email             citext, -- add verification
+  email             text, -- add verification
   phone_number      text, -- +[country code][number] (CZ: +420123456789) -- Use a validation library in your application layer (like libphonenumber) to normalize numbers to E.164 before storing
   other_identifier  text,
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -131,6 +131,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (emai
 -- blokuje delete a změnu created_at a znovu nastavení deleted_at, když není null:
 -- u insert/update:
   -- odstraní mezery na začátku a konci pro email/first_name/last_name/phone_number/other_identifier
+  -- email dá všechno malým
   -- first_name a last_name dá první písmeno velké a zbytek malé
   -- kontroluje že aspoň jedno z email, phone_number a other_identifier je vyplněné
 CREATE OR REPLACE FUNCTION users_block_delete_limit_update_insert()
@@ -157,7 +158,7 @@ BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     NEW.first_name := initcap(trim(NEW.first_name));
     NEW.last_name := initcap(trim(NEW.last_name));
-    NEW.email := trim(NEW.email);
+    NEW.email := lower(trim(NEW.email));
     NEW.phone_number := trim(NEW.phone_number);
     NEW.other_identifier := trim(NEW.other_identifier);
 
@@ -712,7 +713,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   id                            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id                      uuid REFERENCES events(id) NOT NULL,
   -- tag_id                        uuid REFERENCES tags(id) ON DELETE SET NULL,
-  tag_id                        uuid NOT NULL,
+  tag_id                        text NOT NULL,
   owner_id                      uuid REFERENCES users(id) NOT NULL,
   balance_czk                   int NOT NULL DEFAULT 0, -- cache, není zdroj pravdy
   created_by                    uuid REFERENCES employees(id) NOT NULL,
@@ -760,7 +761,7 @@ CREATE OR REPLACE TRIGGER trg_wallets_block_delete_limit_update
 CREATE TABLE IF NOT EXISTS transactions (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   -- tag_id            uuid NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
-  tag_id            uuid NOT NULL,
+  tag_id            text NOT NULL,
   wallet_id         uuid NOT NULL REFERENCES wallets(id) ON DELETE RESTRICT,
   user_id           uuid REFERENCES users(id) ON DELETE RESTRICT,
   event_id          uuid NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
@@ -771,7 +772,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   balance_after     int NOT NULL, -- dělá trigger
   occurred_at       timestamptz NOT NULL DEFAULT now(),
   performed_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
-  products_info     jsonb DEFAULT '{}'::jsonb -- id (nezapomeň, že product mohl být smazán/upraven), price, name, amount
+  products_info     jsonb DEFAULT '[]'::jsonb -- id (nezapomeň, že product mohl být smazán/upraven), price, name, amount
   -- metadata          jsonb DEFAULT '{}'::jsonb, -- keep?, info about product?
   CONSTRAINT transaction_type_matches_amount_czk_check
     CHECK (
@@ -807,7 +808,7 @@ DECLARE
   employee_is_admin boolean;
   booth_event_id uuid;
   wallet_event_id uuid;
-  wallet_tag_id uuid;
+  wallet_tag_id text;
   wallet_owner_id uuid;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
@@ -993,6 +994,10 @@ VALUES
 ('30000000000000000000000000000006', 'adevelopment_future_event', '2026-11-16 20:40:55+00:00', '2027-12-16 20:40:55+00:00', '10000000000000000000000000000001'),
 ('30000000000000000000000000000007', 'adevelopment_past_event', '2023-9-16 20:40:55+00:00', now() + INTERVAL '4 seconds', '10000000000000000000000000000001');
 
+INSERT INTO events (id, name, start_at, end_at, created_by, deleted_at)
+VALUES
+('30000000000000000000000000000008', 'development_event_deleted', '2025-8-16 20:40:55+00:00', '2026-11-16 20:40:55+00:00', '10000000000000000000000000000001', now());
+
 INSERT INTO booths (id, name, event_id, booth_type, created_by)
 VALUES
 ('40000000000000000000000000000001', 'development_booth1_event1_cashier', '30000000000000000000000000000001', 'cashier', '10000000000000000000000000000001'),
@@ -1006,6 +1011,10 @@ VALUES
 ('40000000000000000000000000000007', 'development_booth1_event2_cashier', '30000000000000000000000000000002', 'cashier', '10000000000000000000000000000001'),
 
 ('40000000000000000000000000000008', 'development_booth1_event2_seller', '30000000000000000000000000000002', 'seller', '10000000000000000000000000000001');
+
+INSERT INTO booths (id, name, event_id, booth_type, created_by, deleted_at)
+VALUES
+('40000000000000000000000000000009', 'development_booth_event1_deleted', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001', now());
 
 INSERT INTO products (id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
 VALUES
@@ -1081,19 +1090,22 @@ VALUES
 ('50000000000000000000000000000014', '10000000000000000000000000000013', '30000000000000000000000000000001', '40000000000000000000000000000003'),
 ('50000000000000000000000000000015', '10000000000000000000000000000013', '30000000000000000000000000000001', '40000000000000000000000000000001');
 
-INSERT INTO users (id, created_at, username, email, password_hash, is_admin, created_by, deleted_at)
+INSERT INTO users (id, first_name, last_name, email, phone_number, other_identifier)
 VALUES 
-('10000000000000000000000000000017', '2023-1-1 11:11:54.767705+01','development_seller_old1', 'development_seller_old@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
-('10000000000000000000000000000018', '2023-12-30 11:11:54.767705+01','development_seller_old2', 'development_seller_old2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
-('10000000000000000000000000000019', '2027-1-1 11:11:54.767705+01','development_seller_future1', 'development_seller_future1@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL),
-('10000000000000000000000000000020', '2027-12-30 11:11:54.767705+01','development_seller_future2', 'development_seller_future2@gmail.com', '$argon2id$v=19$m=65536,t=3,p=2$HaqrwxL5kzBuWb6s+GVqKg$PmUeF6KsUupww8J9JT/Wpea73/wqqvpMAxnF/z7hFxo', FALSE, '10000000000000000000000000000001', NULL);
-
-INSERT INTO wallets (id, event_id, tag_id, balance_czk, created_by)
+('01000000000000000000000000000001', 'Pavel_ev1', 'Struhař', 'pavel.struhař@gmail.com', '+420123456789', NULL),
+('01000000000000000000000000000002', 'jiRka_ev1', 'PAvel  ', 'jirkA@gmail.com', NULL, NULL),
+('01000000000000000000000000000003', 'ev_1', 'ev_1  ', 'ev_1@gmail.com', NULL, NULL),
+('01000000000000000000000000000004', 'ev_2', 'ev_2  ', 'ev_2@gmail.com', NULL, NULL),
+('01000000000000000000000000000005', 'ev_1_2', 'ev_1_2  ', 'ev_1_2@gmail.com', NULL, NULL);
+  
+INSERT INTO wallets (id, event_id, tag_id, owner_id, balance_czk, created_by)
 VALUES
-('80000000000000000000000000000001', '30000000000000000000000000000001', '90000000000000000000000000000001', 5340, '10000000000000000000000000000003'),
-('80000000000000000000000000000002', '30000000000000000000000000000001', '90000000000000000000000000000002', 21, '10000000000000000000000000000003'),
-('80000000000000000000000000000003', '30000000000000000000000000000002', '90000000000000000000000000000003', 0, '10000000000000000000000000000003');
-
+('80000000000000000000000000000001', '30000000000000000000000000000001', '00A713A700000000','01000000000000000000000000000001', 534056, '10000000000000000000000000000003'),
+('80000000000000000000000000000002', '30000000000000000000000000000001', 'jiRka_ev1','01000000000000000000000000000002', -21, '10000000000000000000000000000003'),
+('80000000000000000000000000000003', '30000000000000000000000000000001', 'ev_1','01000000000000000000000000000003', 0, '10000000000000000000000000000003'),
+('80000000000000000000000000000004', '30000000000000000000000000000002', 'ev_2','01000000000000000000000000000004', 9348, '10000000000000000000000000000003'),
+('80000000000000000000000000000005', '30000000000000000000000000000001', '005AC02800000000','01000000000000000000000000000005', 111, '10000000000000000000000000000003'),
+('80000000000000000000000000000006', '30000000000000000000000000000002', '005AC02800000000','01000000000000000000000000000005', 222, '10000000000000000000000000000003');
 
 
 -- maybe?

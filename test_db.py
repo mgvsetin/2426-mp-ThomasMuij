@@ -15,14 +15,14 @@ def get_db(row_factory=dict_row, **kwargs):
 
 with get_db() as conn:
     with conn.cursor() as cur:
-        returning = cur.execute(
+        cur.execute(
             f'''
-            INSERT INTO products
-            (event_id, name, price)
-            VALUES ('30000000000000000000000000000001', 'a product name d', 2000)
-            RETURNING id''').fetchone()
+            INSERT INTO employee_event_booth_roles
+            (employee_id, event_id, booth_id)
+            VALUES ('10000000000000000000000000000013', '30000000000000000000000000000008', NULL)
+            ''')
         
-print(returning)
+
         
 
 

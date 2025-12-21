@@ -7,7 +7,7 @@ from psycopg import IntegrityError
 from psycopg.errors import ForeignKeyViolation
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
-from cashier_app.employee_events_booths import load_selected_event
+from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_or_booth_name
@@ -402,6 +402,32 @@ def delete_event():
     return jsonify(redirect_url=url_for('events.get_events_manager_page')), 200
 
 
+@api_bp.route('/wallets')
+def get_event_wallets():
+    employee = load_logged_in_employee()
+    event = load_selected_event()
+
+    if employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if event is None:
+        return jsonify(error='no_selected_event'), 400
+    
+    
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            
+            wallets = cur.execute(
+                '''
+                SELECT tag_id, owner_id, balance_czk
+                FROM wallets
+                WHERE event_id = %s
+                AND deleted_at IS NULL''',
+                (event['id'],)).fetchall()
+    
+    return jsonify(wallets=wallets), 200
+
+
 api_booths_bp = Blueprint('booths', __name__, url_prefix='/booths')
 api_bp.register_blueprint(api_booths_bp)
 
@@ -600,6 +626,59 @@ def delete_booth():
     return jsonify(), 200
 
 
+@api_booths_bp.route('/products+categories')
+def get_products_and_categories():
+    """Vrátí produkty a kategorie dostupné pro vybraný stánek.
+
+
+    Sloučí informace z tabulek link, product_event_prices, products a product_images
+    a získá seznam vybraných kategorií (categories), které se vrátí.
+    """
+    employee = load_logged_in_employee()
+    event = load_selected_event()
+    booth = load_selected_booth()
+
+    if employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    if booth is None:
+        return jsonify(error='no_selected_booth'), 400
+    
+    
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            products = cur.execute(
+                '''
+                SELECT p.id, p.name, p.price, p.image_path,
+                  COALESCE(jsonb_agg(
+                      DISTINCT jsonb_build_object('name', cat.name)
+                      ) FILTER (WHERE cat_link.category_id IS NOT NULL),
+                      '[]'
+                  ) AS categories
+                FROM products AS p
+                JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
+                LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
+                LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
+                WHERE bo_link.booth_id = %s
+                GROUP BY p.id''',
+                (booth['id'],)).fetchall()
+            
+            categories = cur.execute(
+                '''
+                SELECT cat.name
+                FROM categories AS cat
+                JOIN category_booth_link AS link ON link.category_id = cat.id
+                WHERE link.booth_id = %s''',
+                (booth['id'],)).fetchall()
+            
+    convert_image_paths_from_relative(products)
+    
+    return jsonify(products=products, categories=categories), 200
+
+
 api_employees_bp = Blueprint('employees', __name__, url_prefix='/employees')
 api_bp.register_blueprint(api_employees_bp)
 
@@ -642,7 +721,6 @@ def assign_manager():
                 AND deleted_at IS NULL''',
                 (event_id,)).fetchone()
     
-    # integrity error nestačí, přotože deleted_at musí být NULL
     if not event:
         return jsonify(error='event_not_found'), 400
     
@@ -711,7 +789,6 @@ def assign_employee():
                 AND deleted_at IS NULL''',
                 (event_id,)).fetchone()
             
-            # integrity error nestačí, přotože deleted_at musí být NULL
             if not event:
                 return jsonify(error='event_not_found'), 400
             
@@ -925,7 +1002,7 @@ def add_product():
         return jsonify(error=errors[0]), 400
     params['price'] = price
     
-    if request.content_length is not None and request.content_length > current_app.config['MAX_CONTENT_LENGTH']:
+    if request.content_length is not None and request.content_length > current_app.config.get('MAX_CONTENT_LENGTH'):
         return jsonify(error="file_too_large"), 413
 
     if image_file:
@@ -1110,7 +1187,7 @@ def edit_product():
         return jsonify(error=errors[0]), 400
     params['price'] = price
     
-    if request.content_length is not None and request.content_length > current_app.config['MAX_CONTENT_LENGTH']:
+    if request.content_length is not None and request.content_length > current_app.config.get('MAX_CONTENT_LENGTH'):
         return jsonify(error="file_too_large"), 413
     
     if remove_current_image and not image_file:
