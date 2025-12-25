@@ -25,7 +25,7 @@ const orderBy = { key: '', ascending: true }; // key: 'start_at', 'end_at', 'cre
 
 
 async function addAddEventButton() {
-  const sessionInfo = await getSessionInfo();
+  const sessionInfo = await getSessionInfo().catch(() => {});
   if (!sessionInfo) return;
   if (!sessionInfo.employee.is_admin) return;
   addEventButton.classList.add('show');
@@ -177,7 +177,7 @@ document.addEventListener('submit', async (event) => {
       const startAtIsoUtc = startAt.toISOString();
       formData.set('start-at', startAtIsoUtc);
     }
-    
+
     if (endAtStr) {
       const endAtIsoUtc = endAt.toISOString();
       formData.set('end-at', endAtIsoUtc);
@@ -267,7 +267,7 @@ function isSearchedForEvent(ev, searchQuery) {
       const [k, v] = q.split('=');
       // if (['id', 'identifier'].includes(k)) {
       //   if (!id.includes(v)) return false;
-       if (['name', 'akce', 'nazev', 'název'].includes(k)) {
+      if (['name', 'akce', 'nazev', 'název'].includes(k)) {
         if (!name.includes(v)) return false;
       } else if (['start_at', 'začátek', 'zacatek'].includes(k)) {
         if (!startAt.includes(v)) return false;
@@ -292,7 +292,7 @@ function sorter(a, b) {
 
   if (key === 'start_at' || key === 'end_at' || key === 'created_at') {
     aa = aa ? new Date(aa).getTime() : Infinity;
-    bb = bb ? new Date(bb).getTime(): 0;
+    bb = bb ? new Date(bb).getTime() : 0;
     return (aa - bb) * (orderBy.ascending ? 1 : -1);
   }
 
@@ -339,15 +339,13 @@ function renderRowsFromList(list, tbody) {
 
 
 async function renderTableRows() {
-  const events = await getEvents();
-
-  if (events === 'unexpected_error') {
+  const events = await getEvents().catch(() => {
     const errHTML = `<tr><td class="error-message" colspan="6">Nepovedlo se načíst akce.</td></tr>`;
     activeBody.innerHTML = errHTML;
     futureBody.innerHTML = errHTML;
     pastBody.innerHTML = errHTML;
-    return;
-  }
+  });
+  if (!events) return;
 
   // rozděl akce
   const now = new Date();

@@ -10,13 +10,13 @@ export async function renderSummary() {
 
   // add the zustatek stuff, add zustatek po platbe nebo neco takoveho
 
-  const result = await getProductsAndCategories();
+  const result = await getProductsAndCategories().catch(() => { });
+  if (!result) return;
 
   const products = result.products;
 
-  if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(result)
-  || products.length === 0
-  || order.items.length === 0) {
+  if (products.length === 0
+    || order.items.length === 0) {
     orderSummary.innerHTML = '';
     orderPrice.innerHTML = '0 Kč';
     payButton.disabled = true;

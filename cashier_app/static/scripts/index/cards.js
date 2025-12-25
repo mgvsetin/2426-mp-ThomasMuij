@@ -1,11 +1,20 @@
-import { cloneData } from "../general/cache.js";
+import { UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { order } from "./order.js";
 import { getProductsAndCategories } from "./products.js";
+import { editUserFormOnChange } from "./users.js";
+import { getWalletByTag, getWallets } from "./wallets.js";
 
 const tagIdDisplay = document.querySelector('#tag-id');
 const balanceDisplay = document.querySelector('#balance');
 const balanceAfterPurchaseDisplay = document.querySelector('#balance-after-purchase');
+
+const cashierTagIdDisplay = document.querySelector('#cashier-tag-id');
+const cashierBalanceDisplay = document.querySelector('#cashier-balance');
+
+const changeBalanceByInput = document.querySelector('#change-balance-by-input');
+const setNewBalanceInput = document.querySelector('#set-new-balance-input');
+
 let cardReaderIsBeingRead = false;
 export let lastReadCardId = '';
 let newCardReadResolve = null;
@@ -13,22 +22,27 @@ let newCardReadResolve = null;
 let readerInfo;
 
 
+export let newCardReadPromise = new Promise(resolve => {
+  newCardReadResolve = resolve;
+});
+
+
+handleCardRead("00A713A700000000"); ///////
+// handleCardRead("adsf"); ///////
+
+
 async function getReaderInfo() {
   if (readerInfo) return readerInfo;
-  try {
-    const response = await fetch('/api/reader/info');
+  const response = await fetch('/api/reader/info');
 
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    const resData = await response.json();
-
-    readerInfo = resData.reader_info;
-    return readerInfo;
-  } catch (error) {
-
+  if (!response.ok) {
+    throw new UnexpectedError();
   }
+
+  const resData = await response.json();
+
+  readerInfo = resData.reader_info;
+  return readerInfo;
 }
 
 
@@ -74,7 +88,7 @@ export async function setUpCardReading(calledFromInteraction = false) {
 
   try {
     if (!cardReaderPort.readable) {
-      const readerInfo = await getReaderInfo();
+      const readerInfo = await getReaderInfo().catch(() => { });
       if (!readerInfo) {
         cardReaderIsBeingRead = false;
         console.warn('Unable to get reader information.')
@@ -141,7 +155,18 @@ async function handleCardRead(cardId) {
   if (cardId.length === 0) return;
   lastReadCardId = cardId;
 
-  renderCard();
+  const wallets = await getWallets().catch(() => { });
+
+  const wallet = wallets ? getWalletByTag(wallets, lastReadCardId) : null;
+
+  changeBalanceByInput.value = wallet ? 0 : '';
+  setNewBalanceInput.value = wallet ? wallet.balance_czk : '';
+
+  await Promise.all([
+    editUserFormOnChange(),
+    renderCard(wallet)
+  ]);
+
 
   if (newCardReadResolve) {
     newCardReadResolve(cardId);
@@ -149,111 +174,45 @@ async function handleCardRead(cardId) {
 }
 
 
-export async function renderCard() {
-  const wallets = await getWallets();
-  const wallet = wallets ? getWalletByTag(wallets, lastReadCardId) : null;
+export async function renderCard(wallet = null) {
+  if (!wallet) {
+    const wallets = await getWallets().catch(() => { });
+    wallet = wallets ? getWalletByTag(wallets, lastReadCardId) : null;
+  }
 
-  const orderPrice = order.getTotalPrice((await getProductsAndCategories()).products);
+  const result = await getProductsAndCategories().catch(() => { });
+  let orderPrice;
+  if (result) {
+    orderPrice = order.getTotalPrice(result.products);
+  }
+
 
   const balanceCzk = wallet ? `${escapeHTML(wallet.balance_czk)} Kč` : '-';
-  const balanceAfterPurchase = wallet ? `${escapeHTML(wallet.balance_czk - orderPrice)} Kč` : '-';
+  const balanceAfterPurchase = wallet && orderPrice ? `${escapeHTML(wallet.balance_czk - orderPrice)} Kč` : '-';
 
   tagIdDisplay.innerHTML = `Karta: ${escapeHTML(lastReadCardId) || '-'}`;
   balanceDisplay.innerHTML = `Zůstatek: ${balanceCzk}`;
   balanceAfterPurchaseDisplay.innerHTML = `Zůstatek po platbě: ${balanceAfterPurchase}`;
+
+  cashierTagIdDisplay.innerHTML = `ID: ${escapeHTML(lastReadCardId) || '-'}`;
+  cashierBalanceDisplay.innerHTML = `Zůstatek: ${balanceCzk}`;
+
+  return wallet;
 }
 
 
-export let newCardReadPromise = new Promise(resolve => {
-  newCardReadResolve = resolve;
-});
-
-
-export async function removeReadCard() {
+export function removeReadCard() {
   lastReadCardId = '';
+  editUserFormOnChange();
   newCardReadPromise = new Promise(resolve => {
     newCardReadResolve = resolve;
   });
 }
 
 
-export async function cancelCardReadPromise() {
+export function cancelCardReadPromise() {
   if (newCardReadResolve) {
     newCardReadResolve(null);
   }
   removeReadCard()
-}
-
-
-const cache_time_ms = 30 * 1000; // 30 sekund
-// maybe figure out cache max time so that the slow doenst have to happen
-
-const _walletsCache = {
-  wallets: null,
-  expiry: 0
-};
-
-let _getWalletsPromise = null;
-
-export function getWallets() {
-  if (_walletsCache.wallets && _walletsCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_walletsCache.wallets));
-  }
-
-  if (_getWalletsPromise) return _getWalletsPromise;
-
-  _getWalletsPromise = (async () => {
-    try {
-      const response = await fetch('/api/events/wallets');
-
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return false;
-      }
-
-      const resData = await response.json();
-
-      if (response.status === 400 && resData.error === 'no_selected_event') {
-        return 'event_not_selected';
-      }
-
-      if (!response.ok) {
-        throw new Error('unexpected_error')
-      }
-
-      _walletsCache.wallets = resData.wallets;
-      _walletsCache.expiry = Date.now() + cache_time_ms;
-
-      return cloneData(_walletsCache.wallets);
-
-    } catch (error) {
-      return 'unexpected_error';
-    } finally {
-      _getWalletsPromise = null;
-    }
-  })();
-
-  return _getWalletsPromise;
-}
-
-
-export function resetWalletsCache() {
-  _walletsCache.wallets = null;
-  _walletsCache.expiry = 0;
-}
-
-
-export function getWalletByTag(wallets, tagId) {
-  for (const wallet of wallets) {
-    if (wallet.tag_id === tagId) {
-      return wallet;
-    }
-  }
-}
-
-
-export function updateWalletBalance(tagId, amountCzk) {
-  const wallet = getWalletByTag(_walletsCache.wallets, tagId);
-  wallet.balance_czk += amountCzk;
 }

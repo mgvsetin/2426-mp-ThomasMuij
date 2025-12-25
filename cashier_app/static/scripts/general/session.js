@@ -1,16 +1,13 @@
+import { UnexpectedError } from "./errors.js";
+
 export async function getSessionInfo() {
-  try {
-    const response = await fetch('/api/session');
+  const response = await fetch('/api/session');
 
-    if (!response.ok) {
-      throw new Error('unexpected_error');
-    }
-
-    const data = await response.json();
-
-    return data
-
-  } catch (error) {
-    return false;
+  if (!response.ok) {
+    throw new UnexpectedError;
   }
+
+  const data = await response.json();
+
+  return data
 }

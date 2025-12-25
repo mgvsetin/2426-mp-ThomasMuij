@@ -34,7 +34,7 @@ initSidebar();
 export async function renderSidebar() {
   if (!sidebarLinks) initSidebar();
 
-  const sessionInfo = await getSessionInfo();
+  const sessionInfo = await getSessionInfo().catch(() => { });
 
   if (!sessionInfo || !sessionInfo.employee) {
     sidebarLinks.innerHTML = '';
@@ -52,7 +52,7 @@ export async function renderSidebar() {
       <a id="index-link" href="/">Domů</a>
     </div>
   `;
-  
+
   // if (boothType === 'seller') {
   //   sidebarLinksHTML += `
   //     <div id="seller-part">

@@ -169,6 +169,9 @@ def create_app(test_config=None):
     from cashier_app import transactions
     app.register_blueprint(transactions.api_bp)
 
+    from cashier_app import users_and_wallets
+    app.register_blueprint(users_and_wallets.api_bp)
+
     # @app.after_request
     # def print_sum(a):
     #     with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:

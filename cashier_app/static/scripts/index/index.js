@@ -5,31 +5,34 @@ import { renderSummary } from "./summary.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { getSessionInfo } from "../general/session.js";
-import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, getWalletByTag, getWallets, updateWalletBalance, cancelCardReadPromise } from "./cards.js";
+import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise } from "./cards.js";
+import { escapeHTML } from "../general/html_display_utils.js";
+import { phoneInputClickListeners } from "./phone_number_input.js";
+import { selectRow, unselectRow } from "../general/table_utils.js";
+import { editUserFormOnChange, openDeleteUserModal, openUserCardsModal, renderUsers, selectUserForUpdate, setOrder, unselectUserForUpdate } from "./users.js";
+import { updateWalletBalance } from "./wallets.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
 const productSide = sellerPage.querySelector('#product-side');
 const summarySide = sellerPage.querySelector('#summary-side');
-const searchBar = sellerPage.querySelector('#search-bar');
+const productsSearchBar = sellerPage.querySelector('#products-search-bar');
+const payError = document.querySelector('#pay-error');
 
-choosePage();
+const usersTableBody = document.querySelector('#users-table tbody');
+const usersSearchBar = document.querySelector('#users-search-bar');
 
-loadPage({
-  products: true,
-  summary: true,
-  categories: true,
-  card: true,
-  sidebar: true,
-  header: true
-});
+const userIdInput = document.querySelector('#user-id-input');
+
+chooseAndLoadPage();
 
 
 async function loadPage({
   products = false,
   summary = false,
   categories = false,
-  card = false,
+  cardInfo = false,
+  users = false,
   sidebar = false,
   header = false
 } = {}) {
@@ -48,8 +51,12 @@ async function loadPage({
     toLoad.push(renderCategories());
   }
 
-  if (card) {
+  if (cardInfo) {
     toLoad.push(renderCard());
+  }
+
+  if (users) {
+    toLoad.push(renderUsers());
   }
 
   if (sidebar) {
@@ -64,14 +71,45 @@ async function loadPage({
 }
 
 
-async function choosePage() {
-  const sessionInfo = await getSessionInfo();
+async function chooseAndLoadPage() {
+  const sessionInfo = await getSessionInfo().catch(() => {});
 
-  if (sessionInfo && sessionInfo.booth) {
-    setUpCardReading(false);
+  if (!sessionInfo) {
+    return; ///// display some error
+  }
+
+  if (sessionInfo.booth) {
     pageContainer.setAttribute('show', sessionInfo.booth.booth_type === 'seller' ? 'seller' : 'cashier');
+    await Promise.all([
+      setUpCardReading(false),
+      loadPage({
+        products: true,
+        summary: true,
+        categories: true,
+        cardInfo: true,
+        users: true,
+        sidebar: true,
+        header: true
+      })
+    ]);
+  } else if (sessionInfo.event) {
+    pageContainer.setAttribute('show', '');
+    await Promise.all([
+      renderBoothPicker(),
+      loadPage({
+        sidebar: true,
+        header: true
+      })
+    ]);
   } else {
     pageContainer.setAttribute('show', '');
+    await Promise.all([
+      renderEventPicker(),
+      loadPage({
+        sidebar: true,
+        header: true
+      })
+    ]);
   }
 }
 
@@ -86,6 +124,9 @@ document.addEventListener('click', async (event) => {
   const headerClick = headerClickListeners(event);
   const sidebarClick = sidebarClickListeners(event);
   if (headerClick || sidebarClick) {
+    return;
+  }
+  if (phoneInputClickListeners(event)) {
     return;
   }
 
@@ -114,7 +155,7 @@ document.addEventListener('click', async (event) => {
     order.updateQuantity(productId, 1);
     loadPage({
       products: true,
-      card: true,
+      cardInfo: true,
       summary: true
     });
     return;
@@ -126,7 +167,7 @@ document.addEventListener('click', async (event) => {
     order.updateQuantity(productId, -1);
     loadPage({
       products: true,
-      card: true,
+      cardInfo: true,
       summary: true
     });
     return;
@@ -138,9 +179,29 @@ document.addEventListener('click', async (event) => {
     order.setQuantity(productId, 0);
     loadPage({
       products: true,
-      card: true,
+      cardInfo: true,
       summary: true
     });
+    return;
+  }
+
+  const removeCardButton = event.target.closest('.remove-card-button');
+  if (removeCardButton) {
+    removeReadCard();
+    await loadPage({
+      cardInfo: true
+    });
+    return;
+  }
+
+  if (event.target.matches('#open-user-cards-modal')) {
+    const userId = userIdInput.value.trim();
+    if (userId) openUserCardsModal(userId);
+  }
+
+
+  if (event.target.matches('#pay-error')) {
+    clearPayError();
     return;
   }
 
@@ -148,7 +209,7 @@ document.addEventListener('click', async (event) => {
   if (payButton) {
     payButton.disabled = true;
     setUpCardReading(true);
-    clearPayErrors();
+    clearPayError();
 
     if (!lastReadCardId) {
       const existing = document.querySelector('.overlay');
@@ -173,7 +234,14 @@ document.addEventListener('click', async (event) => {
       }
     }
 
-    const products = (await getProductsAndCategories()).products;
+    const result = await getProductsAndCategories().catch(() => {
+      showPayError('unexpected_error');
+    });
+    if (!result) {
+      payButton.disabled = false;
+      return;
+    }
+    const products = result.products;
 
     const productsInfo = [];
     let amount_czk = 0;
@@ -206,18 +274,18 @@ document.addEventListener('click', async (event) => {
       const data = await response.json();
 
       if (response.status === 400) {
-        showPayErrors(data.error || 'invalid_request', data.detail);
+        showPayError(data.error || 'invalid_request', data.detail);
         payButton.disabled = false;
         return;
       }
 
       if (!response.ok) {
-        showPayErrors('unexpected_error');
+        showPayError('unexpected_error');
         payButton.disabled = false;
         return;
       }
     } catch (error) {
-      showPayErrors('unexpected_error');
+      showPayError('unexpected_error');
       return;
     } finally {
       payButton.disabled = false;
@@ -226,14 +294,12 @@ document.addEventListener('click', async (event) => {
     showPaySuccess();
     order.reset();
     updateWalletBalance(lastReadCardId, amount_czk);
-    await Promise.all([
-      removeReadCard(),
-      loadPage({
-        products: true,
-        card: true,
-        summary: true
-      })
-    ]);
+    removeReadCard()
+    await loadPage({
+      products: true,
+      cardInfo: true,
+      summary: true
+    });
     return;
   }
 
@@ -251,6 +317,8 @@ document.addEventListener('click', async (event) => {
       categories: true,
       products: true,
       summary: true,
+      cardInfo: true,
+      users: true,
       // sidebar: true,
       header: true
     });
@@ -273,17 +341,92 @@ document.addEventListener('click', async (event) => {
       return;
     }
     await unselectEventBooth();
-    choosePage();
+    chooseAndLoadPage();
     loadPage({
       categories: true,
       products: true,
       summary: true,
+      cardInfo: true,
+      users: true,
       // sidebar: true,
       header: true
     });
     return;
   }
-})
+
+  // upravit uživatele
+  const editUserBtn = event.target.closest('.edit-user');
+  if (editUserBtn) {
+    const row = editUserBtn.closest('tr[id]');
+    if (row) {
+      if (row.classList.contains('selected-for-update')) {
+        await unselectUserForUpdate();
+      } else {
+        await selectUserForUpdate(row.id);
+      }
+    }
+    return;
+  }
+
+  // smazat uživatele
+  const deleteUserBtn = event.target.closest('.delete-user');
+  if (deleteUserBtn) {
+    const row = deleteUserBtn.closest('tr[id]');
+    await openDeleteUserModal(row);
+    return;
+  }
+
+  const closeModalBtn = event.target.closest('.close-modal');
+  if (closeModalBtn) {
+    const overlay = closeModalBtn.closest('.overlay');
+    if (overlay) overlay.remove();
+    return;
+  }
+
+  const cancelUserFormBtn = event.target.closest('#cancel-user-form');
+  if (cancelUserFormBtn) {
+    await unselectUserForUpdate();
+  }
+
+  // klinutí na span v záhlaví
+  // nastavuje řazení
+  const headerEl = event.target.closest('th');
+  if (headerEl && event.target.matches('span')) {
+    setOrder(headerEl);
+    loadPage({
+      users: true
+    });
+    return;
+  }
+
+  // kliknutí na řádek ho vybere (musí být pod ostatníma, aby nebral kliknutí na jiné věci)
+  const row = event.target.closest('tr');
+  if (row) {
+    selectRow(row, usersTableBody);
+    return;
+  }
+
+  const interactableEl = event.target.closest('input') || event.target.closest('button');
+  if (interactableEl) {
+    return;
+  }
+  // kliknutí na "nic" odvybere řádek
+  unselectRow(usersTableBody);
+});
+
+
+usersTableBody.addEventListener('dblclick', async (event) => {
+  const row = event.target.closest('tr[id]');
+  if (row) {
+    if (row.classList.contains('selected-for-update')) {
+      await unselectUserForUpdate();
+    } else {
+      await selectUserForUpdate(row.id);
+    }
+    return;
+  }
+});
+
 
 document.addEventListener('keydown', (event) => {
   // headerKeydownListeners(event);
@@ -306,7 +449,7 @@ document.addEventListener('keydown', (event) => {
     order.setQuantity(productId, newQuantity);
     loadPage({
       products: true,
-      card: true,
+      cardInfo: true,
       summary: true
     });
     return;
@@ -345,6 +488,8 @@ document.addEventListener('submit', async (event) => {
         categories: true,
         products: true,
         summary: true,
+        cardInfo: true,
+        users: true,
         // sidebar: true,
         header: true
       });
@@ -356,13 +501,28 @@ document.addEventListener('submit', async (event) => {
 })
 
 
-searchBar.addEventListener('input', (event) => {
-  // if (event.target.matches('#search-bar')) {
-  loadPage({
-    products: true
-  })
-  // }
+document.addEventListener('input', async (event) => {
+  if (event.target === productsSearchBar) {
+    loadPage({
+      products: true
+    });
+  }
+
+  if (event.target === usersSearchBar) {
+    loadPage({
+      users: true
+    });
+  }
+
+  const userForm = event.target.closest('#user-form');
+  if (userForm) {
+    editUserFormOnChange(event);
+    loadPage({
+      users: true
+    });
+  }
 })
+
 
 
 sellerPage.addEventListener('focusout', (event) => {
@@ -382,16 +542,96 @@ navigator.serial.addEventListener('connect', (event) => {
 });
 
 
-function clearPayErrors() {
-
+function clearPayError() {
+  payError.innerHTML = '';
+  payError.classList.remove('show-pay-error');
 }
 
 
-function showPayErrors(error, detail) {
-  console.log(error)
+function showPayError(error) {
+  const setErr = (text) => {
+    payError.innerHTML = escapeHTML(String(text));
+    payError.classList.add('show-pay-error');
+  };
+
+  if (!error) {
+    setErr('Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'no_selected_event':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'no_selected_booth':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'invalid_booth_type_for_transaction_type':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'wallet_not_found':
+      setErr('ID karty není registrované.');
+      return;
+    case 'amount_czk_must_be_a_number':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'amount_czk_must_be_a_whole_number':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'wallet_balance_czk_is_not_enough':
+      setErr('Nedostatek peněz na kartě.');
+      return;
+    case 'resulting_wallet_balance_czk_is_too_high':
+      setErr('Výsledná cená na kartě je moc velká.');
+      return;
+    case 'invalid_transaction_type':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'invalid_transaction_type_for_amount_czk':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'invalid_products_info':
+      setErr('Něco se nepovedlo.');
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('amount_czk_must_be_more_than_or_equal_to')) {
+    setErr('Cena je moc velké číslo.');
+    return;
+  }
+  if (errorStr.includes('amount_czk_must_be_less_than_or_equal_to')) {
+    setErr('Cena je moc velké číslo.');
+    return;
+  }
+
+  setErr(errorStr); // make sure to remove these and put some general type error message
 }
 
 
 function showPaySuccess() {
+  const existing = document.querySelector('.overlay');
+  if (existing) existing.remove();
 
+  const overlay = document.createElement('div')
+  overlay.className = 'overlay';
+
+  // add cross close button
+  overlay.innerHTML = `
+    <div id="successful-payment-modal">
+      <img id="successful-payment-icon" src="/static/images/icons/checkmark_icon.png">
+      <div id="successful-payment-message">Platba proběhla úspěšně.</div>
+    </div>
+  `;
+
+  pageContainer.appendChild(overlay);
+
+  setTimeout(() => {
+    if (overlay) overlay.remove();
+  }, 2000);
 }

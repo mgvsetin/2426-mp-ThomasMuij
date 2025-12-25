@@ -79,22 +79,22 @@ def make_transaction():
             total_products_price = 0
             for product in products_info:
                 if product['quantity'] < 1:
-                    return jsonify(error='invalid_products_info2'), 400
+                    return jsonify(error='invalid_products_info'), 400
                 
                 ok, errors = validate_product_or_category_name(product['name'])
                 if not ok:
-                    return jsonify(error='invalid_products_info3'), 400
+                    return jsonify(error='invalid_products_info'), 400
                 
                 ok, errors = validate_product_price(product['price'])
                 if not ok:
-                    return jsonify(error='invalid_products_info4'), 400
+                    return jsonify(error='invalid_products_info'), 400
                 
                 total_products_price -= product['price'] * product['quantity']
         except Exception as e:
-            return jsonify(error='invalid_products_info4'), 400
+            return jsonify(error='invalid_products_info'), 400
         
         if total_products_price != amount_czk:
-            return jsonify(error='invalid_products_info6'), 400
+            return jsonify(error='invalid_products_info'), 400
         
         params = {
         'tag_id': tag_id,

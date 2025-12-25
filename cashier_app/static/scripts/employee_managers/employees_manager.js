@@ -392,18 +392,16 @@ function isSearchedFor(employee, searchQuery) {
 
 
 async function renderTableRows() {
-  const employees = await getEmployees();
-
-  let rowsHTML = '';
-
-  if (employees === 'unexpected_error' || employees === 'insufficient_priviliges') {
+  const employees = await getEmployees().catch(() => {
     employeeTableBody.innerHTML = `
       <th class="error-message" colspan="10">
         Nepovedlo se načíst zaměstnance.
       </th>
     `;
-    return;
-  }
+  });
+  if (!employees) return;
+
+  let rowsHTML = '';
 
   // const url = new URL(location);
   // const searchQuery = url.searchParams.get('search_query');

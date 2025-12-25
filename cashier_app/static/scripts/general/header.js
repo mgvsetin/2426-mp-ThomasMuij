@@ -75,7 +75,7 @@ initHeader();
 async function renderDropdownSessionInfo() {
   if (!sessionInfoEl) initHeader();
 
-  const sessionInfo = await getSessionInfo();
+  const sessionInfo = await getSessionInfo().catch(() => { });
 
   if (!sessionInfo) return;
 
@@ -137,7 +137,7 @@ export function headerClickListeners(event) {
     // sessionStorage.clear();
     return true;
   }
-  
+
   // sidebar se tvoří přes js, takže ještě nemusí existovat
   if (!sidebarOverlayPage) {
     sidebarOverlayPage = document.querySelector('#sidebar-overlay-page');

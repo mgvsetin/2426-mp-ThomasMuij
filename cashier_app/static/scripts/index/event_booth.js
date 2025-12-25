@@ -3,9 +3,10 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
-import { resetWalletsCache } from "./cards.js";
 import { order } from "./order.js";
 import { resetProductsCache, saveSelectedCategory } from "./products.js";
+import { resetWalletsCache } from "./wallets.js";
+
 
 //     if (!response.ok) {
 //       throw new Error('unexpected_error');

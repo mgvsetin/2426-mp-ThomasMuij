@@ -1,4 +1,5 @@
 import { cloneData } from "./cache.js";
+import { ForbiddenError, UnauthorizedRedirectError, UnexpectedError } from "./errors.js";
 
 const cache_time_ms = 60 * 1000; // 1 minuta
 // maybe figure out cache max time so that the slow doenst have to happen
@@ -31,17 +32,17 @@ export function getEmployees() {
       if (response.status === 401) {
         const json = await response.json();
         window.location.href = json.redirect_url;
-        return;
+        throw new UnauthorizedRedirectError(json.redirect_url);
       }
 
       const data = await response.json();
 
       if (response.status === 403 && data.error === 'admin_or_manager_required') {
-        throw new Error('insufficient_priviliges');
+        throw new ForbiddenError();
       }
 
       if (!response.ok) {
-        throw new Error('unexpected_error');
+        throw new UnexpectedError();
       }
 
       _employeesCache.employees = data.employees;
@@ -49,11 +50,6 @@ export function getEmployees() {
 
       return cloneData(data.employees);
 
-    } catch (error) {
-      if (error.message === 'insufficient_priviliges') {
-        return 'insufficient_priviliges';
-      }
-      return 'unexpected_error';
     } finally {
       _getEmployeesPromise = null;
     }

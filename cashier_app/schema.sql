@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS users (
   first_name        text NOT NULL,
   last_name         text NOT NULL,
   email             text, -- add verification
-  phone_number      text, -- +[country code][number] (CZ: +420123456789) -- Use a validation library in your application layer (like libphonenumber) to normalize numbers to E.164 before storing
+  phone_number      text, -- +[country code][number] (CZ: +420123456789) E.164 format
   other_identifier  text,
   created_at        timestamptz NOT NULL DEFAULT now(),
   deleted_at        timestamptz, -- NULL -> existuje, NOT NULL -> smazáno

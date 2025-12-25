@@ -4,6 +4,9 @@ import unicodedata
 import string
 from typing import List, Tuple
 from email_validator import validate_email as _validate_email, EmailNotValidError
+import phonenumbers
+from phonenumbers.phonenumberutil import NumberParseException
+from phonenumbers import PhoneNumberFormat, national_significant_number
 
 def is_manager(employee_id, event_id):
     is_manager = False
@@ -202,5 +205,163 @@ def validate_password(
 
     if re.search(r"(.)\1{5,}", password):
         errors.append("password contains too many repeated characters in sequence")
+
+    return (len(errors) == 0), errors
+
+
+def validate_first_or_last_name(
+    name: str,
+    min_len: int = 1,
+    max_len: int = 100,
+    allow_chars: str = '._-',
+    forbid_all_numeric: bool = False,
+    forbidden_substrings: List[str] | None = None
+    ) -> Tuple[bool, List[str]]:
+    """
+    Validate a first or last name.
+
+    Isn't very strict about it (allows numbers,...)
+
+    Rules (defaults):
+      - length between min_len and max_len
+      - characters may include letters, digits, and characters in allow_chars
+      - optionally forbid names that are entirely numeric
+      - optionally forbid certain substrings (case-insensitive)
+
+    Returns:
+      (is_valid, errors)
+
+    Possible error messages (one or more may be returned):
+    - "name must be a string"
+    - "name must be at least {min_len} characters"
+    - "name must be at most {max_len} characters"
+    - "name may only contain letters, digits, and these characters: {allow_chars}"
+    - "name must not be all numeric"
+    - "name must not contain the reserved word: {substring}"
+    """
+
+    errors: List[str] = []
+    if not isinstance(name, str):
+        return False, ["name must be a string"]
+
+    name = unicodedata.normalize("NFC", name)
+    name = name.strip()
+
+    if len(name) < min_len:
+        errors.append(f"name must be at least {min_len} characters")
+    if len(name) > max_len:
+        errors.append(f"name must be at most {max_len} characters")
+
+    # Build allowed character class (letters, digits, Latin-1 + Latin-Extended-A)
+    esc = re.escape(allow_chars)
+    char_class = r"A-Za-z0-9\u00C0-\u017F"
+
+    # Validate that every character is allowed. Length is already checked above,
+    # so skip this check for the empty string (will be caught by length).
+    if name:
+        allowed_pattern = f"^[{char_class}{esc}]+$"
+        if not re.match(allowed_pattern, name):
+            errors.append(f"name may only contain letters, digits, and these characters: {allow_chars}")
+
+    if forbid_all_numeric and name.isdigit():
+        errors.append("name must not be all numeric")
+
+    if forbidden_substrings:
+        low = name.lower()
+        for s in forbidden_substrings:
+            if s and s.lower() in low:
+                errors.append(f"name must not contain the reserved word: {s}")
+
+    return (len(errors) == 0), errors
+
+
+def validate_phone_number(phone_number: str) -> bool:
+    """
+    Validate a phone number with a country code.
+
+    Returns:
+      is_valid
+    """    
+    try:
+        phone_number_instance = phonenumbers.parse(str(phone_number))
+    except NumberParseException as e:
+        return False
+    
+    if not phonenumbers.is_possible_number(phone_number_instance):
+        return False
+    
+    if not phonenumbers.is_valid_number(phone_number_instance):
+        return False
+
+    return True
+
+
+def format_valid_phone_number(phone_number: str) -> dict[str]:
+    """
+    Format a valid phone number with a country code.
+
+    Returns:
+      {
+        'e164': e164 format,
+        'international': international format,
+        'national': national format,
+        'national_significant_number': phone number without the country code,
+        'country_code': +the phone_number's country code
+      }
+    """
+    phone_number_instance = phonenumbers.parse(str(phone_number))
+
+    e164 = phonenumbers.format_number(phone_number_instance, PhoneNumberFormat.E164)
+    international = phonenumbers.format_number(phone_number_instance, PhoneNumberFormat.INTERNATIONAL)
+    national = phonenumbers.format_number(phone_number_instance, PhoneNumberFormat.NATIONAL)
+    nsn = national_significant_number(phone_number_instance)
+    country_code = phone_number_instance.country_code
+
+    return {
+        'e164': e164,
+        'international': international,
+        'national': national,
+        'national_significant_number': nsn,
+        'country_code': f'+{country_code}'
+    }
+
+
+def validate_other_identifier(
+    other_identifier: str,
+    min_len: int = 1,
+    max_len: int = 100,
+    forbidden_substrings: List[str] | None = None
+    ) -> Tuple[bool, List[str]]:
+    """
+    Validate other_identifier.
+
+    Rules (defaults):
+      - length between min_len and max_len
+      - optionally forbid certain substrings (case-insensitive)
+
+    Returns:
+      (is_valid, errors)
+
+    Possible error messages (one or more may be returned):
+    - "other_identifier must be at least {min_len} characters"
+    - "other_identifier must be at most {max_len} characters"
+    - "other_identifier must not contain the reserved word: {substring}"
+    """
+
+    errors: List[str] = []
+
+    other_identifier = unicodedata.normalize("NFC", str(other_identifier))
+    other_identifier = other_identifier.strip()
+
+    if len(other_identifier) < min_len:
+        errors.append(f"other_identifier must be at least {min_len} characters")
+    if len(other_identifier) > max_len:
+        errors.append(f"other_identifier must be at most {max_len} characters")
+
+    if forbidden_substrings:
+        low = other_identifier.lower()
+        for s in forbidden_substrings:
+            if s and s.lower() in low:
+                errors.append(f"other_identifier must not contain the reserved word: {s}")
 
     return (len(errors) == 0), errors

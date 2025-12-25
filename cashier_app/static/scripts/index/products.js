@@ -14,13 +14,13 @@
 // }
 
 import { cloneData } from "../general/cache.js";
-import { renderEventPicker } from "./event_booth.js";
+import { BoothNotSelectedError, EventNotSelectedError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
 import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = document.querySelector('#product-grid-container');
 const categoriesEl = document.querySelector('#categories')
-const searchBar = document.querySelector('#search-bar');
+const productsSearchBar = document.querySelector('#products-search-bar');
 
 
 const cache_time_ms = 60 * 1000; // 1 minuta
@@ -47,17 +47,21 @@ export function getProductsAndCategories() { // make sure that if this changes i
       if (response.status === 401) {
         const json = await response.json();
         window.location.href = json.redirect_url;
-        return false;
+        throw new UnauthorizedRedirectError(json.redirect_url);
       }
 
       const resData = await response.json();
 
-      if (response.status === 400 && ['no_selected_event', 'no_selected_booth'].includes(resData.error)) {
-        return 'event_or_booth_not_selected';
+      if (response.status === 400 && resData.error === 'no_selected_event') {
+        throw new EventNotSelectedError();
+      }
+
+      if (response.status === 400 && resData.error === 'no_selected_booth') {
+        throw new BoothNotSelectedError();
       }
 
       if (!response.ok) {
-        throw new Error('unexpected_error')
+        throw new UnexpectedError();
       }
 
       const data = {
@@ -74,8 +78,6 @@ export function getProductsAndCategories() { // make sure that if this changes i
 
       return cloneData(_productsCache.data);
 
-    } catch (error) {
-      return 'unexpected_error';
     } finally {
       _getProductsPromise = null;
     }
@@ -101,32 +103,26 @@ export function findProduct(products, productId) {
 
 
 export async function renderProducts() {
-  const result = await getProductsAndCategories(); // combine awaits here and everywhere else
-
-  if (result === false) {
-    return;
-  }
-
-  if (result === 'event_or_booth_not_selected') {
-    productGridContainer.innerHTML = `
+  const result = await getProductsAndCategories().catch((error) => { // combine awaits here and everywhere else
+    if ([EventNotSelectedError, BoothNotSelectedError].some((c) => error instanceof c)) {
+      productGridContainer.innerHTML = `
       <div id="no-products-message">
         K načtení produktů vyberte stánek.
       </div>
     `;
-    renderEventPicker();
-    return;
-  }
+      return;
+    }
 
-  if (result === 'unexpected_error') {
     productGridContainer.innerHTML = `
       <div id="no-products-message">
         Nepovedlo se načíst produkty.
       </div>
     `;
+  });
+  if (!result) {
     return;
   }
-
-  const products = result.products;
+  const products = result.prodcuts;
 
   if (products.length === 0) {
     productGridContainer.innerHTML = `
@@ -139,7 +135,7 @@ export async function renderProducts() {
 
   // const url = new URL(window.location);
   // const searchQuery = url.searchParams.get('search_query');
-  const searchQuery = searchBar.value; //.toLowerCase().trim();
+  const searchQuery = productsSearchBar.value; //.toLowerCase().trim();
   const selectedCategory = getSelectedCategory();
 
   let productsHTML = '';
@@ -237,12 +233,10 @@ export function saveSelectedCategory(category) {
 
 
 export async function renderCategories() {
-  const result = await getProductsAndCategories(); // combine awaits here and everywhere else
-
-  if ([false, 'event_or_booth_not_selected', 'unexpected_error'].includes(result)) {
+  const result = await getProductsAndCategories().catch(() => {
     categoriesEl.innerHTML = '';
-    return;
-  }
+  }); // combine awaits here and everywhere else
+  if (!result) return;
 
   const categories = result.categories;
 

@@ -5,6 +5,7 @@ import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } 
 import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
 import { cloneData } from "../general/cache.js";
 import { getEmployees } from "../general/employees.js";
+import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
 
 
 const card = document.querySelector('#card');
@@ -1148,7 +1149,7 @@ async function loadPage({
   employeesTable = false,
   productsTable = false,
   categoriesTable = false } = {}) {
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
   const toLoad = [];
   if (eventInfo) toLoad.push(renderEvent(eventData));
@@ -1189,7 +1190,7 @@ function getEventData() {
   _getEventDataPromise = (async () => {
     try {
       if (!eventId) {
-        throw new Error('no_event_id');
+        throw new MissingEventIdError();
       }
 
       const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
@@ -1197,19 +1198,19 @@ function getEventData() {
       if (res.status === 401) {
         const json = await res.json();
         window.location.href = json.redirect_url;
-        return;
+        throw new UnauthorizedRedirectError(json.redirect_url);
       }
 
       if (res.status === 403) {
-        throw new Error('insufficient_priviliges');
+        throw new ForbiddenError();
       }
 
       if (res.status === 404) {
-        throw new Error('event_not_found');
+        throw new EventNotFoundError();
       }
 
       if (!res.ok) {
-        throw new Error('unexpected_error');
+        throw new UnexpectedError();
       }
 
       const resData = await res.json();
@@ -1229,15 +1230,13 @@ function getEventData() {
       _eventDataCache.data = data;
       _eventDataCache.expiry = Date.now() + cache_time_ms;
 
-      console.log(_eventDataCache.data);
-
       return cloneData(_eventDataCache.data);
 
     } catch (err) {
       let errorMessage = '';
-      if (err.message === 'no_event_id') {
+      if (err instanceof MissingEventIdError) {
         errorMessage = 'Nelze určit ID akce z URL.';
-      } else if (err.message === 'insufficient_priviliges') {
+      } else if (err instanceof UnauthorizedRedirectError) {
         errorMessage = 'Nejste admin nebo manažer akce.';
       } else {
         errorMessage = 'Nepovedlo se načíst akci';
@@ -1250,7 +1249,7 @@ function getEventData() {
       </div>`);
 
       resetEventDataCache();
-      return null;
+      throw new err;
     } finally {
       _getEventDataPromise = null;
     }
@@ -1613,7 +1612,7 @@ function renderManagers(eventData) {
         <td>${escapeHTML(manager.username)}</td>
         <td>${escapeHTML(manager.email)}</td>
         <td class="actions">
-          <button class="icon-btn delete remove-employee" data-id="${manager.id}">
+          <button class="icon-btn delete remove-employee">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -1648,12 +1647,12 @@ function renderEmployees(eventData) {
         <td>${escapeHTML(employee.email)}</td>
         <td>${boothsStr}</td>
         <td class="actions">
-          <button class="icon-btn edit edit-employee" data-id="${employee.id}">
+          <button class="icon-btn edit edit-employee">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
           </button>
-          <button class="icon-btn delete remove-employee" data-id="${employee.id}">
+          <button class="icon-btn delete remove-employee">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -1698,12 +1697,12 @@ function renderProducts(eventData) {
         <td>${boothsStr}</td>
         <td>${categoriesStr}</td>
         <td class="actions">
-          <button class="icon-btn edit edit-product" data-id="${product.id}">
+          <button class="icon-btn edit edit-product">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
           </button>
-          <button class="icon-btn delete delete-product" data-id="${product.id}">
+          <button class="icon-btn delete delete-product">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -1735,12 +1734,12 @@ function renderCategories(eventData) {
         <td>${escapeHTML(category.name)}</td>
         <td>${boothsStr}</td>
         <td class="actions">
-          <button class="icon-btn edit edit-category" data-id="${category.id}">
+          <button class="icon-btn edit edit-category">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             </svg>
           </button>
-          <button class="icon-btn delete delete-category" data-id="${category.id}">
+          <button class="icon-btn delete delete-category">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
@@ -1827,7 +1826,9 @@ function closeModal() {
 
 
 async function openEditEventModal() {
-  const event = (await getEventData()).event;
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const event = eventData.event;
   if (!event) return;
   const html = `
         <header>
@@ -1873,7 +1874,9 @@ async function openEditEventModal() {
 
 
 async function openDeleteEventModal() {
-  const event = (await getEventData()).event;
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const event = eventData.event;
   if (!event) return;
   const html = `
         <header>
@@ -1945,7 +1948,9 @@ function openAddBoothModal() {
 
 async function openEditBoothModal(row) {
   const id = row.id;
-  const booth = (await getEventData()).booths.find(booth => booth.id === id);
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const booth = eventData.booths.find(booth => booth.id === id);
   if (!booth) return;
 
   const html = `
@@ -1981,7 +1986,9 @@ async function openEditBoothModal(row) {
 
 async function openDeleteBoothModal(row) {
   const id = row.id;
-  const booth = (await getEventData()).booths.find(booth => booth.id === id);
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const booth = eventData.booths.find(booth => booth.id === id);
   if (!booth) return;
 
   const html = `
@@ -2014,8 +2021,12 @@ async function openDeleteBoothModal(row) {
 
 
 async function openAssignEmployeeModal(assignManager) {
-  const eventData = await getEventData();
-  const allEmployees = await getEmployees();
+  const [eventData, allEmployees] = await Promise.all([
+    getEventData().catch(() => { }),
+    getEmployees().catch(() => { })
+  ]);
+  if (!eventData || !allEmployees) return;
+
   const booths = eventData.booths;
 
   const boothsPickerStr = assignManager ? '' : makeBoothsPicker(booths);
@@ -2062,7 +2073,8 @@ async function openAssignEmployeeModal(assignManager) {
 
 async function openEditEmployeeModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const emp = eventData.employees.find(employee => employee.id === id);
   if (!emp) return;
   const boothsPickerStr = makeBoothsPicker(eventData.booths, emp.booths);
@@ -2103,7 +2115,8 @@ async function openEditEmployeeModal(row) {
 
 async function openRemoveEmployeeModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const emp = eventData.employees.find(employee => employee.id === id);
   if (!emp) return;
 
@@ -2137,7 +2150,8 @@ async function openRemoveEmployeeModal(row) {
 
 
 async function openAddProductModal() {
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const booths = eventData.booths;
   const categories = eventData.categories;
   const boothsPickerStr = makeBoothsPicker(booths, [], 'seller');
@@ -2197,7 +2211,8 @@ async function openAddProductModal() {
 
 async function openEditProductModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const product = eventData.products.find(product => product.id === id);
   if (!product) return;
   const boothsPickerStr = makeBoothsPicker(eventData.booths, product.booths, 'seller');
@@ -2278,7 +2293,8 @@ async function openEditProductModal(row) {
 
 async function openDeleteProductModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const product = eventData.products.find(product => product.id === id);
   if (!product) return;
 
@@ -2312,7 +2328,8 @@ async function openDeleteProductModal(row) {
 
 
 async function openAddCategoryModal() {
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const booths = eventData.booths;
   const boothsPickerStr = makeBoothsPicker(booths, [], 'seller');
 
@@ -2352,7 +2369,8 @@ async function openAddCategoryModal() {
 
 async function openEditCategoryModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const category = eventData.categories.find(category => category.id === id);
   if (!category) return;
   const boothsPickerStr = makeBoothsPicker(eventData.booths, category.booths, 'seller');
@@ -2394,7 +2412,8 @@ async function openEditCategoryModal(row) {
 
 async function openDeleteCategoryModal(row) {
   const id = row.id;
-  const eventData = await getEventData();
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
   const category = eventData.categories.find(category => category.id === id);
   if (!category) return;
 
@@ -3036,7 +3055,7 @@ function showAddProductErrors(error, detail) {
     let limit = errorStr.split('price must be more than or equal to ')[1];
     setErr(priceError, `Minimální cena je ${limit}.`);
     return;
-  }  if (errorStr.includes('price must be less than or equal to')) {
+  } if (errorStr.includes('price must be less than or equal to')) {
     let limit = errorStr.split('price must be less than or equal to ')[1];
     setErr(priceError, `Maximální cena je ${limit}.`);
     return;
@@ -3164,7 +3183,7 @@ function showEditProductErrors(error, detail) {
     let limit = errorStr.split('price must be more than or equal to ')[1];
     setErr(priceError, `Minimální cena je ${limit}.`);
     return;
-  }  if (errorStr.includes('price must be less than or equal to')) {
+  } if (errorStr.includes('price must be less than or equal to')) {
     let limit = errorStr.split('price must be less than or equal to ')[1];
     setErr(priceError, `Maximální cena je ${limit}.`);
     return;

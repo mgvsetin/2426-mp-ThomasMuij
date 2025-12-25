@@ -5,7 +5,7 @@ from argon2 import PasswordHasher
 from cashier_app.employee_events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
-from cashier_app.utils.employees import is_manager, validate_username, validate_email, validate_password
+from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_password
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
