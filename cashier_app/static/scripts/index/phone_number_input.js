@@ -265,7 +265,7 @@ countryCodeContainer.addEventListener('keydown', (event) => {
       if (option.classList.contains('active')) {
         option.classList.remove('active');
         let nextOption = options[i + indexDirection];
-        if (!nextOption) nextOption = options[indexDirection === 1 ? 0 : options.length -1];
+        if (!nextOption) nextOption = options[indexDirection === 1 ? 0 : options.length - 1];
         nextOption?.classList.add('active');
         nextOption?.scrollIntoView({ behavior: 'instant', block: 'center' });
         return;
@@ -416,4 +416,8 @@ function renderDropdown() {
   }
 
   dropdownContent.innerHTML = html;
+
+
+  const firstOption = document.querySelector('.country-code-option');
+  firstOption?.classList.add('active');
 }

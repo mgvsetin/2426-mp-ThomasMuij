@@ -1,7 +1,7 @@
 import { cloneData } from "../general/cache.js";
 import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
-import { markSelectedRow } from "../general/table_utils.js";
+import { markSelectedRows } from "../general/table_utils.js";
 import { lastReadCardId, removeReadCard, renderCard } from "./cards.js";
 import { changeSelectedCode } from "./phone_number_input.js";
 import { getWallets } from "./wallets.js";
@@ -24,7 +24,7 @@ const setNewBalanceInput = document.querySelector('#set-new-balance-input');
 const openUserCardsModalBtn = document.querySelector('#open-user-cards-modal');
 const saveUserFormBtn = document.querySelector('#save-user-form');
 
-let selectedUserForUpdate;
+export let selectedUserForUpdate;
 
 const orderBy = { key: '', ascending: true };
 
@@ -38,10 +38,10 @@ const _usersCache = {
 
 let _getUsersPromise = null;
 
-editUserFormOnChange();
+// editUserFormOnChange(); volá se v index (chooseAndLoadPage, po pickBooth)
 
 
-function getUsers() {
+export function getUsers() {
   if (_usersCache.users && _usersCache.expiry > Date.now()) {
     return Promise.resolve(cloneData(_usersCache.users));
   }
@@ -105,7 +105,7 @@ function getUsers() {
 }
 
 
-function resetUsersCache() {
+export function resetUsersCache() {
   _usersCache.users = null;
   _usersCache.expiry = 0;
 }
@@ -321,7 +321,7 @@ export async function renderUsers() {
   });
 
   usersTableBody.innerHTML = rows || '<tr><td colspan="7">Žádní uživatelé.</td></tr>';
-  markSelectedRow(usersTableBody);
+  markSelectedRows(usersTableBody);
 
   if (selectedUserForUpdate) {
     const rowSelectedForUpdate = document.getElementById(selectedUserForUpdate.id);
@@ -372,7 +372,7 @@ export async function unselectUserForUpdate() {
   firstNameInput.value = '';
   lastNameInput.value = '';
   emailInput.value = '';
-  changeSelectedCode('');
+  // changeSelectedCode('');
   phoneNumberInput.value = '';
   otherIdentifierInput.value = '';
 
@@ -403,11 +403,11 @@ export async function editUserFormOnChange(inputEvent = null) {
   const phoneNumber = phoneNumberInput.value.toLowerCase().trim();
   const otherIdentifier = otherIdentifierInput.value.toLowerCase().trim();
 
-  const user = users.find((user) => { return user.id === userId; });
+  const user = users?.find((user) => { return user.id === userId; });
 
   const firstNamesMatch = user?.first_name.toLowerCase() === firstName;
   const lastNamesMatch = user?.last_name.toLowerCase() === lastName;
-  const emailsMatch = user?.email === email;
+  const emailsMatch = user?.email === (email ? email : null);
   const phoneNumbersMatch = user?.phone_number === (countryCode && phoneNumber ? `${countryCode}${phoneNumber}` : null);
   const otherIdentifiersMatch = user?.other_identifier === (otherIdentifier ? otherIdentifier : null);
 
@@ -454,8 +454,14 @@ export async function editUserFormOnChange(inputEvent = null) {
       }
     }
 
+
     if (wallet.owner_id === userId && wallet.balance_czk === Number(setNewBalanceInput.value)) {
-      saveUserFormBtn.setAttribute('card-job', '');
+      if (saveUserFormBtn.textContent === 'Žádná změna') {
+        saveUserFormBtn.textContent = 'Vrátit kartu';
+        saveUserFormBtn.setAttribute('card-job', 'return');
+      } else {
+        saveUserFormBtn.setAttribute('card-job', '');
+      }
     } else if (wallet.owner_id === userId && wallet.balance_czk !== Number(setNewBalanceInput.value)) {
       saveUserFormBtn.textContent = saveUserFormBtn.textContent !== 'Žádná změna' ? `${saveUserFormBtn.textContent} a změnit zůstatek na kartě` : 'Změnit zůstatek na kartě';
       saveUserFormBtn.setAttribute('card-job', 'change-balance');
@@ -492,7 +498,7 @@ export async function openDeleteUserModal(row) {
         </button>
       </header>
       <form id="delete-user-form">
-        <input type="hidden" name="id" value="${id}"/>
+        <input type="hidden" name="user-id" value="${id}"/>
         <div class="form-row">
           <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
         </div>
@@ -517,7 +523,7 @@ export async function openDeleteUserModal(row) {
 }
 
 
-export async function openUserCardsModal(userId) {
+export async function openUserCardsModal(userId, modal = null) {
   userId = userId.trim();
   const users = await getUsers().catch(() => { });
   if (!users) return;
@@ -528,40 +534,497 @@ export async function openUserCardsModal(userId) {
     // maybe display some error
   });
   if (!wallets) return;
-  
-  const userWallets = wallets.filter((wallet) => { wallet.owner_id === userId });
+
+  const userWallets = wallets.filter((wallet) => { return wallet.owner_id === userId });
+  let userWalletsHTML = '';
+
+  userWallets.forEach((wallet) => {
+    userWalletsHTML += `
+      <li tag-id="${wallet.tag_id}">
+        <div> <span>ID: ${wallet.tag_id}</span> <span>Zůstatek: ${wallet.balance_czk} Kč</span> </div>
+      </li>
+    `;
+  })
 
   const html = `
-    <div class="modal">
-      <header>
-        <h2 class="delete-form-text">Smazat uživatele</h2>
-        <button class="close-modal cross-close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </header>
-      <form id="delete-user-form">
-        <input type="hidden" name="id" value="${userId}"/>
-        <div class="form-row">
-          <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
-        </div>
-
-        <div class="form-row">
-          <div id="delete-user-general-error" class="form-error"></div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="cancel-form close-modal">Zrušit</button>
-          <button type="submit" class="save-form user-form-delete-button">Smazat</button>
-        </div>
-      </form>
-    </div>
+    <header>
+      <h2>Karty uživatele "${user.first_name} ${user.last_name}"</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <ul id="user-wallets-list">
+      ${userWalletsHTML ? userWalletsHTML : 'Uživatel nemá žádné karty.'}
+    </ul>
   `;
 
-  if (document.querySelector('.overlay')) return;
-  const div = document.createElement('div');
-  div.className = 'overlay';
-  div.innerHTML = html;
-  document.body.appendChild(div);
+  if (!modal) {
+    if (document.querySelector('.overlay')) return;
+    const div = document.createElement('div');
+    div.className = 'overlay';
+    div.innerHTML = `
+    <div class="modal">
+      ${html}
+    </div>
+  `;
+    document.body.appendChild(div);
+  } else {
+    modal.innerHTML = html;
+  }
+}
+
+
+export async function openUserCardModal(userWalletLi) {
+  const tagId = userWalletLi.getAttribute('tag-id').trim();
+  const modal = userWalletLi.closest('.modal');
+
+  if (!modal) return;
+
+  const [wallets, users] = await Promise.all([
+    getWallets().catch(() => { }),
+    getUsers().catch(() => { })
+  ]);
+
+  if (!wallets || !users) return;
+
+  const wallet = wallets.find((wallet) => { return wallet.tag_id === tagId });
+  if (!wallet) return;
+  const user = users.find(user => user.id === wallet.owner_id);
+  if (!user) return;
+
+  modal.innerHTML = `
+    <header>
+      <h2>Karta uživatele "${user.first_name} ${user.last_name}"</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <div class="edit-wallet-card-info">ID: ${wallet.tag_id}</div>
+    <div class="edit-wallet-card-info">Zůstatek: ${wallet.balance_czk} Kč</div>
+    <form id="edit-wallet-form">
+
+      <input type="hidden" name="tag-id" id="edit-wallet-tag-id-input" value=${wallet.tag_id}>
+
+      <div class="form-row">
+        <label for="change-balance-by-input">Přidat nebo ubrat peníze (Kč)</label>
+        <input id="edit-wallet-change-balance-by-input" name="change-balance-by" type="number" value="0"/>
+        <div id="edit-wallet-change-balance-by-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="set-new-balance-input">Nový zůstatek (Kč)</label>
+        <input id="edit-wallet-set-new-balance-input" name="new-balance" type="number" value="${wallet.balance_czk}"/>
+        <div id="edit-wallet-set-new-balance-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <div id="edit-wallet-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="back-to-user-cards" class="cancel-form" user-id="${user.id}">Zpět</button>
+        <button type="button" class="save-form" id="return-card-button">Vrátit kartu</button>
+        <button type="submit" class="save-form">Uložit</button>
+      </div>
+    </form>
+  `;
+}
+
+
+export async function editWalletInputListeners(event) {
+  const editWalletTagIdInput = document.querySelector('#edit-wallet-tag-id-input');
+  if (editWalletTagIdInput) {
+    const tagId = editWalletTagIdInput.value.trim();
+    const editWalletChangeBalanceByInput = document.querySelector('#edit-wallet-change-balance-by-input');
+    const editWalletSetNewBalanceInput = document.querySelector('#edit-wallet-set-new-balance-input');
+
+    if (event.target === editWalletChangeBalanceByInput) {
+      const wallets = await getWallets().catch(() => { });
+      if (!wallets) return;
+      const wallet = wallets.find((wallet) => { return wallet.tag_id === tagId });
+      if (!wallet) return;
+
+      const changeBalanceBy = Number(editWalletChangeBalanceByInput.value);
+      if (!isNaN(changeBalanceBy)) {
+        const newBalance = wallet.balance_czk + changeBalanceBy;
+        editWalletSetNewBalanceInput.value = newBalance;
+        editWalletChangeBalanceByInput.value = changeBalanceBy; // pro 0
+      }
+    }
+
+    if (event.target === editWalletSetNewBalanceInput) {
+      const wallets = await getWallets().catch(() => { });
+      if (!wallets) return;
+      const wallet = wallets.find((wallet) => { return wallet.tag_id === tagId });
+      if (!wallet) return;
+
+      const newBalance = Number(editWalletSetNewBalanceInput.value);
+
+      if (!isNaN(newBalance)) {
+        const changeBalanceBy = newBalance - wallet.balance_czk;
+        editWalletChangeBalanceByInput.value = changeBalanceBy;
+        editWalletSetNewBalanceInput.value = newBalance; // pro 0
+      }
+    }
+  }
+}
+
+
+export function clearFormErrors() {
+  const errorElements = document.querySelectorAll('.form-error');
+  errorElements.forEach(el => {
+    el.innerHTML = '';
+    el.classList.remove('show-form-error');
+  });
+}
+
+
+export function showUserFormErrors(error, detail) {
+  const firstNameError = document.querySelector('#first-name-error');
+  const lastNameError = document.querySelector('#last-name-error');
+  const emailError = document.querySelector('#email-error');
+  const phoneNumberError = document.querySelector('#phone-number-error');
+  const otherIdentifierError = document.querySelector('#other-identifier-error');
+  const changeBalanceByError = document.querySelector('#change-balance-by-error');
+  const setNewBalanceError = document.querySelector('#set-new-balance-error');
+  const generalError = document.querySelector('#general-error');
+
+  let nameErrorEl = generalError;
+  if (detail === 'first_name_error') {
+    nameErrorEl = firstNameError;
+  } else if (detail === 'last_name_error') {
+    nameErrorEl = lastNameError;
+  }
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+
+  switch (errorStr) {
+    case 'unexpected_error':
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'no_selected_event':
+      setErr(generalError, 'Není vybraná akce.');
+      return;
+    case 'no_selected_booth':
+      setErr(generalError, 'Není vybraný stánek.');
+      return;
+    case 'invalid_booth_type':
+      setErr(generalError, 'Neplatný typ stánku.');
+      return;
+    case 'invalid_user_id':
+      setErr(generalError, 'ID uživatele není správné.');
+      return;
+    case 'missing_user_id':
+      setErr(generalError, 'Chybí ID uživatele.');
+      return;
+    case 'user_not_found':
+      setErr(generalError, 'Uživatel nebyl nalezen.');
+      return;
+    case 'owner_not_found':
+      setErr(generalError, 'Vlastník karty nebyl nalezen.');
+      return;
+    case 'missing_first_name':
+      setErr(firstNameError, 'Chybí jméno.');
+      return;
+    case 'missing_last_name':
+      setErr(lastNameError, 'Chybí příjmení.');
+      return;
+    case 'missing_country_code':
+      setErr(phoneNumberError, 'Chybí předčíslí.');
+      return;
+    case 'invalid_phone_number':
+      setErr(phoneNumberError, 'Telefonní číslo není správné.');
+      return;
+    case 'missing_tag_id':
+      setErr(generalError, 'Chybí ID karty.');
+      return;
+    case 'wallet_not_found':
+      setErr(generalError, 'Karta nebyla nalezena.');
+      return;
+    case 'at_least_one_of_email_phone_number_other_identifier_is_required':
+      setErr(generalError, 'Vyplňte alespoň jeden z: email, telefonní číslo, jiný identifikátor.');
+      return;
+    case 'change_balance_by_must_be_a_number':
+      setErr(changeBalanceByError, 'Změna musí být číslo.');
+      return;
+    case 'change_balance_by_must_be_a_whole_number':
+      setErr(changeBalanceByError, 'Změna musí být celé číslo.');
+      return;
+    case 'new_balance_must_be_a_number':
+      setErr(setNewBalanceError, 'Nový zůstatek musí být číslo.');
+      return;
+    case 'new_balance_must_be_a_whole_number':
+      setErr(setNewBalanceError, 'Nový zůstatek musí být celé číslo.');
+      return;
+    case 'change_balance_by_and_new_balance_do_not_match':
+      setErr(generalError, 'Změna a nový zůstatek se neshodují.');
+      return;
+    case 'changes_do_not_match_balance_czk':
+      setErr(generalError, 'Změny neodpovídají aktuálnímu zůstatku.');
+      return;
+    case 'wallet_balance_czk_is_not_enough':
+      setErr(generalError, 'Nedostatek peněz na kartě.');
+      return;
+    case 'resulting_wallet_balance_czk_is_too_high':
+      setErr(generalError, 'Výsledný zůstatek je příliš vysoký.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
+        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      } else if (detail && detail.includes('unique_index_users_email_active')) {
+        setErr(emailError, 'Email už má jiný uživatel.');
+      } else if (detail && detail.includes('unique_index_event_tag_id_active')) {
+        setErr(generalError, 'ID karty je už použité pro tuto akci.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('name must be a string')) {
+    setErr(nameErrorEl, 'Jméno nebo příjmení není správně zadané.');
+    return;
+  }
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `Jméno nebo příjmení může mít minimálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `Jméno nebo příjmení může mít maximálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name may only contain letters, digits, and these characters:')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameErrorEl, `Jméno nebo příjmení může obsahovat pouze písmena, číslice a tyto znaky: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameErrorEl, 'Jméno nebo příjmení nesmí obsahovat pouze čísla.');
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(nameErrorEl, `Jméno nebo příjmení nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+
+  if (errorStr.includes('email must be a string')) {
+    setErr(emailError, 'Email není správně zadaný.');
+    return;
+  }
+  if (errorStr.includes('email is empty')) {
+    setErr(emailError, 'Email je prázdný.');
+    return;
+  }
+
+  if (errorStr.includes('email') && !errorStr.includes('must not contain')) {
+    setErr(emailError, 'Email není platný.');
+    return;
+  }
+
+  if (errorStr.includes('other_identifier must be at least')) {
+    let limit = errorStr.split('other_identifier must be at least ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Minimální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must be at most')) {
+    let limit = errorStr.split('other_identifier must be at most ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Maximální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(otherIdentifierError, `Identifikátor nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+  if (errorStr.includes('change_balance_by_must_be_more_than_or_equal_to')) {
+    let limit = errorStr.split('change_balance_by_must_be_more_than_or_equal_to_');
+    limit = limit[1];
+    setErr(changeBalanceByError, `Změna může být minimálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('change_balance_by_must_be_less_than_or_equal_to')) {
+    let limit = errorStr.split('change_balance_by_must_be_less_than_or_equal_to_');
+    limit = limit[1];
+    setErr(changeBalanceByError, `Změna může být maximálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('new_balance_must_be_more_than_or_equal_to')) {
+    let limit = errorStr.split('new_balance_must_be_more_than_or_equal_to_');
+    limit = limit[1];
+    setErr(setNewBalanceError, `Nový zůstatek může být minimálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('new_balance_must_be_less_than_or_equal_to')) {
+    let limit = errorStr.split('new_balance_must_be_less_than_or_equal_to_');
+    limit = limit[1];
+    setErr(setNewBalanceError, `Nový zůstatek může být maximálně ${limit} Kč.`);
+    return;
+  }
+
+  setErr(generalError, errorStr); /////
+}
+
+
+export function showDeleteUserFormErrors(error, detail) {
+  const generalError = document.querySelector('#delete-user-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+
+  switch (errorStr) {
+    case 'unexpected_error':
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'no_selected_event':
+      setErr(generalError, 'Není vybraná akce.');
+      return;
+    case 'no_selected_booth':
+      setErr(generalError, 'Není vybraný stánek.');
+      return;
+    case 'invalid_booth_type':
+      setErr(generalError, 'Neplatný typ stánku.');
+      return;
+    case 'invalid_user_id':
+      setErr(generalError, 'ID uživatele není správné.');
+      return;
+    case 'missing_user_id':
+      setErr(generalError, 'Chybí ID uživatele.');
+      return;
+    case 'user_not_found':
+      setErr(generalError, 'Uživatel nebyl nalezen.');
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr); /////
+}
+
+
+export function showEditWalletFormErrors(error, detail) {
+  const changeBalanceByError = document.querySelector('#edit-wallet-change-balance-by-error');
+  const setNewBalanceError = document.querySelector('#edit-wallet-set-new-balance-error');
+  const generalError = document.querySelector('#edit-wallet-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+
+  switch (errorStr) {
+    case 'unexpected_error':
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'no_selected_event':
+      setErr(generalError, 'Není vybraná akce.');
+      return;
+    case 'no_selected_booth':
+      setErr(generalError, 'Není vybraný stánek.');
+      return;
+    case 'invalid_booth_type':
+      setErr(generalError, 'Neplatný typ stánku.');
+      return;
+    case 'missing_tag_id':
+      setErr(generalError, 'Chybí ID karty.');
+      return;
+    case 'wallet_not_found':
+      setErr(generalError, 'Karta nebyla nalezena.');
+      return;
+    case 'change_balance_by_must_be_a_number':
+      setErr(changeBalanceByError, 'Změna musí být číslo.');
+      return;
+    case 'change_balance_by_must_be_a_whole_number':
+      setErr(changeBalanceByError, 'Změna musí být celé číslo.');
+      return;
+    case 'new_balance_must_be_a_number':
+      setErr(setNewBalanceError, 'Nový zůstatek musí být číslo.');
+      return;
+    case 'new_balance_must_be_a_whole_number':
+      setErr(setNewBalanceError, 'Nový zůstatek musí být celé číslo.');
+      return;
+    case 'change_balance_by_and_new_balance_do_not_match':
+      setErr(generalError, 'Změna a nový zůstatek se neshodují.');
+      return;
+    case 'changes_do_not_match_balance_czk':
+      setErr(generalError, 'Změny neodpovídají aktuálnímu zůstatku.');
+      return;
+    case 'wallet_balance_czk_is_not_enough':
+      setErr(generalError, 'Nedostatek peněz na kartě.');
+      return;
+    case 'resulting_wallet_balance_czk_is_too_high':
+      setErr(generalError, 'Výsledný zůstatek je příliš vysoký.');
+      return;
+    default:
+      break;
+  }
+
+  if (errorStr.includes('change_balance_by_must_be_more_than_or_equal_to')) {
+    let limit = errorStr.split('change_balance_by_must_be_more_than_or_equal_to_');
+    limit = limit[1];
+    setErr(changeBalanceByError, `Změna může být minimálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('change_balance_by_must_be_less_than_or_equal_to')) {
+    let limit = errorStr.split('change_balance_by_must_be_less_than_or_equal_to_');
+    limit = limit[1];
+    setErr(changeBalanceByError, `Změna může být maximálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('new_balance_must_be_more_than_or_equal_to')) {
+    let limit = errorStr.split('new_balance_must_be_more_than_or_equal_to_');
+    limit = limit[1];
+    setErr(setNewBalanceError, `Nový zůstatek může být minimálně ${limit} Kč.`);
+    return;
+  }
+  if (errorStr.includes('new_balance_must_be_less_than_or_equal_to')) {
+    let limit = errorStr.split('new_balance_must_be_less_than_or_equal_to_');
+    limit = limit[1];
+    setErr(setNewBalanceError, `Nový zůstatek může být maximálně ${limit} Kč.`);
+    return;
+  }
+
+  setErr(generalError, errorStr); /////
 }

@@ -26,10 +26,7 @@ export let newCardReadPromise = new Promise(resolve => {
   newCardReadResolve = resolve;
 });
 
-
-handleCardRead("00A713A700000000"); ///////
-// handleCardRead("adsf"); ///////
-
+handleCardRead('newcard');
 
 async function getReaderInfo() {
   if (readerInfo) return readerInfo;
@@ -155,16 +152,10 @@ async function handleCardRead(cardId) {
   if (cardId.length === 0) return;
   lastReadCardId = cardId;
 
-  const wallets = await getWallets().catch(() => { });
-
-  const wallet = wallets ? getWalletByTag(wallets, lastReadCardId) : null;
-
-  changeBalanceByInput.value = wallet ? 0 : '';
-  setNewBalanceInput.value = wallet ? wallet.balance_czk : '';
-
   await Promise.all([
     editUserFormOnChange(),
-    renderCard(wallet)
+    // renderCard(wallet)
+    renderCard()
   ]);
 
 
@@ -186,7 +177,6 @@ export async function renderCard(wallet = null) {
     orderPrice = order.getTotalPrice(result.products);
   }
 
-
   const balanceCzk = wallet ? `${escapeHTML(wallet.balance_czk)} Kč` : '-';
   const balanceAfterPurchase = wallet && orderPrice ? `${escapeHTML(wallet.balance_czk - orderPrice)} Kč` : '-';
 
@@ -196,6 +186,11 @@ export async function renderCard(wallet = null) {
 
   cashierTagIdDisplay.innerHTML = `ID: ${escapeHTML(lastReadCardId) || '-'}`;
   cashierBalanceDisplay.innerHTML = `Zůstatek: ${balanceCzk}`;
+
+  if (!changeBalanceByInput.value && !setNewBalanceInput.value) {
+    changeBalanceByInput.value = wallet ? 0 : '';
+    setNewBalanceInput.value = wallet ? wallet.balance_czk : '';
+  }
 
   return wallet;
 }

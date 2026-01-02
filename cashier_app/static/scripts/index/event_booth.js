@@ -3,8 +3,11 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
+import { UnexpectedError } from "../general/errors.js";
+import { removeReadCard } from "./cards.js";
 import { order } from "./order.js";
 import { resetProductsCache, saveSelectedCategory } from "./products.js";
+import { unselectUserForUpdate } from "./users.js";
 import { resetWalletsCache } from "./wallets.js";
 
 
@@ -288,21 +291,25 @@ export async function pickBooth(formData) {
 
 export async function unselectEventBooth() {
   order.reset();
-  resetWalletsCache();
-  resetProductsCache();
-  saveSelectedCategory(null);
   try {
     const response = await fetch('/api/employees/me/events/remove', {
       method: 'DELETE'
     });
 
     if (!response.ok) {
-      throw new Error('unexpected_error');
+      throw new UnexpectedError();
     }
 
-    return true;
-
   } catch (error) {
-    return false;
+
   }
+
+  await Promise.all([
+    resetWalletsCache(),
+    resetProductsCache(),
+    removeReadCard(),
+    unselectUserForUpdate(),
+    saveSelectedCategory(null)
+  ]);
+
 }

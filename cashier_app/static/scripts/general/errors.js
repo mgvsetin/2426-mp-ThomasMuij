@@ -15,7 +15,7 @@ export class UnauthorizedRedirectError extends Error {
 
 export class ForbiddenError extends Error {
   constructor() {
-    super('unsufficient_priviliges');
+    super('insufficient_priviliges');
     this.name = 'ForbiddenError';
   }
 }

@@ -41,6 +41,11 @@ export function getEmployees() {
         throw new ForbiddenError();
       }
 
+      if (data.error === 'no_data_to_copy') {
+        // display
+        return;
+      }
+
       if (!response.ok) {
         throw new UnexpectedError();
       }

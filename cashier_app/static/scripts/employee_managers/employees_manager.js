@@ -3,7 +3,7 @@ import { getEmployees, resetEmployeesCache } from "../general/employees.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
-import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
+import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableHeader = document.querySelector('table thead');
@@ -156,9 +156,9 @@ document.addEventListener('click', (event) => {
   }
 
   // kliknutí na řádek ho vybere
-  const row = event.target.closest('tr[data-employee]');
+  const row = event.target.closest('tr[id]');
   if (row) {
-    selectRow(row, employeeTableBody);
+    handleRowSelection(event);
     return;
   }
 
@@ -175,7 +175,7 @@ document.addEventListener('click', (event) => {
   }
 
   // když nebylo kliknuto na nic jiného:
-  unselectRow(employeeTableBody);
+  unselectRows();
 });
 
 document.addEventListener('dblclick', (event) => {
@@ -290,7 +290,27 @@ searchBar.addEventListener('input', (event) => {
     table: true
   })
   // }
-})
+});
+
+
+document.addEventListener('keydown', (event) => {
+  handleRowSelection(event);
+  handleCopyPasteOnKeydown(event, 'employees_manager').then((result) => {
+    if (['paste-employees', 'undo-paste', 'redo-paste'].includes(result)) {
+      resetEmployeesCache();
+      loadPage({
+        table: true
+      });
+    }
+  });
+
+  if (event.key === 'Enter') {
+    const selectedRows = document.querySelectorAll('tr[data-employee][selected]');
+    if (selectedRows.length === 1) {
+      openEditOverlay(selectedRows[0]);
+    }
+  }
+});
 
 
 function toggleOrder(key) {
@@ -474,7 +494,7 @@ async function renderTableRows() {
 
   employeeTableBody.innerHTML = rowsHTML;
 
-  markSelectedRow(employeeTableBody);
+  markSelectedRows(employeeTableBody);
 }
 
 
@@ -747,7 +767,7 @@ function showAddErrors(error) {
   }
   if (low.includes('username must start and end with')) {
     const allowedChars = low.split('characters: ')[1];
-    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (low.includes('username must not contain')) {
@@ -891,7 +911,7 @@ function showEditErrors(error) {
   }
   if (resStr.includes('username must start and end with')) {
     const allowedChars = resStr.split('characters: ')[1];
-    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (resStr.includes('username must not contain')) {

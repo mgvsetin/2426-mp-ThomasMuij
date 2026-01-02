@@ -1358,6 +1358,30 @@ label {
   margin-top: 12px
 }
 
+#user-wallets-list li {
+  margin-top: 5px;
+  padding: 2px 0;
+}
+
+#user-wallets-list li:hover {
+  color: rgb(32, 68, 150);
+  cursor: pointer;
+}
+
+#user-wallets-list li div {
+  display: flex;
+  column-gap: 15px;
+}
+
+.edit-wallet-card-info {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+#edit-wallet-form {
+  margin-top: 15px;
+}
+
 
 @media (max-width: 640px) {
   #cashier-page {

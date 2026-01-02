@@ -19,7 +19,7 @@ import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
 const productGridContainer = document.querySelector('#product-grid-container');
-const categoriesEl = document.querySelector('#categories')
+const categoriesEl = document.querySelector('#categories');
 const productsSearchBar = document.querySelector('#products-search-bar');
 
 
@@ -42,7 +42,7 @@ export function getProductsAndCategories() { // make sure that if this changes i
 
   _getProductsPromise = (async () => {
     try {
-      const response = await fetch('/api/events/booths/products+categories');
+      const response = await fetch('/api/events/booths/products-categories');
 
       if (response.status === 401) {
         const json = await response.json();
@@ -122,7 +122,7 @@ export async function renderProducts() {
   if (!result) {
     return;
   }
-  const products = result.prodcuts;
+  const products = result.products;
 
   if (products.length === 0) {
     productGridContainer.innerHTML = `

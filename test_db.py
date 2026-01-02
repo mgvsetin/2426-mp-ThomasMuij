@@ -15,12 +15,16 @@ def get_db(row_factory=dict_row, **kwargs):
 
 with get_db() as conn:
     with conn.cursor() as cur:
-        cur.execute(
-            f'''
-            INSERT INTO employee_event_booth_roles
-            (employee_id, event_id, booth_id)
-            VALUES ('10000000000000000000000000000013', '30000000000000000000000000000008', NULL)
-            ''')
+        events_to_copy = cur.execute(
+            '''
+            SELECT id, name, start_at, end_at
+            FROM events
+            WHERE id = ANY(%s)
+            AND deleted_at IS NULL
+            ''',
+            ([],)).fetchall()
+        
+        print(events_to_copy)
         
 
         

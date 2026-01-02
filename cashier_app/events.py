@@ -101,14 +101,14 @@ def get_event(event_id):
                 (event_id,)).fetchone()
             
             if event is None:
-                return jsonify(error='event_not_found'), 404
+                return jsonify(error='event_not_found', redirect_url=url_for('events.get_events_manager_page')), 404
             
             employees = cur.execute(
                 '''
                 SELECT em.id, em.username, em.email,
                     COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('id', link.booth_id, 'role', link.role, 'name', booths.name)
-                        ) FILTER (WHERE link.booth_id IS NOT NULL),
+                        ) FILTER (WHERE link.booth_id IS NOT NULL AND booths.deleted_at IS NULL),
                         '[]'
                     ) AS booths
                 FROM employees AS em
@@ -126,7 +126,7 @@ def get_event(event_id):
                 SELECT p.id, p.name, p.price, p.image_path, p.image_filename,
                     COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
-                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL),
+                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL AND booths.deleted_at IS NULL),
                         '[]'
                     ) AS booths,
                     COALESCE(jsonb_agg(
@@ -173,7 +173,7 @@ def get_event(event_id):
                 SELECT cat.id, cat.name,
                     COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
-                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL),
+                        ) FILTER (WHERE bo_link.booth_id IS NOT NULL AND booths.deleted_at IS NULL),
                         '[]'
                     ) AS booths
                 FROM categories AS cat
@@ -456,7 +456,7 @@ def add_booth():
     params = {
         'created_by': logged_employee['id'],
         'event_id': event_id
-        }
+    }
 
     if not name:
         return jsonify(error='missing_name'), 400
@@ -473,24 +473,94 @@ def add_booth():
         return jsonify(error='invalid_type'), 400
     params['booth_type'] = booth_type
 
+    product_ids = []
+    try:
+        for product_id in request.form.getlist('products'):
+            product_ids.append(UUID(product_id))
+    except ValueError:
+        return jsonify(error='invalid_product_id'), 400
+
+    category_ids = []
+    try:
+        for category_id in request.form.getlist('categories'):
+            category_ids.append(UUID(category_id))
+    except ValueError:
+        return jsonify(error='invalid_category_id'), 400
+
+    if booth_type == 'cashier' and (product_ids or category_ids):
+        return jsonify(error='cashier_cannot_have_products_or_categories'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            for product_id in product_ids:
+                product = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM products
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (product_id, event_id)).fetchone()
+                
+                if not product:
+                    return jsonify(error='product_not_found'), 400
+            
+            for category_id in category_ids:
+                category = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM categories
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (category_id, event_id)).fetchone()
+                
+                if not category:
+                    return jsonify(error='category_not_found'), 400
+
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
+                booth_id = cur.execute(
                     f'''
                     INSERT INTO booths
                     ({cols_str})
-                    VALUES ({col_values_placeholders})''',
-                    params)
-    except IntegrityError as e: #
+                    VALUES ({col_values_placeholders})
+                    RETURNING id''',
+                    params).fetchone()['id']
+                
+
+                if product_ids:
+                    rows = [(product_id, booth_id) for product_id in product_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+
+                    cur.execute(
+                        f'''
+                        INSERT INTO product_booth_link
+                        (product_id, booth_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
+
+                if category_ids:
+                    rows = [(category_id, booth_id) for category_id in category_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+                    
+                    cur.execute(
+                        f'''
+                        INSERT INTO category_booth_link
+                        (category_id, booth_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
+    except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
-
 
 @api_booths_bp.route('/edit', methods=('POST',))
 def edit_booth():
@@ -509,18 +579,19 @@ def edit_booth():
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            event_id = cur.execute(
+            booth = cur.execute(
                 f'''
-                SELECT event_id
+                SELECT event_id, booth_type
                 FROM booths
                 WHERE id = %s
                 AND deleted_at IS NULL''',
                 (booth_id,)).fetchone()
 
-    if not event_id:
+    if not booth:
         return jsonify(error='booth_not_found'), 404
     
-    event_id = event_id['event_id']
+    event_id = booth['event_id']
+    booth_type = booth['booth_type']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
@@ -536,6 +607,49 @@ def edit_booth():
     if not ok:
         return jsonify(error=errors[0]), 400
     params['name'] = name
+
+    product_ids = []
+    try:
+        for product_id in request.form.getlist('products'):
+            product_ids.append(UUID(product_id))
+    except ValueError:
+        return jsonify(error='invalid_product_id'), 400
+
+    category_ids = []
+    try:
+        for category_id in request.form.getlist('categories'):
+            category_ids.append(UUID(category_id))
+    except ValueError:
+        return jsonify(error='invalid_category_id'), 400
+
+    if booth_type == 'cashier' and (product_ids or category_ids):
+        return jsonify(error='cashier_cannot_have_products_or_categories'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            for product_id in product_ids:
+                product = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM products
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (product_id, event_id)).fetchone()
+                
+                if not product:
+                    return jsonify(error='product_not_found'), 400
+            
+            for category_id in category_ids:
+                category = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM categories
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (category_id, event_id)).fetchone()
+                
+                if not category:
+                    return jsonify(error='category_not_found'), 400
 
     col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
 
@@ -554,6 +668,47 @@ def edit_booth():
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {booth_id}')
+                
+                # Delete existing product and category links
+                cur.execute(
+                    '''
+                    DELETE FROM product_booth_link
+                    WHERE booth_id = %s''',
+                    (booth_id,))
+                
+                cur.execute(
+                    '''
+                    DELETE FROM category_booth_link
+                    WHERE booth_id = %s''',
+                    (booth_id,))
+                
+                # Insert new product links
+                if product_ids:
+                    rows = [(product_id, booth_id) for product_id in product_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+                    
+                    cur.execute(
+                        f'''
+                        INSERT INTO product_booth_link
+                        (product_id, booth_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
+                
+                # Insert new category links
+                if category_ids:
+                    rows = [(category_id, booth_id) for category_id in category_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+                    
+                    cur.execute(
+                        f'''
+                        INSERT INTO category_booth_link
+                        (category_id, booth_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -626,7 +781,7 @@ def delete_booth():
     return jsonify(), 200
 
 
-@api_booths_bp.route('/products+categories')
+@api_booths_bp.route('/products-categories')
 def get_products_and_categories():
     """Vrátí produkty a kategorie dostupné pro vybraný stánek.
 
@@ -792,7 +947,7 @@ def assign_employee():
             if not event:
                 return jsonify(error='event_not_found'), 400
             
-            for booth_id in booth_ids:
+            for booth_id in booth_ids: ##### change this to ANY(%s)
                 booth = cur.execute(
                     '''
                     SELECT 1
@@ -1243,13 +1398,13 @@ def edit_product():
                     raise RuntimeError(f'multiple rows updated for id {product_id}')
                 
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM product_booth_link
                     WHERE product_id = %s''',
                     (product_id,))
                 
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM category_product_link
                     WHERE product_id = %s''',
                     (product_id,))
@@ -1422,6 +1577,13 @@ def add_category():
     except ValueError:
         return jsonify(error='invalid_booth_id'), 400
     
+    product_ids = []
+    try:
+        for product_id in request.form.getlist('products'):
+            product_ids.append(UUID(product_id))
+    except ValueError:
+        return jsonify(error='invalid_product_id'), 400
+    
     with get_pool().connection() as conn:
         with conn.cursor() as cur:            
             event = cur.execute(
@@ -1431,7 +1593,7 @@ def add_category():
                 WHERE id = %s
                 AND deleted_at IS NULL''',
                 (event_id,)).fetchone()
-    
+
             if not event:
                 return jsonify(error='event_not_found'), 400
             
@@ -1450,6 +1612,18 @@ def add_category():
                 
                 if booth['booth_type'] != 'seller':
                     return jsonify(error='booth_is_not_seller'), 400
+            
+            for product_id in product_ids:
+                product = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM products
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (product_id, event_id)).fetchone()
+                
+                if not product:
+                    return jsonify(error='product_not_found'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_priviliges'), 403
@@ -1482,10 +1656,8 @@ def add_category():
                 
                 if booth_ids:
                     rows = [(category_id, booth_id) for booth_id in booth_ids]
-
                     placeholders = ','.join(['(%s,%s)'] * len(rows))
-
-                    params = [item for row in rows for item in row]
+                    params_list = [item for row in rows for item in row]
 
                     cur.execute(
                         f'''
@@ -1493,7 +1665,20 @@ def add_category():
                         (category_id, booth_id)
                         VALUES {placeholders}
                         ''',
-                        params)
+                        params_list)
+                
+                if product_ids:
+                    rows = [(category_id, product_id) for product_id in product_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+
+                    cur.execute(
+                        f'''
+                        INSERT INTO category_product_link
+                        (category_id, product_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_categories_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -1542,8 +1727,26 @@ def edit_category():
     except ValueError:
         return jsonify(error='invalid_booth_id'), 400
     
+    product_ids = []
+    try:
+        for product_id in request.form.getlist('products'):
+            product_ids.append(UUID(product_id))
+    except ValueError:
+        return jsonify(error='invalid_product_id'), 400
+    
     with get_pool().connection() as conn:
-        with conn.cursor() as cur:                        
+        with conn.cursor() as cur:            
+            event = cur.execute(
+                '''
+                SELECT 1
+                FROM events
+                WHERE id = %s
+                AND deleted_at IS NULL''',
+                (event_id,)).fetchone()
+
+            if not event:
+                return jsonify(error='event_not_found'), 400
+            
             for booth_id in booth_ids:
                 booth = cur.execute(
                     '''
@@ -1559,6 +1762,18 @@ def edit_category():
                 
                 if booth['booth_type'] != 'seller':
                     return jsonify(error='booth_is_not_seller'), 400
+            
+            for product_id in product_ids:
+                product = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM products
+                    WHERE id = %s
+                    AND event_id = %s''',
+                    (product_id, event_id)).fetchone()
+                
+                if not product:
+                    return jsonify(error='product_not_found'), 400
 
     params = {}
 
@@ -1593,12 +1808,16 @@ def edit_category():
                     WHERE category_id = %s''',
                     (category_id,))
                 
+                cur.execute(
+                    f'''
+                    DELETE FROM category_product_link
+                    WHERE category_id = %s''',
+                    (category_id,))
+                
                 if booth_ids:
                     rows = [(category_id, booth_id) for booth_id in booth_ids]
-
                     placeholders = ','.join(['(%s,%s)'] * len(rows))
-
-                    params = [item for row in rows for item in row]
+                    params_list = [item for row in rows for item in row]
 
                     cur.execute(
                         f'''
@@ -1606,7 +1825,20 @@ def edit_category():
                         (category_id, booth_id)
                         VALUES {placeholders}
                         ''',
-                        params)
+                        params_list)
+                
+                if product_ids:
+                    rows = [(category_id, product_id) for product_id in product_ids]
+                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                    params_list = [item for row in rows for item in row]
+
+                    cur.execute(
+                        f'''
+                        INSERT INTO category_product_link
+                        (category_id, product_id)
+                        VALUES {placeholders}
+                        ''',
+                        params_list)
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_categories_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -1618,7 +1850,6 @@ def edit_category():
         return jsonify(error='category_not_found'), 404
 
     return jsonify(), 200
-
 
 
 @api_categories_bp.route('/delete', methods=('DELETE',))

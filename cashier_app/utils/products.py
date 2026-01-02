@@ -45,14 +45,14 @@ def validate_product_or_category_name(
 
 def validate_product_price(
     price: str | int | float,
-    min_price: int = 0,
+    min_price: int = -100_000,
     max_price: int = 100_000,
     ) -> Tuple[bool, List[str]]:
     """
     Validate product price.
 
     Rules (defaults):
-      - price must be a whole positive number (can be represented as a different data type)
+      - price must be a whole number (can be represented as a different data type)
       - must be between min_price and max_price
 
     Returns:
@@ -61,7 +61,6 @@ def validate_product_price(
     Possible error messages (one or more may be returned):
     - "price must be a number"
     - "price must must be a whole number"
-    - "price must must be positive"
     - "price must be more than or equal to {min_price}"
     - "price must be less than or equal to {max_price}"
     """
@@ -75,8 +74,8 @@ def validate_product_price(
     if not price.is_integer():
         errors.append("price must must be a whole number")
 
-    if price < 0:
-        errors.append("price must must be positive")
+    # if price < 0:
+    #     errors.append("price must be positive")
 
     if price < min_price:
         errors.append(f"price must be more than or equal to {min_price}")

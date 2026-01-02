@@ -125,7 +125,15 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT valid_phone_number_check
     CHECK (phone_number ~ '^\+[1-9]\d{1,14}$')
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_names_email_phone_identifier ON users (LOWER(first_name), LOWER(last_name), email, phone_number, LOWER(other_identifier)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX unique_index_users_names_email_phone_identifier
+  ON users (
+    lower(first_name),
+    lower(last_name),
+    COALESCE(NULLIF(lower(email), ''), '<<__NULL___2025__>>'),
+    COALESCE(NULLIF(phone_number, ''), '<<__NULL___2025__>>'),
+    COALESCE(NULLIF(lower(other_identifier), ''), '<<__NULL___2025__>>')
+  )
+  WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (email) WHERE deleted_at IS NULL;
 
 -- blokuje delete a změnu created_at a znovu nastavení deleted_at, když není null:
@@ -134,6 +142,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (emai
   -- email dá všechno malým
   -- first_name a last_name dá první písmeno velké a zbytek malé
   -- kontroluje že aspoň jedno z email, phone_number a other_identifier je vyplněné
+
+  -- při nastavení deleted_at smaže wallets uživatele
 CREATE OR REPLACE FUNCTION users_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
@@ -144,11 +154,25 @@ BEGIN
     IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
       RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
+
+    IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+      UPDATE wallets
+      SET deleted_at = COALESCE(NEW.deleted_at, now())
+      WHERE owner_id = NEW.id
+        AND deleted_at IS NULL;
+    END IF;
+
   ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
     IF OLD.deleted_at IS NULL THEN
       UPDATE users
       SET deleted_at = now()
       WHERE id = OLD.id AND deleted_at IS NULL;
+
+      UPDATE wallets
+      SET deleted_at = now()
+      WHERE owner_id = OLD.id
+        AND deleted_at IS NULL;
+        
       RETURN NULL; -- zastav DELETE
     ELSE
       RETURN NULL;
@@ -585,8 +609,8 @@ ON employee_event_booth_roles(employee_id, event_id, booth_id)
 WHERE booth_id IS NOT NULL;
 
 
--- jestli je role null, tak ji automaticky doplní
 -- u insert/update kontroluje: 
+--   - jestli je role null, tak ji automaticky doplní
 --   - jestli je event stejný tady i booth a booth existuje (pokud booth_id není null)
 --   - jestli se booths.booth_type a role shodují (pokud role není null)
 --   - zajistí, že pokud je employee pro event event_manager, tak nemůže být přirazen k specifickému stánku
@@ -772,19 +796,25 @@ CREATE TABLE IF NOT EXISTS transactions (
   balance_after     int NOT NULL, -- dělá trigger
   occurred_at       timestamptz NOT NULL DEFAULT now(),
   performed_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
-  products_info     jsonb DEFAULT '[]'::jsonb -- id (nezapomeň, že product mohl být smazán/upraven), price, name, amount
+  products_info     jsonb DEFAULT '[]'::jsonb, -- id (nezapomeň, že product mohl být smazán/upraven), price, name, amount
+
+  idempotency_key   text, -- make uuid?
+  request_fingerprint text -- sha256 hex důležitých částí: tag_id, wallet_id, user_id, event_id, booth_id, transaction_type, amount_czk, performed_by, products_info
   -- metadata          jsonb DEFAULT '{}'::jsonb, -- keep?, info about product?
-  CONSTRAINT transaction_type_matches_amount_czk_check
-    CHECK (
-      (transaction_type IN ('deposit', 'refund') AND amount_czk >= 0)
-      OR (transaction_type IN ('payment','withdrawal') AND amount_czk <= 0)
-    ),
+  -- CONSTRAINT transaction_type_matches_amount_czk_check
+  --   CHECK (
+  --     (transaction_type IN ('deposit', 'refund') AND amount_czk >= 0)
+  --     OR (transaction_type IN ('payment','withdrawal') AND amount_czk <= 0)
+  --   ),
   CONSTRAINT balance_after_matches_balance_before_and_amount_czk_check
     CHECK (balance_after = balance_before + amount_czk),
   CONSTRAINT transaction_type_check
-    CHECK (transaction_type IN ('payment', 'refund', 'deposit', 'withdrawal'))
+    CHECK (transaction_type IN ('payment', 'balance-change', 'refund'))
 );
 -- add the refund stuff
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_transactions_idempotency_key
+  ON transactions (idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
 
 -- blokuje delete a update
 -- u insert kontroluje: 
@@ -792,8 +822,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 --  - že booth existuje
 --  - že booth a wallet event_id a event_id jsou shodné
 --  - user existuje (pokud není null)
---  - jestli employee existuje a má dostatečnou roli
---  - jestli transaction_type je shodné s amount_czk
+--  - jestli employee existuje a má dostatečnou roli (patří k booth nebo je manager nebo admin)
+--  - jestli booth může dělat tuto transaction
 --  - jestli wallet existuje
 --  - wallet.tag_id a wallet.user_id patří k transaction
 --  - změna: jestli wallet má dost peněz. Na: Je povoleno, ale api by mělo zabránit
@@ -807,6 +837,7 @@ DECLARE
   employee_booth_role text;
   employee_is_admin boolean;
   booth_event_id uuid;
+  booth_booth_type text;
   wallet_event_id uuid;
   wallet_tag_id text;
   wallet_owner_id uuid;
@@ -830,7 +861,7 @@ BEGIN
     END IF;
 
     -- booth existuje, event_id = booths.event_id:
-    SELECT event_id INTO booth_event_id
+    SELECT event_id, booth_type INTO booth_event_id, booth_booth_type
       FROM booths
       WHERE id = NEW.booth_id
       AND deleted_at IS NULL;
@@ -878,21 +909,29 @@ BEGIN
       RAISE EXCEPTION 'employee % does not have any role in the booth', NEW.performed_by;
     END IF;
 
-    IF NEW.transaction_type IN ('deposit', 'withdrawal')
-      AND NOT (employee_booth_role IN ('cashier', 'event_manager') OR employee_is_admin) THEN
-        RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    -- transaction_type je shodné s booth_id
+    IF booth_booth_type = 'cashier' AND NEW.transaction_type != 'balance-change' THEN
+      RAISE EXCEPTION 'invalid booth type % for transaction_type %', booth_booth_type, NEW.transaction_type;
     END IF;
-    IF NEW.transaction_type IN ('payment', 'refund')
-      AND NOT (employee_booth_role IN ('seller', 'cashier', 'event_manager') OR employee_is_admin) THEN
-        RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    IF booth_booth_type = 'seller' AND NOT (NEW.transaction_type IN ('payment', 'refund')) THEN
+      RAISE EXCEPTION 'invalid booth type % for transaction_type %', booth_booth_type, NEW.transaction_type;
     END IF;
 
-    -- transaction_type je shodné s amount_czk
-    IF NEW.transaction_type in ('deposit', 'refund') AND NEW.amount_czk <= 0 THEN
-      RAISE EXCEPTION '% amount must be > 0', NEW.transaction_type;
-    ELSIF (NEW.transaction_type IN ('payment', 'withdrawal')) AND NEW.amount_czk >= 0 THEN
-      RAISE EXCEPTION '% amount must be < 0', NEW.transaction_type;
-    END IF;
+    -- IF NEW.transaction_type IN ('deposit', 'withdrawal')
+    --   AND NOT (employee_booth_role IN ('cashier', 'event_manager') OR employee_is_admin) THEN
+    --     RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    -- END IF;
+    -- IF NEW.transaction_type IN ('payment', 'refund')
+    --   AND NOT (employee_booth_role IN ('seller', 'cashier', 'event_manager') OR employee_is_admin) THEN
+    --     RAISE EXCEPTION 'employee with role % does not have necessary role to perform %', employee_booth_role, NEW.transaction_type;
+    -- END IF;
+
+    -- -- transaction_type je shodné s amount_czk
+    -- IF NEW.transaction_type in ('deposit', 'refund') AND NEW.amount_czk <= 0 THEN
+    --   RAISE EXCEPTION '% amount must be > 0', NEW.transaction_type;
+    -- ELSIF (NEW.transaction_type IN ('payment', 'withdrawal')) AND NEW.amount_czk >= 0 THEN
+    --   RAISE EXCEPTION '% amount must be < 0', NEW.transaction_type;
+    -- END IF;
 
     
     -- wallet existuje, získej potřebné data a zamkni řadu
@@ -942,6 +981,46 @@ CREATE OR REPLACE TRIGGER trg_transactions_block_delete_update_limit_insert
   BEFORE UPDATE OR DELETE OR INSERT ON transactions
   FOR EACH ROW
   EXECUTE FUNCTION transactions_block_delete_update_limit_insert();
+
+
+
+-- ======================== copy_paste_history ========================
+CREATE TABLE IF NOT EXISTS copy_paste_history (
+  id                                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  performed_by                      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+
+  targets_were_new_employees        boolean NOT NULL DEFAULT FALSE,
+  targets_were_new_events           boolean NOT NULL DEFAULT FALSE,
+
+  target_event_ids                  jsonb DEFAULT '[]'::jsonb,
+  target_booth_ids                  jsonb DEFAULT '[]'::jsonb,
+
+  data_to_copy                      jsonb DEFAULT '{}'::jsonb,
+  -- id dalších jsou nové
+  event_ids                         jsonb DEFAULT '[]'::jsonb,
+  booth_ids                         jsonb DEFAULT '[]'::jsonb,
+  product_ids                       jsonb DEFAULT '[]'::jsonb,
+  category_ids                      jsonb DEFAULT '[]'::jsonb,
+  employee_ids                      jsonb DEFAULT '[]'::jsonb,
+
+  employee_event_booth_roles_rows   jsonb DEFAULT '[]'::jsonb,
+  product_booth_link_rows           jsonb DEFAULT '[]'::jsonb,
+  category_booth_link_rows          jsonb DEFAULT '[]'::jsonb,
+  category_product_link_rows        jsonb DEFAULT '[]'::jsonb,
+
+  occurred_at                       timestamptz NOT NULL DEFAULT now()
+);
+
+
+
+-- ======================== undo_copy_paste ========================
+CREATE TABLE IF NOT EXISTS undo_copy_paste (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  copy_paste_history_id   uuid NOT NULL REFERENCES copy_paste_history(id) ON DELETE RESTRICT,
+  was_redone              boolean NOT NULL DEFAULT FALSE,
+  occurred_at             timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_undo_copy_paste_copy_paste_history_id ON undo_copy_paste (copy_paste_history_id);
 
 
 
@@ -1092,7 +1171,7 @@ VALUES
 
 INSERT INTO users (id, first_name, last_name, email, phone_number, other_identifier)
 VALUES 
-('01000000000000000000000000000001', 'Pavel_ev1', 'Struhař', 'pavel.struhař@gmail.com', '+420123456789', NULL),
+('01000000000000000000000000000001', 'Pavel_ev1', 'Struhař', 'pavel.struhar@gmail.com', '+420123456789', NULL),
 ('01000000000000000000000000000002', 'jiRka_ev1', 'PAvel  ', 'jirkA@gmail.com', NULL, NULL),
 ('01000000000000000000000000000003', 'ev_1', 'ev_1  ', 'ev_1@gmail.com', NULL, NULL),
 ('01000000000000000000000000000004', 'ev_2', 'ev_2  ', 'ev_2@gmail.com', NULL, NULL),
@@ -1100,7 +1179,7 @@ VALUES
   
 INSERT INTO wallets (id, event_id, tag_id, owner_id, balance_czk, created_by)
 VALUES
-('80000000000000000000000000000001', '30000000000000000000000000000001', '00A713A700000000','01000000000000000000000000000001', 534056, '10000000000000000000000000000003'),
+('80000000000000000000000000000001', '30000000000000000000000000000001', '00A713A700000000','01000000000000000000000000000001', 99999, '10000000000000000000000000000003'),
 ('80000000000000000000000000000002', '30000000000000000000000000000001', 'jiRka_ev1','01000000000000000000000000000002', -21, '10000000000000000000000000000003'),
 ('80000000000000000000000000000003', '30000000000000000000000000000001', 'ev_1','01000000000000000000000000000003', 0, '10000000000000000000000000000003'),
 ('80000000000000000000000000000004', '30000000000000000000000000000002', 'ev_2','01000000000000000000000000000004', 9348, '10000000000000000000000000000003'),

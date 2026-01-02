@@ -2,7 +2,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } from "../general/date_utils.js";
-import { directTo, markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
+import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 import { cloneData } from "../general/cache.js";
 import { getEmployees } from "../general/employees.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
@@ -196,9 +196,9 @@ document.addEventListener('click', async (event) => {
 
 
   // kliknutí na řádek ho vybere (musí být pod ostatníma, aby nebral kliknutí na jiné věci)
-  const row = event.target.closest('tr');
+  const row = event.target.closest('tr[id]');
   if (row) {
-    selectRow(row, card);
+    handleRowSelection(event);
     return;
   }
 
@@ -206,7 +206,7 @@ document.addEventListener('click', async (event) => {
     return;
   }
   // kliknutí na "nic" odvybere řádek
-  unselectRow(card);
+  unselectRows(card);
 });
 
 
@@ -440,7 +440,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ boothsTable: true });
+      loadPage({ boothsTable: true, productsTable: true, categoriesTable: true });
 
     } catch (err) {
       showAddBoothErrors('unexpected_error');
@@ -799,7 +799,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ productsTable: true });
+      loadPage({ productsTable: true, categoriesTable: true });
 
     } catch (err) {
       showAddProductErrors('unexpected_error');
@@ -820,8 +820,6 @@ document.addEventListener('submit', async (event) => {
 
     const formData = new FormData(editProductForm);
     formData.set('name', formData.get('name').trim());
-
-    console.log(formData.get('image'));
 
     try {
       const response = await fetch('/api/events/products/edit', {
@@ -869,7 +867,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ productsTable: true });
+      loadPage({ productsTable: true, categoriesTable: true });
 
     } catch (err) {
       showEditProductErrors('unexpected_error');
@@ -930,7 +928,7 @@ document.addEventListener('submit', async (event) => {
 
       closeModal();
       resetEventDataCache();
-      loadPage({ productsTable: true });
+      loadPage({ productsTable: true, categoriesTable: true });
 
     } catch (err) {
       showDeleteProductErrors('unexpected_error');
@@ -1140,6 +1138,66 @@ document.addEventListener('input', (event) => {
 });
 
 
+document.addEventListener('keydown', (event) => {
+  handleRowSelection(event);
+  handleCopyPasteOnKeydown(event, eventId).then((result) => {
+    if (['paste', 'undo-paste', 'redo-paste'].includes(result)) {
+      resetEventDataCache();
+      loadPage({
+        boothsTable: true,
+        managersTable: true,
+        employeesTable: true,
+        productsTable: true,
+        categoriesTable: true,
+      });
+    }
+  });
+
+  if (event.key === 'Enter') {
+    const selectedRows = document.querySelectorAll('tr[selected]');
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0];
+      if (row) {
+        const parentTable = row.closest('table');
+
+        if (parentTable.id === 'booths-table') {
+          openEditBoothModal(row);
+          return;
+        } else if (parentTable.id === 'managers-table') {
+          return;
+        } else if (parentTable.id === 'employees-table') {
+          openEditEmployeeModal(row);
+          return;
+        } else if (parentTable.id === 'products-table') {
+          openEditProductModal(row);
+          return;
+        } else if (parentTable.id === 'categories-table') {
+          openEditCategoryModal(row);
+          return;
+        }
+      }
+    }
+  }
+});
+
+
+document.addEventListener('change', (event) => {
+  const boothTypeSelect = event.target.closest('#booth-type-input')
+  if (boothTypeSelect) {
+    const productsRow = document.querySelector('#booth-products-row');
+    const categoriesRow = document.querySelector('#booth-categories-row');
+    const isSellerBooth = boothTypeSelect.value === 'seller';
+    productsRow.style.display = isSellerBooth ? 'flex' : 'none';
+    categoriesRow.style.display = isSellerBooth ? 'flex' : 'none';
+
+    if (!isSellerBooth) {
+      productsRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      categoriesRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    }
+  }
+});
+
+
 async function loadPage({
   eventInfo = false,
   header = false,
@@ -1205,15 +1263,16 @@ function getEventData() {
         throw new ForbiddenError();
       }
 
-      if (res.status === 404) {
+      const resData = await res.json();
+
+      if (res.status === 404 && resData.error === 'event_not_found') {
+        window.location.href = resData.redirect_url;
         throw new EventNotFoundError();
       }
 
       if (!res.ok) {
         throw new UnexpectedError();
       }
-
-      const resData = await res.json();
 
       const data = {
         event: resData.event,
@@ -1590,7 +1649,7 @@ function renderBooths(eventData) {
   });
 
   boothsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné stánky.</td></tr>`;
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 
@@ -1623,7 +1682,7 @@ function renderManagers(eventData) {
   });
 
   managersTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádní manažeři.</td></tr>`;
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 
@@ -1663,7 +1722,7 @@ function renderEmployees(eventData) {
   });
 
   employeesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádní zaměstnanci.</td></tr>`;
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 function renderProducts(eventData) {
@@ -1713,7 +1772,7 @@ function renderProducts(eventData) {
   });
 
   productsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="7">Žádné produkty.</td></tr>`;
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 
@@ -1750,7 +1809,7 @@ function renderCategories(eventData) {
   });
 
   categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné kategorie.</td></tr>`;
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 
@@ -1758,7 +1817,9 @@ function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
   let checkboxesHTML = '';
   const checkBoothIds = checkBooths.map(booth => booth.id);
 
-  booths.forEach(booth => {
+  const sortedBooths = booths.toSorted((a, b) => { return a.name.localeCompare(b.name) });
+
+  sortedBooths.forEach(booth => {
     if (boothType !== 'all' && booth.booth_type !== boothType) {
       return;
     }
@@ -1787,7 +1848,9 @@ function makeCategoriesPicker(categories, checkCategories) {
   let checkboxesHTML = '';
   const checkCategoryIds = checkCategories.map(category => category.id);
 
-  categories.forEach(category => {
+  const sortedCategories = categories.toSorted((a, b) => { return a.name.localeCompare(b.name) });
+
+  sortedCategories.forEach(category => {
     const checkedStr = checkCategoryIds.includes(category.id) ? 'checked' : ''
 
     checkboxesHTML += `
@@ -1803,6 +1866,33 @@ function makeCategoriesPicker(categories, checkCategories) {
     <fieldset>
       <legend>Kategorie</legend>
       ${checkboxesHTML || '<div class="muted">Žádné kategorie k dispozici.</div>'}
+    </fieldset>
+  `;
+}
+
+
+function makeProductsPicker(products, checkProducts = []) {
+  let checkboxesHTML = '';
+  const checkProductIds = checkProducts.map(product => product.id);
+
+  const sortedProducts = products.toSorted((a, b) => { return a.name.localeCompare(b.name) });
+
+  sortedProducts.forEach(product => {
+    const checkedStr = checkProductIds.includes(product.id) ? 'checked' : ''
+
+    checkboxesHTML += `
+      <div class="checkbox-container">
+        <label class="checkbox-label">
+          <input type="checkbox" name="products" value="${product.id}" ${checkedStr}> ${escapeHTML(product.name)}
+        </label>
+      </div>
+    `;
+  });
+
+  return `
+    <fieldset>
+      <legend>Produkty</legend>
+      ${checkboxesHTML || '<div class="muted">Žádné produkty k dispozici.</div>'}
     </fieldset>
   `;
 }
@@ -1907,7 +1997,15 @@ async function openDeleteEventModal() {
 }
 
 
-function openAddBoothModal() {
+async function openAddBoothModal() {
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+
+  const products = eventData.products;
+  const categories = eventData.categories;
+  const productsPickerStr = makeProductsPicker(products);
+  const categoriesPickerStr = makeCategoriesPicker(categories, []);
+
   const html = `
         <header>
           <h2>Přidat stánek</h2>
@@ -1931,6 +2029,14 @@ function openAddBoothModal() {
             </select>
             <div id="add-booth-type-error" class="form-error"></div>
           </div>
+          <div class="form-row" id="booth-products-row">
+            ${productsPickerStr}
+            <div id="add-booth-products-error" class="form-error"></div>
+          </div>
+          <div class="form-row" id="booth-categories-row">
+            ${categoriesPickerStr}
+            <div id="add-booth-categories-error" class="form-error"></div>
+          </div>
           
           <div class="form-row">
             <div id="add-booth-general-error" class="form-error"></div>
@@ -1943,6 +2049,21 @@ function openAddBoothModal() {
         </form>
       `;
   openModal(html);
+
+
+
+  const boothTypeSelect = document.querySelector('#booth-type-input');
+  const productsRow = document.querySelector('#booth-products-row');
+  const categoriesRow = document.querySelector('#booth-categories-row');
+
+  const isSellerBooth = boothTypeSelect.value === 'seller';
+  productsRow.style.display = isSellerBooth ? 'flex' : 'none';
+  categoriesRow.style.display = isSellerBooth ? 'flex' : 'none';
+
+  if (!isSellerBooth) {
+    productsRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    categoriesRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  }
 }
 
 
@@ -1952,6 +2073,16 @@ async function openEditBoothModal(row) {
   if (!eventData) return;
   const booth = eventData.booths.find(booth => booth.id === id);
   if (!booth) return;
+
+  const boothProducts = eventData.products.filter(p =>
+    p.booths.some(b => b.id === id)
+  );
+  const boothCategories = eventData.categories.filter(c =>
+    c.booths.some(b => b.id === id)
+  );
+
+  const productsPickerStr = makeProductsPicker(eventData.products, boothProducts);
+  const categoriesPickerStr = makeCategoriesPicker(eventData.categories, boothCategories);
 
   const html = `
     <header>
@@ -1969,6 +2100,19 @@ async function openEditBoothModal(row) {
         <input id="booth-name-input" name="name" type="text" value="${escapeHTML(booth.name)}"/>
         <div id="edit-booth-name-error" class="form-error"></div>
       </div>
+      <div class="form-row">
+        <label for="booth-type-display">Typ</label>
+        <input id="booth-type-display" type="text" value="${escapeHTML(boothTypeToDisplay(booth.booth_type))}" disabled/>
+        <div class="muted" style="font-size: 12px; margin-top: -2px;">Typ stánku nelze změnit po vytvoření</div>
+      </div>
+      <div class="form-row" id="booth-products-row">
+        ${productsPickerStr}
+        <div id="edit-booth-products-error" class="form-error"></div>
+      </div>
+      <div class="form-row" id="booth-categories-row">
+        ${categoriesPickerStr}
+        <div id="edit-booth-categories-error" class="form-error"></div>
+      </div>
 
       <div class="form-row">
         <div id="edit-booth-general-error" class="form-error"></div>
@@ -1981,6 +2125,13 @@ async function openEditBoothModal(row) {
     </form>
   `;
   openModal(html);
+
+  if (booth.booth_type === 'cashier') {
+    const productsRow = document.querySelector('#booth-products-row');
+    const categoriesRow = document.querySelector('#booth-categories-row');
+    productsRow.style.display = 'none';
+    categoriesRow.style.display = 'none';
+  }
 }
 
 
@@ -2331,7 +2482,9 @@ async function openAddCategoryModal() {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
   const booths = eventData.booths;
+  const products = eventData.products;
   const boothsPickerStr = makeBoothsPicker(booths, [], 'seller');
+  const productsPickerStr = makeProductsPicker(products);
 
   const html = `
         <header>
@@ -2351,6 +2504,10 @@ async function openAddCategoryModal() {
           <div class="form-row">
             ${boothsPickerStr}
             <div id="add-category-booths-error" class="form-error"></div>
+          </div>
+          <div class="form-row">
+            ${productsPickerStr}
+            <div id="add-category-products-error" class="form-error"></div>
           </div>
 
           <div class="form-row">
@@ -2373,7 +2530,14 @@ async function openEditCategoryModal(row) {
   if (!eventData) return;
   const category = eventData.categories.find(category => category.id === id);
   if (!category) return;
+
+  // Get products for this category
+  const categoryProducts = eventData.products.filter(p =>
+    p.categories.some(c => c.id === id)
+  );
+
   const boothsPickerStr = makeBoothsPicker(eventData.booths, category.booths, 'seller');
+  const productsPickerStr = makeProductsPicker(eventData.products, categoryProducts);
 
   const html = `
           <header>
@@ -2394,6 +2558,10 @@ async function openEditCategoryModal(row) {
             <div class="form-row">
               ${boothsPickerStr}
               <div id="edit-category-booths-error" class="form-error"></div>
+            </div>
+            <div class="form-row">
+              ${productsPickerStr}
+              <div id="edit-category-products-error" class="form-error"></div>
             </div>
 
             <div class="form-row">
@@ -2528,7 +2696,7 @@ function showEditEventErrors(error, detail) {
   }
   if (errorStr.includes('name must start and end with')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not contain')) {
@@ -2591,6 +2759,8 @@ function showDeleteEventErrors(error, detail) {
 function showAddBoothErrors(error, detail) {
   const nameError = document.querySelector('#add-booth-name-error');
   const typeError = document.querySelector('#add-booth-type-error');
+  const productsError = document.querySelector('#add-booth-products-error');
+  const categoriesError = document.querySelector('#add-booth-categories-error');
   const generalError = document.querySelector('#add-booth-general-error');
 
   const setErr = (el, text) => {
@@ -2627,6 +2797,21 @@ function showAddBoothErrors(error, detail) {
     case 'invalid_type':
       setErr(typeError, 'Neplatný typ.');
       return;
+    case 'product_not_found':
+      setErr(productsError, 'Jeden z produktů nebyl nalezen.');
+      return;
+    case 'invalid_product_id':
+      setErr(productsError, 'ID produktu není správné.');
+      return;
+    case 'category_not_found':
+      setErr(categoriesError, 'Jedna z kategorií nebyla nalezena.');
+      return;
+    case 'invalid_category_id':
+      setErr(categoriesError, 'ID kategorie není správné.');
+      return;
+    case 'cashier_cannot_have_products_or_categories':
+      setErr(generalError, 'Pokladna nemůže mít přiřazeny produkty nebo kategorie.');
+      return;
     case 'db_integrity_error':
       if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
         setErr(nameError, 'Název už má jiný stánek v této akci.');
@@ -2652,7 +2837,7 @@ function showAddBoothErrors(error, detail) {
   }
   if (errorStr.includes('name must start and end with')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not contain')) {
@@ -2675,6 +2860,8 @@ function showAddBoothErrors(error, detail) {
 
 function showEditBoothErrors(error, detail) {
   const nameError = document.querySelector('#edit-booth-name-error');
+  const productsError = document.querySelector('#edit-booth-products-error');
+  const categoriesError = document.querySelector('#edit-booth-categories-error');
   const generalError = document.querySelector('#edit-booth-general-error');
 
   const setErr = (el, text) => {
@@ -2708,6 +2895,21 @@ function showEditBoothErrors(error, detail) {
     case 'missing_name':
       setErr(nameError, 'Chybí název.');
       return;
+    case 'product_not_found':
+      setErr(productsError, 'Jeden z produktů nebyl nalezen.');
+      return;
+    case 'invalid_product_id':
+      setErr(productsError, 'ID produktu není správné.');
+      return;
+    case 'category_not_found':
+      setErr(categoriesError, 'Jedna z kategorií nebyla nalezena.');
+      return;
+    case 'invalid_category_id':
+      setErr(categoriesError, 'ID kategorie není správné.');
+      return;
+    case 'cashier_cannot_have_products_or_categories':
+      setErr(generalError, 'Pokladna nemůže mít přiřazeny produkty nebo kategorie.');
+      return;
     case 'db_integrity_error':
       if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
         setErr(nameError, 'Název už má jiný stánek v této akci.');
@@ -2733,7 +2935,7 @@ function showEditBoothErrors(error, detail) {
   }
   if (errorStr.includes('name must start and end with')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not contain')) {
@@ -3156,7 +3358,7 @@ function showEditProductErrors(error, detail) {
   }
   if (errorStr.includes('name must start and end with')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not contain')) {
@@ -3235,6 +3437,7 @@ function showDeleteProductErrors(error, detail) {
 function showAddCategoryErrors(error, detail) {
   const nameError = document.querySelector('#add-category-name-error');
   const boothsError = document.querySelector('#add-category-booths-error');
+  const productsError = document.querySelector('#add-category-products-error');
   const generalError = document.querySelector('#add-category-general-error');
 
   const setErr = (el, text) => {
@@ -3274,6 +3477,12 @@ function showAddCategoryErrors(error, detail) {
     case 'invalid_booth_id':
       setErr(boothsError, 'ID stánku není správné.');
       return;
+    case 'product_not_found':
+      setErr(productsError, 'Jeden z produktů nebyl nalezen.');
+      return;
+    case 'invalid_product_id':
+      setErr(productsError, 'ID produktu není správné.');
+      return;
     case 'db_integrity_error':
       if (detail && detail.includes('unique_index_categories_name')) {
         setErr(nameError, 'Název už má jiná kategorie.');
@@ -3305,6 +3514,7 @@ function showAddCategoryErrors(error, detail) {
 function showEditCategoryErrors(error, detail) {
   const nameError = document.querySelector('#edit-category-name-error');
   const boothsError = document.querySelector('#edit-category-booths-error');
+  const productsError = document.querySelector('#edit-category-products-error');
   const generalError = document.querySelector('#edit-category-general-error');
 
   const setErr = (el, text) => {
@@ -3343,6 +3553,12 @@ function showEditCategoryErrors(error, detail) {
       return;
     case 'invalid_booth_id':
       setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'product_not_found':
+      setErr(productsError, 'Jeden z produktů nebyl nalezen.');
+      return;
+    case 'invalid_product_id':
+      setErr(productsError, 'ID produktu není správné.');
       return;
     case 'db_integrity_error':
       if (detail && detail.includes('unique_index_categories_name')) {

@@ -8,39 +8,12 @@
 </head>
 
 <body>
-  <input>
   <script>
-    async function errorFunc() {
-      throw new Error('error func');
-    }
-    async function returnFunc(resolve) {
-      return 'return func';
-    }
-    async function resolveFunc(resolve) {
-      resolve('resolve func');
-    }
-    async function rejectFunc(reject) {
-      reject('reject func');
-    }
+    const a = [0, 1, 2, 3, 4, 5];
+    
 
-    async function func() {
-      const [er, ret, res, rej] = await Promise.all([
-        errorFunc().catch(() => {}),
-        returnFunc(),
-        new Promise((resolve, reject) => {
-          resolveFunc(resolve);
-        }),
-        new Promise((resolve, reject) => {
-          rejectFunc(reject);
-        }).catch(() => {})
-      ]);
-
-      console.log('error', er);
-      console.log('return', ret);
-      console.log('response', res);
-      console.log('reject', rej);
-    }
-    func();
+    console.log(Array(a));
+    console.log(new Array(a));
   </script>
 </body>
 

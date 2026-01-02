@@ -43,7 +43,7 @@ def get_active_events_for_employee():
                     SELECT id, name
                     FROM events
                     WHERE start_at IS NOT NULL
-                    AND start_at < now()
+                    AND start_at <= now()
                     AND (end_at IS NULL OR end_at > now())
                     AND deleted_at IS NULL
                     ORDER BY name'''
@@ -55,7 +55,7 @@ def get_active_events_for_employee():
                     FROM events
                     JOIN employee_event_booth_roles AS link ON link.event_id = events.id
                     WHERE events.start_at IS NOT NULL
-                    AND events.start_at < now()
+                    AND events.start_at <= now()
                     AND (events.end_at IS NULL OR events.end_at > now())
                     AND events.deleted_at IS NULL
                     AND link.employee_id = %s

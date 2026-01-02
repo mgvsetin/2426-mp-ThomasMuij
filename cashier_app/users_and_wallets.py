@@ -101,7 +101,7 @@ def add_user():
     
     ok, errors = validate_first_or_last_name(first_name)
     if not ok:
-        return jsonify(error=errors[0]), 400
+        return jsonify(error=errors[0], detail='first_name_error'), 400
     params['first_name'] = first_name
     
     if not last_name:
@@ -109,7 +109,7 @@ def add_user():
 
     ok, errors = validate_first_or_last_name(last_name)
     if not ok:
-        return jsonify(error=errors[0]), 400
+        return jsonify(error=errors[0], detail='last_name_error'), 400
     params['last_name'] = last_name
 
     if email:    
@@ -143,18 +143,19 @@ def add_user():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
+                user_id = cur.execute(
                     f'''
                     INSERT INTO users
                     ({cols_str})
-                    VALUES ({col_values_placeholders})''',
-                    params)
+                    VALUES ({col_values_placeholders})
+                    RETURNING id''',
+                    params).fetchone()['id']
     except IntegrityError as e:
         # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
         # email už existuje: unique_index_users_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
-    return jsonify(), 200
+    return jsonify(user_id=user_id), 200
 
 
 @api_bp.route('/edit', methods=('POST',))
@@ -177,12 +178,12 @@ def edit_user():
             return jsonify(error='invalid_booth_type'), 400
         
     try:
-        user_id = UUID(request.form.get('id'))
+        user_id = UUID(request.form.get('user-id'))
     except ValueError:
-        return jsonify(error='invalid_id'), 400
+        return jsonify(error='invalid_user_id'), 400
     
     if not user_id:
-        return jsonify(error='missing_id'), 400
+        return jsonify(error='missing_user_id'), 400
     
     first_name = request.form.get('first-name', '').strip().capitalize()
     last_name = request.form.get('last-name', '').strip().capitalize()
@@ -198,7 +199,7 @@ def edit_user():
     
     ok, errors = validate_first_or_last_name(first_name)
     if not ok:
-        return jsonify(error=errors[0]), 400
+        return jsonify(error=errors[0], detail='first_name_error'), 400
     params['first_name'] = first_name
     
     if not last_name:
@@ -206,7 +207,7 @@ def edit_user():
 
     ok, errors = validate_first_or_last_name(last_name)
     if not ok:
-        return jsonify(error=errors[0]), 400
+        return jsonify(error=errors[0], detail='last_name_error'), 400
     params['last_name'] = last_name
 
     params['email'] = None
@@ -293,12 +294,12 @@ def delete_user():
             return jsonify(error='invalid_booth_type'), 400
         
     try:
-        user_id = UUID(request.form.get('id'))
+        user_id = UUID(request.form.get('user-id'))
     except ValueError:
-        return jsonify(error='invalid_id'), 400
+        return jsonify(error='invalid_user_id'), 400
     
     if not user_id:
-        return jsonify(error='missing_id'), 400
+        return jsonify(error='missing_user_id'), 400
 
     try:
         with get_pool().connection() as conn:
@@ -310,6 +311,8 @@ def delete_user():
                     WHERE id = %s
                     AND deleted_at IS NULL''',
                     (user_id,))
+                
+                # wallets od user se smažou sami
                 
                 rows_affected = cur.rowcount
 
@@ -326,5 +329,160 @@ def delete_user():
     return jsonify(), 200
 
 
+api_wallets_bp = Blueprint('wallets', __name__, url_prefix='/wallets')
+api_bp.register_blueprint(api_wallets_bp)
+
+
+@api_wallets_bp.route('/create', methods=('POST',))
 def add_wallet():
-    pass
+    logged_employee = load_logged_in_employee()
+    selected_event = load_selected_event()
+    selected_booth = load_selected_booth()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if selected_event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    if selected_booth is None:
+        return jsonify(error='no_selected_booth'), 400
+    
+    if selected_booth['booth_type'] != 'cashier':
+        return jsonify(error='invalid_booth_type'), 400
+    
+
+    try:
+        owner_id = UUID(request.form.get('user-id'))
+    except ValueError:
+        return jsonify(error='invalid_user_id'), 400
+    
+    if not owner_id:
+        return jsonify(error='missing_user_id'), 400
+    
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:            
+            owner = cur.execute(
+                '''
+                SELECT 1
+                FROM users
+                WHERE id = %s
+                AND deleted_at IS NULL''',
+                (owner_id,)).fetchone()
+    
+            if not owner:
+                return jsonify(error='owner_not_found'), 400
+
+    tag_id = request.form.get('tag-id', '').strip()
+    change_balance_by = request.form.get('change-balance-by', '')
+    new_balance = request.form.get('new-balance', '')
+
+    params = {
+        'created_by': logged_employee['id'],
+        'event_id': selected_event['id'],
+        'owner_id': owner_id
+        }
+
+    if not tag_id:
+        return jsonify(error='missing_tag_id'), 400
+    
+    params['tag_id'] = tag_id
+
+    try:
+        change_balance_by = float(change_balance_by)
+    except (TypeError, ValueError):
+        return jsonify(error='change_balance_by_must_be_a_number'), 400
+    
+    if not change_balance_by.is_integer():
+        return jsonify(error='change_balance_by_must_be_a_whole_number'), 400
+
+    if change_balance_by < -1_000_000:
+        return jsonify(error=f"change_balance_by_must_be_more_than_or_equal_to_-1000000"), 400
+    if change_balance_by > 1_000_000:
+        return jsonify(error=f"change_balance_by_must_be_less_than_or_equal_to_1000000"), 400
+    
+    try:
+        new_balance = float(new_balance)
+    except (TypeError, ValueError):
+        return jsonify(error='new_balance_must_be_a_number'), 400
+    
+    if not new_balance.is_integer():
+        return jsonify(error='new_balance_must_be_a_whole_number'), 400
+
+    if new_balance < -1_000_000:
+        return jsonify(error=f"new_balance_must_be_more_than_or_equal_to_-1000000"), 400
+    if new_balance > 1_000_000:
+        return jsonify(error=f"new_balance_must_be_less_than_or_equal_to_1000000"), 400
+    
+    if change_balance_by != new_balance:
+        return jsonify(error=f"change_balance_by_and_new_balance_do_not_match"), 400
+    
+    params['balance_czk'] = new_balance
+
+    cols_str = ', '.join(params.keys())
+    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    INSERT INTO wallets
+                    ({cols_str})
+                    VALUES ({col_values_placeholders})''',
+                    params)
+    except IntegrityError as e: #
+        # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
+        return jsonify(error='db_integrity_error', detail=str(e)), 400
+
+    return jsonify(), 200
+
+
+@api_wallets_bp.route('/return', methods=('POST',))
+def return_wallet():
+    logged_employee = load_logged_in_employee()
+    selected_event = load_selected_event()
+    selected_booth = load_selected_booth()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if selected_event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    if selected_booth is None:
+        return jsonify(error='no_selected_booth'), 400
+    
+    if selected_booth['booth_type'] != 'cashier':
+        return jsonify(error='invalid_booth_type'), 400
+
+    tag_id = request.form.get('tag-id', '').strip()
+    
+    if not tag_id:
+        return jsonify(error='missing_tag_id'), 400
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    UPDATE wallets
+                    SET balance_czk = 0, 
+                        deleted_at = now()
+                    WHERE tag_id = %s
+                    AND deleted_at IS NULL''',
+                    (tag_id,))
+                
+                rows_affected = cur.rowcount
+
+                if rows_affected > 1:
+                    raise RuntimeError(f'multiple rows deleted for tag_id {tag_id}')
+    except RuntimeError:
+        current_app.logger.exception('multiple rows deleted for wallet tag id %s', tag_id)
+        return jsonify(error='internal_server_error'), 500
+
+
+    if rows_affected == 0:
+        return jsonify(error='wallet_not_found'), 404
+
+    return jsonify(), 200

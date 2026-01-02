@@ -8,9 +8,9 @@ import { getSessionInfo } from "../general/session.js";
 import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise } from "./cards.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners } from "./phone_number_input.js";
-import { selectRow, unselectRow } from "../general/table_utils.js";
-import { editUserFormOnChange, openDeleteUserModal, openUserCardsModal, renderUsers, selectUserForUpdate, setOrder, unselectUserForUpdate } from "./users.js";
-import { updateWalletBalance } from "./wallets.js";
+import { handleRowSelection, unselectRows } from "../general/table_utils.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { getWalletByTag, getWallets, resetWalletsCache, updateWalletBalance } from "./wallets.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
@@ -72,7 +72,7 @@ async function loadPage({
 
 
 async function chooseAndLoadPage() {
-  const sessionInfo = await getSessionInfo().catch(() => {});
+  const sessionInfo = await getSessionInfo().catch(() => { });
 
   if (!sessionInfo) {
     return; ///// display some error
@@ -82,6 +82,7 @@ async function chooseAndLoadPage() {
     pageContainer.setAttribute('show', sessionInfo.booth.booth_type === 'seller' ? 'seller' : 'cashier');
     await Promise.all([
       setUpCardReading(false),
+      editUserFormOnChange(),
       loadPage({
         products: true,
         summary: true,
@@ -194,12 +195,6 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  if (event.target.matches('#open-user-cards-modal')) {
-    const userId = userIdInput.value.trim();
-    if (userId) openUserCardsModal(userId);
-  }
-
-
   if (event.target.matches('#pay-error')) {
     clearPayError();
     return;
@@ -253,15 +248,22 @@ document.addEventListener('click', async (event) => {
       amount_czk -= product.price * product.quantity;
     });
 
+    const idempotencyKey = crypto.randomUUID();
+
     const formData = new FormData();
     formData.set('tag-id', lastReadCardId);
-    formData.set('transaction-type', 'payment');
+    // formData.set('transaction-type', 'payment');
     formData.set('products-info', JSON.stringify(productsInfo));
     formData.set('amount-czk', amount_czk);
+    formData.set('idempotency-key', idempotencyKey);
+
+    const headers = new Headers();
+    headers.set('Idempotency-Key', idempotencyKey);
 
     try {
-      const response = await fetch('api/transactions/make', {
-        method: 'post',
+      const response = await fetch('/api/transactions/make-payment', {
+        method: 'POST',
+        headers,
         body: formData
       });
 
@@ -272,6 +274,12 @@ document.addEventListener('click', async (event) => {
       }
 
       const data = await response.json();
+
+      if (response.status === 409 && data.error === 'idempotency_key_conflict') {
+        showPayError('idempotency_key_conflict', data.detail);
+        payButton.disabled = false;
+        return;
+      }
 
       if (response.status === 400) {
         showPayError(data.error || 'invalid_request', data.detail);
@@ -342,15 +350,6 @@ document.addEventListener('click', async (event) => {
     }
     await unselectEventBooth();
     chooseAndLoadPage();
-    loadPage({
-      categories: true,
-      products: true,
-      summary: true,
-      cardInfo: true,
-      users: true,
-      // sidebar: true,
-      header: true
-    });
     return;
   }
 
@@ -388,6 +387,83 @@ document.addEventListener('click', async (event) => {
     await unselectUserForUpdate();
   }
 
+  if (event.target.matches('#open-user-cards-modal')) {
+    const userId = userIdInput.value.trim();
+    if (userId) openUserCardsModal(userId);
+  }
+
+  const userWalletLi = event.target.closest('li[tag-id]');
+  if (userWalletLi) {
+    openUserCardModal(userWalletLi);
+  }
+
+  const backToUserCardsBtn = event.target.closest('#back-to-user-cards');
+  if (backToUserCardsBtn) {
+    openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'), backToUserCardsBtn.closest('.modal'));
+  }
+
+  if (event.target.matches('#return-card-button')) {
+    event.preventDefault();
+    const returnCardButton = event.target;
+    const editWalletForm = returnCardButton.closest('#edit-wallet-form');
+    const saveButton = editWalletForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+    returnCardButton.disabled = true;
+
+    clearFormErrors();
+
+    const formData = new FormData(editWalletForm);
+
+    try {
+      const response = await fetch('/api/users/wallets/return', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 404 && data.error === 'wallet_not_found') {
+        showUserFormErrors('wallet_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditWalletFormErrors(data.error || 'unexpected_error', data.detail);
+        saveButton.disabled = false;
+        returnCardButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditWalletFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        returnCardButton.disabled = false;
+        return;
+      }
+    } catch (err) {
+      showEditWalletFormErrors('unexpected_error');
+      saveButton.disabled = false;
+      returnCardButton.disabled = false;
+      return;
+    }
+
+    editWalletForm.closest('.overlay')?.remove();
+    resetWalletsCache();
+    if (lastReadCardId === formData.get('tag-id').trim()) {
+      editUserFormOnChange();
+    }
+    saveButton.disabled = false;
+    returnCardButton.disabled = false;
+    return;
+  }
+
   // klinutí na span v záhlaví
   // nastavuje řazení
   const headerEl = event.target.closest('th');
@@ -400,9 +476,9 @@ document.addEventListener('click', async (event) => {
   }
 
   // kliknutí na řádek ho vybere (musí být pod ostatníma, aby nebral kliknutí na jiné věci)
-  const row = event.target.closest('tr');
+  const row = event.target.closest('tr[id]');
   if (row) {
-    selectRow(row, usersTableBody);
+    handleRowSelection(event);
     return;
   }
 
@@ -411,7 +487,7 @@ document.addEventListener('click', async (event) => {
     return;
   }
   // kliknutí na "nic" odvybere řádek
-  unselectRow(usersTableBody);
+  unselectRows();
 });
 
 
@@ -489,19 +565,359 @@ document.addEventListener('submit', async (event) => {
         products: true,
         summary: true,
         cardInfo: true,
-        users: true,
         // sidebar: true,
         header: true
       });
     } else if (booth_type === 'cashier') {
       pageContainer.setAttribute('show', 'cashier');
+      editUserFormOnChange();
+      loadPage({
+        cardInfo: true,
+        users: true,
+        // sidebar: true,
+        header: true
+      });
     }
     return;
   }
-})
 
 
-document.addEventListener('input', async (event) => {
+  if (event.target.matches('#user-form')) {
+    event.preventDefault();
+    const userForm = event.target;
+    const saveButton = userForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+    const userJob = saveButton.getAttribute('user-job');
+    const cardJob = saveButton.getAttribute('card-job');
+
+    clearFormErrors();
+
+    const formData = new FormData(userForm);
+    if (cardJob) formData.set('tag-id', lastReadCardId);
+
+
+    if (userJob === 'create') {
+      try {
+        const response = await fetch('/api/users/create', {
+          method: 'post',
+          body: formData
+        });
+
+        if (response.status === 401) {
+          const json = await response.json();
+          window.location.href = json.redirect_url;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (response.status === 400) {
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (!response.ok) {
+          showUserFormErrors('unexpected_error');
+          saveButton.disabled = false;
+          return;
+        }
+
+        formData.set('user-id', data.user_id);
+
+      } catch (err) {
+        showUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+    } else if (userJob === 'edit') {
+      try {
+        const response = await fetch('/api/users/edit', {
+          method: 'post',
+          body: formData
+        });
+
+        if (response.status === 401) {
+          const json = await response.json();
+          window.location.href = json.redirect_url;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (response.status === 404 && data.error === 'user_not_found') {
+          showUserFormErrors('user_not_found');
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (response.status === 400) {
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (!response.ok) {
+          showUserFormErrors('unexpected_error');
+          saveButton.disabled = false;
+          return;
+        }
+      } catch (err) {
+        showUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+    }
+
+    if (userJob) {
+      resetUsersCache();
+      loadPage({ users: true });
+    }
+
+    if (cardJob === 'assign') {
+      try {
+        const response = await fetch('/api/users/wallets/create', {
+          method: 'post',
+          body: formData
+        });
+
+        if (response.status === 401) {
+          const json = await response.json();
+          window.location.href = json.redirect_url;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (response.status === 400) {
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (!response.ok) {
+          showUserFormErrors('unexpected_error');
+          saveButton.disabled = false;
+          return;
+        }
+      } catch (err) {
+        showUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+    } else if (cardJob === 'change-balance') {
+      const idempotencyKey = crypto.randomUUID();
+      formData.set('idempotency-key', idempotencyKey);
+
+      const headers = new Headers();
+      headers.set('Idempotency-Key', idempotencyKey);
+
+      try {
+        const response = await fetch('/api/transactions/make-balance-change', {
+          method: 'POST',
+          headers,
+          body: formData
+        });
+
+        if (response.status === 401) {
+          const json = await response.json();
+          window.location.href = json.redirect_url;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (response.status === 400) {
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (!response.ok) {
+          showUserFormErrors('unexpected_error');
+          saveButton.disabled = false;
+          return;
+        }
+      } catch (err) {
+        showUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+    } else if (cardJob === 'return') {
+      try {
+        const response = await fetch('/api/users/wallets/return', {
+          method: 'post',
+          body: formData
+        });
+
+        if (response.status === 401) {
+          const json = await response.json();
+          window.location.href = json.redirect_url;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (response.status === 400) {
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (response.status === 404 && data.error === 'wallet_not_found') {
+          showUserFormErrors('wallet_not_found');
+          saveButton.disabled = false;
+          return;
+        }
+
+        if (!response.ok) {
+          showUserFormErrors('unexpected_error');
+          saveButton.disabled = false;
+          return;
+        }
+      } catch (err) {
+        showUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+    }
+
+    if (cardJob) {
+      resetWalletsCache();
+    }
+
+    if (userJob || cardJob) {
+      unselectUserForUpdate();
+      removeReadCard();
+
+      // figure out what happens if user gets created but there is a problem with wallet
+
+      // make sure stuff like user deletion deletes the wallets too
+    }
+    saveButton.disabled = false;
+    return;
+  }
+
+  if (event.target.matches('#delete-user-form')) {
+    event.preventDefault();
+    const deleteUserForm = event.target;
+    const saveButton = deleteUserForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearFormErrors();
+
+    const formData = new FormData(deleteUserForm);
+
+    try {
+      const response = await fetch('/api/users/delete', {
+        method: 'delete',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 404 && data.error === 'user_not_found') {
+        showDeleteUserFormErrors('user_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showDeleteUserFormErrors(data.error || 'unexpected_error', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showDeleteUserFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+    } catch (err) {
+      showDeleteUserFormErrors('unexpected_error');
+      saveButton.disabled = false;
+      return;
+    }
+
+    deleteUserForm.closest('.overlay')?.remove();
+    resetUsersCache();
+    resetWalletsCache();
+
+    if (selectedUserForUpdate && selectedUserForUpdate.id === formData.get('user-id')) {
+      await unselectUserForUpdate();
+    }
+
+    loadPage({ users: true });
+    saveButton.disabled = false;
+    return;
+  }
+
+  if (event.target.matches('#edit-wallet-form')) {
+    event.preventDefault();
+    const editWalletForm = event.target;
+    const saveButton = editWalletForm.querySelector('button[type=submit]');
+    const returnCardButton = editWalletForm.querySelector('#return-card-button');
+    saveButton.disabled = true;
+    returnCardButton.disabled = true;
+
+    clearFormErrors();
+
+    const formData = new FormData(editWalletForm);
+
+    try {
+      const response = await fetch('/api/transactions/make-balance-change', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 400) {
+        showEditWalletFormErrors(data.error || 'unexpected_error', data.detail);
+        saveButton.disabled = false;
+        returnCardButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditWalletFormErrors('unexpected_error');
+        saveButton.disabled = false;
+        returnCardButton.disabled = false;
+        return;
+      }
+    } catch (err) {
+      showEditWalletFormErrors('unexpected_error');
+      saveButton.disabled = false;
+      returnCardButton.disabled = false;
+      return;
+    }
+
+    editWalletForm.closest('.overlay')?.remove();
+    resetWalletsCache();
+    if (lastReadCardId === formData.get('tag-id').trim()) {
+      editUserFormOnChange();
+    }
+    saveButton.disabled = false;
+    returnCardButton.disabled = false;
+    return;
+  }
+});
+
+
+document.addEventListener('input', (event) => {
   if (event.target === productsSearchBar) {
     loadPage({
       products: true
@@ -521,6 +937,8 @@ document.addEventListener('input', async (event) => {
       users: true
     });
   }
+
+  editWalletInputListeners(event);
 })
 
 
@@ -539,6 +957,11 @@ sellerPage.addEventListener('focusout', (event) => {
 
 navigator.serial.addEventListener('connect', (event) => {
   setUpCardReading(false);
+});
+
+
+document.addEventListener('keydown', (event) => {
+  handleRowSelection(event);
 });
 
 
@@ -570,7 +993,7 @@ function showPayError(error) {
     case 'no_selected_booth':
       setErr('Něco se nepovedlo.');
       return;
-    case 'invalid_booth_type_for_transaction_type':
+    case 'invalid_booth_type':
       setErr('Něco se nepovedlo.');
       return;
     case 'wallet_not_found':
@@ -588,13 +1011,13 @@ function showPayError(error) {
     case 'resulting_wallet_balance_czk_is_too_high':
       setErr('Výsledná cená na kartě je moc velká.');
       return;
-    case 'invalid_transaction_type':
-      setErr('Něco se nepovedlo.');
-      return;
-    case 'invalid_transaction_type_for_amount_czk':
-      setErr('Něco se nepovedlo.');
-      return;
     case 'invalid_products_info':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'missing_idempotency_key':
+      setErr('Něco se nepovedlo.');
+      return;
+    case 'idempotency_key_data_conflict':
       setErr('Něco se nepovedlo.');
       return;
     default:

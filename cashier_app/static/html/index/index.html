@@ -91,7 +91,7 @@
               <tr>
                 <th class="counter-header">#</th>
                 <th id="first-name-header">
-                  <div><span>Jméno (show the users wallets somewhere?)</span></div>
+                  <div><span>Jméno</span></div>
                 </th>
                 <th id="last-name-header">
                   <div><span>Příjmení</span></div>
@@ -135,7 +135,7 @@
           </header>
           <form id="user-form" autocomplete="off">
 
-            <input type="hidden" id="user-id-input" name="id">
+            <input type="hidden" id="user-id-input" name="user-id">
 
             <div class="form-row">
               <label for="first-name-input">Jméno</label>
@@ -172,6 +172,7 @@
                 </div>
                 <input id="phone-number-input" class="phone-number-input" name="phone-number" type="tel" />
               </div>
+              <div id="phone-number-error" class="form-error"></div>
             </div>
 
             <div class="form-row">

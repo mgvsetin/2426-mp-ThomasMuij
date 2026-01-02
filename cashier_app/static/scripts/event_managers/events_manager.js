@@ -4,7 +4,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
-import { markSelectedRow, selectRow, unselectRow } from "../general/table_utils.js";
+import { handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
 const searchBar = document.querySelector('#search-bar');
 const addEventButton = document.querySelector('#add-event-button');
@@ -25,7 +25,7 @@ const orderBy = { key: '', ascending: true }; // key: 'start_at', 'end_at', 'cre
 
 
 async function addAddEventButton() {
-  const sessionInfo = await getSessionInfo().catch(() => {});
+  const sessionInfo = await getSessionInfo().catch(() => { });
   if (!sessionInfo) return;
   if (!sessionInfo.employee.is_admin) return;
   addEventButton.classList.add('show');
@@ -111,9 +111,9 @@ document.addEventListener('click', (event) => {
   }
 
   // kliknutí na řádek ho vybere
-  const row = event.target.closest('tr[data-event]');
+  const row = event.target.closest('tr[id]');
   if (row) {
-    selectRow(row, card);
+    handleRowSelection(event);
     return;
   }
 
@@ -128,7 +128,7 @@ document.addEventListener('click', (event) => {
     return;
   }
   // kliknutí na "nic" odvybere řádek
-  unselectRow(card);
+  unselectRows();
 });
 
 document.addEventListener('dblclick', (event) => {
@@ -231,6 +231,29 @@ document.addEventListener('submit', async (event) => {
       saveButton.disabled = false;
     }
     return;
+  }
+});
+
+
+document.addEventListener('keydown', (event) => {
+  handleRowSelection(event);
+  handleCopyPasteOnKeydown(event, 'events_manager').then((result) => {
+    if (['paste', 'undo-paste', 'redo-paste'].includes(result)) {
+      resetEventsCache();
+      loadPage({
+        table: true
+      });
+    }
+  });
+
+  if (event.key === 'Enter') {
+    const selectedRows = document.querySelectorAll('tr[data-event][selected]');
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0];
+      const eventData = safeParse(row.getAttribute('data-event'));
+      if (!eventData) return;
+      window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
+    }
   }
 });
 
@@ -358,14 +381,26 @@ async function renderTableRows() {
     const startAt = ev.start_at ? new Date(ev.start_at) : null;
     const endAt = ev.end_at ? new Date(ev.end_at) : null;
 
-    if (!startAt && !endAt) future.push(ev);
-    else if (!startAt && endAt >= now) future.push(ev);
-    else if (!startAt && endAt < now) past.push(ev);
-    else if (!endAt && startAt <= now) active.push(ev);
-    else if (!endAt && startAt > now) future.push(ev);
-    else if (startAt <= now && now <= endAt) active.push(ev);
-    else if (startAt > now) future.push(ev);
-    else past.push(ev);
+    // není začátek, ani konec -> budoucí
+    if (startAt === null && endAt === null) future.push(ev);
+
+    // Jen konec -> podle toho jestli už byl (budoucí nebo minulá)
+    else if (startAt === null && endAt !== null) {
+      endAt >= now ? future.push(ev) : past.push(ev);
+    }
+
+    // Jen začátek -> podle toho jestli už byl (aktivní nebo budoucí)
+    else if (endAt === null && startAt !== null) {
+      startAt <= now ? active.push(ev) : future.push(ev);
+    }
+
+    // Začátek i konec:
+    // Začátek ještě nebyl -> budoucí
+    // Konec už byl -> minulá
+    // jinak -> aktivní (start <= now <= end)
+    else if (now < startAt) future.push(ev);
+    else if (now > endAt) past.push(ev);
+    else active.push(ev);
   }
 
   if (orderBy.key) {
@@ -383,7 +418,7 @@ async function renderTableRows() {
   futureCountEl.textContent = future.length;
   pastCountEl.textContent = past.length;
 
-  markSelectedRow(card);
+  markSelectedRows(card);
 }
 
 
@@ -520,7 +555,7 @@ function showAddEventErrors(error, detail) {
   }
   if (errorStr.includes('name must start and end with')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a: ${allowedChars}`);
+    setErr(nameError, `Název musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not contain')) {
