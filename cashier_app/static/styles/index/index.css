@@ -86,20 +86,17 @@ body {
   display: none;
   background-color: white;
   overflow: auto;
-  column-gap: 10px;
   border-radius: 5px;
   margin: 0 5px 0 10px;
-  height: 50px;
-  align-items: center;
-  padding: 0 15px;
+  max-height: 100px;
+  padding: 10px 15px;
 }
 
 #categories.show {
-  display: flex;
+  display: block;
 }
 
 .category {
-  flex: 0 0 auto;
   min-width: 40px;
   max-width: 200px;
   white-space: nowrap;
@@ -110,6 +107,8 @@ body {
   padding: 4px 5px;
   border: none;
   font-size: 16px;
+  margin: 5px 5px 0 0;
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 .category:hover {
@@ -1415,10 +1414,6 @@ label {
 
   .summary-productQuantity {
     font-size: 10px;
-  }
-
-  #categories {
-    height: 40px;
   }
 
   #search-div {

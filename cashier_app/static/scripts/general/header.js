@@ -134,6 +134,7 @@ export function headerClickListeners(event) {
     // event.preventDefault(); /////
     order.reset();
     saveSelectedCategory(null);
+    localStorage.removeItem('copied');
     // sessionStorage.clear();
     return true;
   }

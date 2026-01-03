@@ -436,7 +436,8 @@ export async function editUserFormOnChange(inputEvent = null) {
 
   if (wallet) {
     if (inputEvent && inputEvent.target === changeBalanceByInput) {
-      const changeBalanceBy = Number(changeBalanceByInput.value);
+      let changeBalanceBy = Number(changeBalanceByInput.value);
+
       if (!isNaN(changeBalanceBy)) {
         const newBalance = wallet.balance_czk + changeBalanceBy;
         setNewBalanceInput.value = newBalance;
@@ -445,7 +446,7 @@ export async function editUserFormOnChange(inputEvent = null) {
     }
 
     if (inputEvent && inputEvent.target === setNewBalanceInput) {
-      const newBalance = Number(setNewBalanceInput.value);
+      let newBalance = Number(setNewBalanceInput.value);
 
       if (!isNaN(newBalance)) {
         const changeBalanceBy = newBalance - wallet.balance_czk;

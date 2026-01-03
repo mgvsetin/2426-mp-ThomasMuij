@@ -174,6 +174,22 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const numberSelector = event.target.closest('.number-selector');
+  if (!numberSelector) {
+    const productContainer = event.target.closest('.product-container');
+    if (productContainer) {
+      const plusButton = productContainer.querySelector('.plus-button');
+      const productId = plusButton.dataset.productId;
+      order.updateQuantity(productId, 1);
+      loadPage({
+        products: true,
+        cardInfo: true,
+        summary: true
+      });
+      return;
+    }
+  }
+
   const removeItemButton = event.target.closest('.remove-item-button');
   if (removeItemButton && summarySide.contains(removeItemButton)) {
     const productId = removeItemButton.dataset.productId;
@@ -506,6 +522,29 @@ usersTableBody.addEventListener('dblclick', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   // headerKeydownListeners(event);
+
+  if (event.target.matches('#change-balance-by-input') && event.key === '-') {
+    event.preventDefault();
+    const changeBalanceByInput = event.target;
+    let value = Number(changeBalanceByInput.value);
+    if (!isNaN(value)) {
+      changeBalanceByInput.value = -value;
+      changeBalanceByInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+
+
+  if (event.target.matches('#set-new-balance-input') && event.key === '-') {
+    event.preventDefault();
+    const setNewBalanceInput = event.target;
+    let value = Number(setNewBalanceInput.value);
+    if (!isNaN(value)) {
+      setNewBalanceInput.value = -value;
+      setNewBalanceInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
 
   if (event.code === 'Enter' && event.target.matches('.productQuantity, .summary-productQuantity')) {
     const quantityInput = event.target;
@@ -870,6 +909,12 @@ document.addEventListener('submit', async (event) => {
     clearFormErrors();
 
     const formData = new FormData(editWalletForm);
+
+    const idempotencyKey = crypto.randomUUID();
+    formData.set('idempotency-key', idempotencyKey);
+
+    const headers = new Headers();
+    headers.set('Idempotency-Key', idempotencyKey);
 
     try {
       const response = await fetch('/api/transactions/make-balance-change', {

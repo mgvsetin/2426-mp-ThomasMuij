@@ -1,3 +1,6 @@
+const { order } = require("../index/order.js");
+const { saveSelectedCategory } = require("../index/products.js");
+
 const form = document.querySelector('#login-form');
 const errorMessageElement = document.querySelector('.error-message');
 const submitButton = document.querySelector('#submit-button');
@@ -48,7 +51,7 @@ if (form) {
       if (response.status === 401 && data.error === 'invalid_credentials') {
         throw new Error('invalid_credentials')
       }
-    
+
       if (!response.ok) {
         throw new Error('unexpected_error');
       }
@@ -64,6 +67,9 @@ if (form) {
       submitButton.disabled = false;
     }
     // sessionStorage.clear();
+    order.reset();
+    saveSelectedCategory(null);
+    localStorage.removeItem('copied');
     window.location.href = data.redirect_url;
   });
 }

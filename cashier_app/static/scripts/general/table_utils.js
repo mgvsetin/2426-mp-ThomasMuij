@@ -159,14 +159,14 @@ async function copySelected() {
     }
   }
 
-  sessionStorage.setItem('copied', JSON.stringify(selected));
+  localStorage.setItem('copied', JSON.stringify(selected));
 }
 
 
 async function pasteCopied(calledWithin) {
   const data = {};
   try {
-    data.dataToCopy = JSON.parse(sessionStorage.getItem('copied'));
+    data.dataToCopy = JSON.parse(localStorage.getItem('copied'));
   } catch {
     // display error?
     return;
@@ -181,7 +181,7 @@ async function pasteCopied(calledWithin) {
     || !Array.isArray(data.dataToCopy.employeesToAssignToTargetBooths)
     || !Array.isArray(data.dataToCopy.employeeIds)) {
     // display error
-    sessionStorage.removeItem('copied');
+    localStorage.removeItem('copied');
     return;
   }
 

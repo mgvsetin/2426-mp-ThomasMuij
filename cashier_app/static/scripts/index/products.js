@@ -76,6 +76,8 @@ export function getProductsAndCategories() { // make sure that if this changes i
       _productsCache.data = data;
       _productsCache.expiry = Date.now() + cache_time_ms;
 
+      order.removeItemsWithNoMatchingProduct(_productsCache.data.products);
+
       return cloneData(_productsCache.data);
 
     } finally {

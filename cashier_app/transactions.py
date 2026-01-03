@@ -1,12 +1,25 @@
 from flask import Blueprint, jsonify, url_for, request
 from uuid import UUID
 import json
+from psycopg.errors import RaiseException
 import hashlib
 from psycopg.types.json import Jsonb
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
+
+
+def convert_uuids_to_str(obj):
+    if isinstance(obj, UUID):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: convert_uuids_to_str(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_uuids_to_str(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(convert_uuids_to_str(v) for v in obj)
+    return obj
 
 
 api_bp = Blueprint('transactions_api', __name__, url_prefix='/api/transactions')
@@ -37,7 +50,7 @@ def make_payment():
 
     if not idemp_key:
         return jsonify(error='missing_idempotency_key'), 400
-    
+
     if not tag_id:
         return jsonify(error='missing_tag_id'), 400
 
@@ -95,7 +108,7 @@ def make_payment():
     if total_products_price != amount_czk:
         return jsonify(error='invalid_products_info'), 400
     
-    fingerprint_source = json.dumps({
+    fingerprint_cols = {
         'tag_id': tag_id,
         'wallet_id': wallet['id'],
         'user_id': wallet['owner_id'],
@@ -105,7 +118,11 @@ def make_payment():
         'amount_czk': amount_czk,
         'performed_by': logged_employee['id'],
         'products_info': products_info
-    }, separators=(',', ':'), sort_keys=True)
+    }
+    
+    fingerprint_source = json.dumps(
+        {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
+        separators=(',', ':'), sort_keys=True)
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
     
     
@@ -122,48 +139,55 @@ def make_payment():
     'idempotency_key': idemp_key,
     'request_fingerprint': request_fingerprint
     }
-    
+
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
     
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f'''
-                INSERT INTO transactions
-                  ({cols_str})
-                VALUES ({col_values_placeholders})
-                ON CONFLICT (idempotency_key) DO NOTHING
-                RETURNING id
-                ''',
-                params)
-            # wallet se updatuje pomocí trigger v db
-            inserted = cur.fetchone()
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    INSERT INTO transactions
+                    ({cols_str})
+                    VALUES ({col_values_placeholders})
+                    ON CONFLICT (idempotency_key) DO NOTHING
+                    RETURNING id
+                    ''',
+                    params)
+                # wallet se updatuje pomocí trigger v db
+                inserted = cur.fetchone()
 
-            if inserted:
-                return jsonify(), 200
-            
-            cur.execute(
-                '''
-                SELECT id, request_fingerprint
-                FROM transactions
-                WHERE idempotency_key = %s
-                ''', (idemp_key,))
-            existing = cur.fetchone()
+                if inserted:
+                    return jsonify(), 200
+                
+                cur.execute(
+                    '''
+                    SELECT id, request_fingerprint
+                    FROM transactions
+                    WHERE idempotency_key = %s
+                    ''', (idemp_key,))
+                existing = cur.fetchone()
 
-            if not existing:
-                return jsonify(error='unexpected_error'), 500
-            
-            existing_fingerprint = existing['request_fingerprint']
+                if not existing:
+                    return jsonify(error='unexpected_error'), 500
+                
+                existing_fingerprint = existing['request_fingerprint']
 
-            if existing_fingerprint != request_fingerprint:
-                # stejný idempotency key s jinými daty
-                return jsonify(error='idempotency_key_data_conflict'), 409
+                if existing_fingerprint != request_fingerprint:
+                    # stejný idempotency key s jinými daty
+                    return jsonify(error='idempotency_key_data_conflict'), 409
+    except RaiseException as e:
+        text = str(e)
+
+        if "insufficient balance" in text:
+            return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+        else:
+            return jsonify(error='unexpected_error'), 500
 
     return jsonify(), 200
 
 
-##### add idempotency
 @api_bp.route('/make-balance-change', methods=('POST',))
 def make_balance_change():
     logged_employee = load_logged_in_employee()
@@ -269,37 +293,46 @@ def make_balance_change():
     cols_str = ', '.join(params.keys())
     col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
     
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                f'''
-                INSERT INTO transactions
-                  ({cols_str})
-                VALUES ({col_values_placeholders})
-                ON CONFLICT (idempotency_key) DO NOTHING
-                RETURNING id
-                ''',
-                params)
-            # wallet se updatuje pomocí trigger v db
-            inserted = cur.fetchone()
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    INSERT INTO transactions
+                    ({cols_str})
+                    VALUES ({col_values_placeholders})
+                    ON CONFLICT (idempotency_key) DO NOTHING
+                    RETURNING id
+                    ''',
+                    params)
+                # wallet se updatuje pomocí trigger v db
+                inserted = cur.fetchone()
 
-            if inserted:
-                return jsonify(), 200
+                if inserted:
+                    return jsonify(), 200
+                
+                cur.execute(
+                    '''
+                    SELECT id, request_fingerprint
+                    FROM transactions
+                    WHERE idempotency_key = %s
+                    ''', (idemp_key,))
+                existing = cur.fetchone()
+
+                if not existing:
+                    return jsonify(error='unexpected_error'), 500
+                
+                existing_fingerprint = existing['request_fingerprint']
+
+                if existing_fingerprint != request_fingerprint:
+                    # stejný idempotency key s jinými daty
+                    return jsonify(error='idempotency_key_conflict'), 409 ##### do on frontend errs
+    except RaiseException as e:
+        text = str(e)
+
+        if "insufficient balance" in text:
+            return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+        else:
+            return jsonify(error='unexpected_error'), 500
             
-            cur.execute(
-                '''
-                SELECT id, request_fingerprint
-                FROM transactions
-                WHERE idempotency_key = %s
-                ''', (idemp_key,))
-            existing = cur.fetchone()
-
-            if not existing:
-                return jsonify(error='unexpected_error'), 500
-            
-            existing_fingerprint = existing['request_fingerprint']
-
-            if existing_fingerprint != request_fingerprint:
-                # stejný idempotency key s jinými daty
-                return jsonify(error='idempotency_key_conflict'), 409 ##### do on frontend errs
     return jsonify(), 200

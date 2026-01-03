@@ -813,8 +813,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 -- add the refund stuff
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_transactions_idempotency_key
-  ON transactions (idempotency_key)
-  WHERE idempotency_key IS NOT NULL;
+  ON transactions (idempotency_key);
 
 -- blokuje delete a update
 -- u insert kontroluje: 
@@ -826,7 +825,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_index_transactions_idempotency_key
 --  - jestli booth může dělat tuto transaction
 --  - jestli wallet existuje
 --  - wallet.tag_id a wallet.user_id patří k transaction
---  - změna: jestli wallet má dost peněz. Na: Je povoleno, ale api by mělo zabránit
+--  - jestli wallet má dost peněz
 -- počítá a zapisuje balance_before a balance_after
 -- updatuje wallet balance_czk
 CREATE OR REPLACE FUNCTION transactions_block_delete_update_limit_insert()
@@ -962,10 +961,10 @@ BEGIN
     -- spočítá balance_before
     bal_after := bal_before + NEW.amount_czk;
 
-    -- -- wallet má dost peněz
-    -- IF bal_after < 0 THEN
-    --   RAISE EXCEPTION 'insufficient balance in wallet % (would be %)', NEW.wallet_id, bal_after;
-    -- END IF;
+    -- wallet má dost peněz
+    IF bal_after < 0 THEN
+      RAISE EXCEPTION 'insufficient balance in wallet % (would be %)', NEW.wallet_id, bal_after;
+    END IF;
 
     -- zapisuje balance_before a balance_after
     NEW.balance_before := bal_before;

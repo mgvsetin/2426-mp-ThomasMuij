@@ -138,6 +138,17 @@ class Order {
     this.setQuantity(productId, quantity);
     return;
   }
+
+  removeItemsWithNoMatchingProduct(products) {
+    this.items = this.items.filter((item) => {
+      const product = findProduct(products, item.productId);
+      if (!product) {
+        return false;
+      }
+      return true;
+    });
+    this._saveOrderToStorage();
+  }
 }
 
 export const order = new Order();
