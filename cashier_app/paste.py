@@ -585,7 +585,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                 
                 directly_copied_products = cur.execute(
                     '''
-                    SELECT id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text
+                    SELECT id, event_id, name, price, image_id
                     FROM products
                     WHERE id = ANY(%s)
                     ''',
@@ -593,7 +593,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                 
                 indirectly_copied_products = cur.execute(
                     '''
-                    SELECT DISTINCT p.id, p.event_id, p.name, p.price, p.image_path, p.image_filename, p.image_mime_type, p.image_size_bytes, p.image_width, p.image_height, p.image_alt_text
+                    SELECT DISTINCT p.id, p.event_id, p.name, p.price, p.image_id
                     FROM products AS p
                     LEFT JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
                     WHERE (p.event_id = ANY(%s)
@@ -832,13 +832,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     target_event['id'],
                                     new_product_name,
                                     product['price'],
-                                    product['image_path'],
-                                    product['image_filename'],
-                                    product['image_mime_type'],
-                                    product['image_size_bytes'],
-                                    product['image_width'],
-                                    product['image_height'],
-                                    product['image_alt_text']
+                                    product['image_id']
                                 ))
 
                                 copy_paste_row.product_ids.append(new_id)
@@ -867,13 +861,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     target_event['id'],
                                     new_product_name,
                                     product['price'],
-                                    product['image_path'],
-                                    product['image_filename'],
-                                    product['image_mime_type'],
-                                    product['image_size_bytes'],
-                                    product['image_width'],
-                                    product['image_height'],
-                                    product['image_alt_text']
+                                    product['image_id']
                                 ))
 
                                 copy_paste_row.product_ids.append(new_id)
@@ -988,7 +976,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         cur.execute(
                             f'''
                             INSERT INTO products
-                            (id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
+                            (id, event_id, name, price, image_id)
                             VALUES {placeholders}
                             ''',
                             params)
@@ -1301,13 +1289,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 event_id,
                                 product['name'],
                                 product['price'],
-                                product['image_path'],
-                                product['image_filename'],
-                                product['image_mime_type'],
-                                product['image_size_bytes'],
-                                product['image_width'],
-                                product['image_height'],
-                                product['image_alt_text']
+                                product['image_id']
                             ))
                             
                             copy_paste_row.product_ids.append(new_id)
@@ -1340,7 +1322,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         cur.execute(
                             f'''
                             INSERT INTO products
-                            (id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
+                            (id, event_id, name, price, image_id)
                             VALUES {placeholders}
                             ''',
                             params)

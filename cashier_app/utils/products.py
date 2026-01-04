@@ -102,33 +102,40 @@ def verify_image_file_get_info(file_obj, pixel_limit=None):
 
     file_obj.stream.seek(0)
     try:
-        Image.open(file_obj.stream).verify() # verify -> musíme otevřít znovu
-        Image.open(file_obj.stream).load()
-        image_file = Image.open(file_obj.stream)
+        with Image.open(file_obj.stream) as img:
+            img.verify() # verify -> musíme otevřít znovu
+
+        file_obj.stream.seek(0)
+        with Image.open(file_obj.stream) as img:
+            img.load()
+
+        file_obj.stream.seek(0)
+        with Image.open(file_obj.stream) as image_file:
+            image_format = image_file.format  # např. 'JPEG', 'PNG', 'WEBP', 'GIF', etc.
+            if not image_format:
+                return False, {}
+
+            mime_from_pillow = Image.MIME.get(image_format.upper())  # např. 'image/jpeg'
+
+            if mime_from_pillow not in (current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') if current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') else ALLOWED_MIME_TYPES):
+                return False, {}
+            
+            if pixel_limit:
+                width, height = image_file.size
+                if width * height > pixel_limit:
+                    return False, {}
+                
+            info = {
+                'height': image_file.height,
+                'width': image_file.width,
+                'mime_type': mime_from_pillow
+            }
+
+        file_obj.stream.seek(0)
+        return True, info
     except Exception:
         file_obj.stream.seek(0)
         return False, {}
-    file_obj.stream.seek(0)
-
-    image_format = image_file.format  # např. 'JPEG', 'PNG', 'WEBP', 'GIF', etc.
-    if not image_format:
-        return False, {}
-
-    mime_from_pillow = Image.MIME.get(image_format.upper())  # např. 'image/jpeg'
-
-    if mime_from_pillow not in (current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') if current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') else ALLOWED_MIME_TYPES):
-        return False, {}
-    
-    if pixel_limit:
-        width, height = image_file.size
-        if width * height > pixel_limit:
-            return False, {}
-
-    return True, {
-        'height': image_file.height,
-        'width': image_file.width,
-        'mime_type': mime_from_pillow
-        }
 
 
 def save_unique_stream(file_obj, dest_dir, secure_name, max_attempts=1000):

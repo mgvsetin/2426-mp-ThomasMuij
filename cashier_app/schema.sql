@@ -350,6 +350,37 @@ CREATE OR REPLACE TRIGGER trg_booths_block_delete_limit_update_insert
 
 
 
+-- ======================== product_images ========================
+CREATE TABLE IF NOT EXISTS product_images (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_path          text NOT NULL, -- obsahuje celý path i s filename
+  image_filename      text,
+  image_mime_type     text, 
+  image_size_bytes    int,
+  image_width         int,
+  image_height        int,
+  image_alt_text      text,
+  CONSTRAINT image_mime_type_check
+    CHECK (image_mime_type IN ('image/jpeg', 'image/png', 'image/webp'))
+);
+
+-- <img alt="..." src="/static/uploads/products/uid_thumb.jpg"
+--      srcset="/static/uploads/products/uid_small.jpg 300w,
+--              /static/uploads/products/uid_medium.jpg 800w,
+--              /static/uploads/products/uid_large.jpg 1200w"
+--      sizes="(max-width:600px) 300px, (max-width:1200px) 800px, 1200px" loading="lazy">
+
+
+
+-- ======================== product_images ========================
+CREATE TABLE IF NOT EXISTS product_images_failed_to_delete (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_path          text NOT NULL, -- obsahuje celý path i s filename
+  attempt             int NOT NULL DEFAULT 0
+);
+
+
+
 -- ======================== products ========================
 -- transakce se sem neodkazují, protože se řádky mohou jakkoliv měnit
 -- potřebné hodnoty se pouze zkopírují
@@ -358,19 +389,10 @@ CREATE TABLE IF NOT EXISTS products (
   event_id      uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name          text NOT NULL,
   price         int NOT NULL,
+  image_id      uuid REFERENCES product_images(id) ON DELETE SET NULL,
   created_at    timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT price_is_positive_check
-    CHECK (price >= 0),
-
-  image_path          text, -- obsahuje celý path i s filename
-  image_filename      text,
-  image_mime_type  text, 
-  image_size_bytes    int,
-  image_width         int,
-  image_height        int,
-  image_alt_text      text,
-  CONSTRAINT image_mime_type_check
-    CHECK (image_mime_type IN ('image/jpeg', 'image/png', 'image/webp'))
+    CHECK (price >= 0)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (event_id, LOWER(name));
 
@@ -391,26 +413,6 @@ CREATE OR REPLACE TRIGGER trg_products_edit_insert_update
   BEFORE UPDATE OR INSERT ON products
   FOR EACH ROW
   EXECUTE FUNCTION products_edit_insert_update();
-
-
-
--- product_images:
--- Validate file (MIME type, magic bytes, max size (max: 5-10MB?)).
-
--- Strip/normalize EXIF if you care about privacy/location.
--- Set proper permissions on saved files (read by web server only).
--- Prevent users from uploading HTML or scripts disguised as images.
--- Rate-limit uploads and virus-scan if necessary.
-
--- Serve static images directly with Nginx (or CDN). For authenticated resources, use signed URLs or X-Accel-Redirect / X-Sendfile so app doesn't stream the file.
--- Use Cache-Control headers and long TTLs for immutable files (change filename on update).
--- Create multiple sizes and use srcset in HTML for responsive images. Example:
-
--- <img alt="..." src="/static/uploads/products/uid_thumb.jpg"
---      srcset="/static/uploads/products/uid_small.jpg 300w,
---              /static/uploads/products/uid_medium.jpg 800w,
---              /static/uploads/products/uid_large.jpg 1200w"
---      sizes="(max-width:600px) 300px, (max-width:1200px) 800px, 1200px" loading="lazy">
 
 
 
@@ -1094,21 +1096,26 @@ INSERT INTO booths (id, name, event_id, booth_type, created_by, deleted_at)
 VALUES
 ('40000000000000000000000000000009', 'development_booth_event1_deleted', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001', now());
 
-INSERT INTO products (id, event_id, name, price, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
+INSERT INTO product_images (id, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
 VALUES
-('20000000000000000000000000000001', '30000000000000000000000000000001', 'event1_2000_booth1', 2000, '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
-('20000000000000000000000000000003', '30000000000000000000000000000001', 'event1_7_booth1 imageless', 7, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
-('20000000000000000000000000000004', '30000000000000000000000000000001', 'event1_10000_booth2', 10000, '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture'),
-('20000000000000000000000000000005', '30000000000000000000000000000001', 'event1_345_booth1_2_kofola', 345, '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333, 'Kofola picture'),
-('20000000000000000000000000000006', '30000000000000000000000000000002', 'event2_123_booth1_rohlík', 123, '/images/products/rohlík.png', 'rohlík.png', 'image/png', 53810, 250, 177, 'Rohlík picture'),
-('20000000000000000000000000000007', '30000000000000000000000000000001', 'event1_11111_2_22222_booth1', 11111, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
-('20000000000000000000000000000008', '30000000000000000000000000000002', 'event1_11111_2_22222_booth1', 22222, '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture');
+('02000000000000000000000000000001', '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
+('02000000000000000000000000000002', '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
+('02000000000000000000000000000003', '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture'),
+('02000000000000000000000000000004', '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333, 'Kofola picture'),
+('02000000000000000000000000000005', '/images/products/rohlík.png', 'rohlík.png', 'image/png', 53810, 250, 177, 'Rohlík picture');
 
-INSERT INTO products (id, event_id, name, price)
+INSERT INTO products (id, event_id, name, price, image_id)
 VALUES
-('20000000000000000000000000000002', '30000000000000000000000000000001', 'event1_2147483647_booth1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 2147483647),
-('20000000000000000000000000000009', '30000000000000000000000000000001', 'hamburger 2', 5),
-('20000000000000000000000000000010', '30000000000000000000000000000001', 'Hamburger 3', 6);
+('20000000000000000000000000000001', '30000000000000000000000000000001', 'event1_2000_booth1', 2000, '02000000000000000000000000000001'),
+('20000000000000000000000000000003', '30000000000000000000000000000001', 'event1_7_booth1 imageless', 7, '02000000000000000000000000000002'),
+('20000000000000000000000000000004', '30000000000000000000000000000001', 'event1_10000_booth2', 10000, '02000000000000000000000000000003'),
+('20000000000000000000000000000005', '30000000000000000000000000000001', 'event1_345_booth1_2_kofola', 345, '02000000000000000000000000000004'),
+('20000000000000000000000000000006', '30000000000000000000000000000002', 'event2_123_booth1_rohlík', 123, '02000000000000000000000000000005'),
+('20000000000000000000000000000007', '30000000000000000000000000000001', 'event1_11111_2_22222_booth1', 11111, '02000000000000000000000000000002'),
+('20000000000000000000000000000008', '30000000000000000000000000000002', 'event1_11111_2_22222_booth1', 22222, '02000000000000000000000000000002'),
+('20000000000000000000000000000002', '30000000000000000000000000000001', 'event1_2147483647_booth1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 2147483647, NULL),
+('20000000000000000000000000000009', '30000000000000000000000000000001', 'hamburger 2', 5, NULL),
+('20000000000000000000000000000010', '30000000000000000000000000000001', 'Hamburger 3', 6, NULL);
 
 INSERT INTO product_booth_link (product_id, booth_id)
 VALUES

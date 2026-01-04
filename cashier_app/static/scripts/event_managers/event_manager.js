@@ -3162,9 +3162,6 @@ function showAddProductErrors(error, detail) {
   const categoriesError = document.querySelector('#add-product-categories-error');
   const generalError = document.querySelector('#add-product-general-error');
 
-  console.log(error)
-  console.log(detail)
-
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));

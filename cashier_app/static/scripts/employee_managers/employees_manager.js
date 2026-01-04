@@ -460,8 +460,12 @@ async function renderTableRows() {
       isAdminHTML = '<span class="badge no">NE</span>';
     }
 
-    const createdAtHTML = formatDateTimeISOToDisplay(employee.created_at)
-    const createdByHTML = employee.created_by ? `<span data-direct-to="${employee.created_by}">${employee.created_by}</span>` : '-';
+    const createdAtHTML = formatDateTimeISOToDisplay(employee.created_at);
+    let createdByHTML = '-';
+    if (employee.created_by) {
+      const createdByEmp = employees.find((emp) => { return emp.id === employee.created_by });
+      createdByHTML = `<span data-direct-to="${employee.created_by}">${createdByEmp.username}</span>`
+    }
 
     if (!isSearchedFor(employee, searchQuery)) {
       return;

@@ -1,5 +1,6 @@
-const { order } = require("../index/order.js");
-const { saveSelectedCategory } = require("../index/products.js");
+import { order } from "../index/order.js";
+import { saveSelectedCategory } from "../index/products.js";
+
 
 const form = document.querySelector('#login-form');
 const errorMessageElement = document.querySelector('.error-message');

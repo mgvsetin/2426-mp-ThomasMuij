@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import timezone
 from dateutil import parser
 from flask import Blueprint, current_app, jsonify, url_for, session, request
@@ -45,6 +46,73 @@ def get_event_manager_page(event_id):
 
 
 api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
+
+
+def remove_image_if_exists(path):
+    if not path or not os.path.exists(path):
+        return True
+    
+    # Retry logic for Windows file locking
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            os.remove(path)
+            return True
+        except PermissionError:
+            if attempt < max_attempts - 1:
+                time.sleep(0.1)
+            else:
+                current_app.logger.warning('failed to remove image %s after %d attempts', path, max_attempts)
+        except OSError:
+            current_app.logger.warning('failed to remove image %s', path)
+            return False
+    return False
+
+
+def delete_unused_images():
+    rows_failed_to_delete_img = []
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            unused_image_rows = cur.execute(
+                '''
+                DELETE FROM product_images AS img
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM products AS p
+                    WHERE p.image_id = img.id
+                )
+                RETURNING img.image_path, 0 AS attempt''',
+                ).fetchall()
+            unused_image_rows += cur.execute(
+                '''
+                DELETE FROM product_images_failed_to_delete
+                RETURNING image_path, attempt''',
+                ).fetchall()
+    for image_row_to_delete in unused_image_rows:
+        unused_image_path = os.path.join(current_app.static_folder, image_row_to_delete['image_path'])
+
+        success = remove_image_if_exists(unused_image_path)
+
+        if not success:
+            if image_row_to_delete['attempt'] < 5:
+                rows_failed_to_delete_img.append(image_row_to_delete)
+            else:
+                current_app.logger.exception('failed to delete image %s after %s requests', image_row_to_delete['attempt'], image_row_to_delete['attempt'])
+    
+    if rows_failed_to_delete_img:
+        placeholders = ",".join(["(%s, %s)"] * len(rows_failed_to_delete_img))
+        params = [val for row in rows_failed_to_delete_img 
+                for val in (row['image_path'], row['attempt'] + 1)]
+
+        # jestli nešel smazat obrázek, tak vytvoř řadu, aby se smazal příště
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f'''
+                    INSERT INTO product_images_failed_to_delete
+                    (image_path, attempt)
+                    VALUES {placeholders}''',
+                    params)
 
 
 @api_bp.route('')
@@ -123,7 +191,7 @@ def get_event(event_id):
             # i need to show and allow uploads/changes of images on the frontend
             products = cur.execute(
                 '''
-                SELECT p.id, p.name, p.price, p.image_path, p.image_filename,
+                SELECT p.id, p.name, p.price, img.image_path, img.image_filename,
                     COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
                         ) FILTER (WHERE bo_link.booth_id IS NOT NULL AND booths.deleted_at IS NULL),
@@ -135,12 +203,13 @@ def get_event(event_id):
                         '[]'
                     ) AS categories
                 FROM products as p
+                LEFT JOIN product_images AS img ON img.id = p.image_id
                 LEFT JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
                 LEFT JOIN booths ON booths.id = bo_link.booth_id
                 LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
                 LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
                 WHERE p.event_id = %s
-                GROUP BY p.id
+                GROUP BY p.id, img.id
                 ORDER BY p.created_at''',
                 (event_id,)).fetchall()
             
@@ -807,18 +876,19 @@ def get_products_and_categories():
         with conn.cursor() as cur:
             products = cur.execute(
                 '''
-                SELECT p.id, p.name, p.price, p.image_path,
+                SELECT p.id, p.name, p.price, img.image_path,
                   COALESCE(jsonb_agg(
                       DISTINCT jsonb_build_object('name', cat.name)
                       ) FILTER (WHERE cat_link.category_id IS NOT NULL),
                       '[]'
                   ) AS categories
                 FROM products AS p
+                LEFT JOIN product_images AS img ON img.id = p.image_id
                 JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
                 LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
                 LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
                 WHERE bo_link.booth_id = %s
-                GROUP BY p.id''',
+                GROUP BY p.id, img.id''',
                 (booth['id'],)).fetchall()
             
             categories = cur.execute(
@@ -1140,6 +1210,7 @@ def add_product():
     params = {
         'event_id': event_id
         }
+    product_images_params = {}
 
     if not name:
         return jsonify(error='missing_name'), 400
@@ -1178,20 +1249,36 @@ def add_product():
         except RequestEntityTooLarge:
             return jsonify(error="file_too_large"), 413
 
-        params['image_path'] = f'images/products/{saved_name}'
-        params['image_filename'] = saved_name
-        params['image_mime_type'] = image_info['mime_type']
-        params['image_size_bytes'] = os.path.getsize(os.path.join(dest_dir, saved_name))
-        params['image_width'] = image_info['width']
-        params['image_height'] = image_info['height']
-        params['image_alt_text'] = name
+        product_images_params['image_path'] = f'images/products/{saved_name}'
+        product_images_params['image_filename'] = saved_name
+        product_images_params['image_mime_type'] = image_info['mime_type']
+        product_images_params['image_size_bytes'] = os.path.getsize(os.path.join(dest_dir, saved_name))
+        product_images_params['image_width'] = image_info['width']
+        product_images_params['image_height'] = image_info['height']
+        product_images_params['image_alt_text'] = name
 
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    created_image_path = product_images_params.get('image_path')
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                if image_file:
+                    product_images_cols_str = ', '.join(product_images_params.keys())
+                    product_images_col_values_placeholders = ', '.join([f'%({col})s' for col in product_images_params.keys()])
+
+                    image_id = cur.execute(
+                        f'''
+                        INSERT INTO product_images
+                        ({product_images_cols_str})
+                        VALUES ({product_images_col_values_placeholders})
+                        RETURNING id''',
+                        product_images_params).fetchone()['id']
+                    
+                    params['image_id'] = image_id
+
+                cols_str = ', '.join(params.keys())
+                col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+
                 product_id = cur.execute(
                     f'''
                     INSERT INTO products
@@ -1229,8 +1316,12 @@ def add_product():
                         ''',
                         params)
     except IntegrityError as e:
+        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
+    except:
+        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        raise
 
     return jsonify(), 200
 
@@ -1262,7 +1353,7 @@ def edit_product():
         with conn.cursor() as cur:
             product = cur.execute(
                 f'''
-                SELECT event_id, image_path
+                SELECT event_id
                 FROM products
                 WHERE id = %s''',
                 (product_id,)).fetchone()
@@ -1325,6 +1416,7 @@ def edit_product():
                     return jsonify(error='category_not_found'), 400
 
     params = {}
+    product_images_params = {}
 
     if not name:
         return jsonify(error='missing_name'), 400
@@ -1346,13 +1438,8 @@ def edit_product():
         return jsonify(error="file_too_large"), 413
     
     if remove_current_image and not image_file:
-        params['image_path'] = None
-        params['image_filename'] = None
-        params['image_mime_type'] = None
-        params['image_size_bytes'] = None
-        params['image_width'] = None
-        params['image_height'] = None
-        params['image_alt_text'] = None
+        params['image_id'] = None
+
 
     if image_file:
         safe_filename = secure_filename(image_file.filename)
@@ -1372,21 +1459,37 @@ def edit_product():
         except RequestEntityTooLarge:
             return jsonify(error="file_too_large"), 413
 
-        params['image_path'] = f'images/products/{saved_name}'
-        params['image_filename'] = saved_name
-        params['image_mime_type'] = image_info['mime_type']
-        params['image_size_bytes'] = os.path.getsize(os.path.join(dest_dir, saved_name))
-        params['image_width'] = image_info['width']
-        params['image_height'] = image_info['height']
-        params['image_alt_text'] = name
+        product_images_params['image_path'] = f'images/products/{saved_name}'
+        product_images_params['image_filename'] = saved_name
+        product_images_params['image_mime_type'] = image_info['mime_type']
+        product_images_params['image_size_bytes'] = os.path.getsize(os.path.join(dest_dir, saved_name))
+        product_images_params['image_width'] = image_info['width']
+        product_images_params['image_height'] = image_info['height']
+        product_images_params['image_alt_text'] = name
 
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
+    created_image_path = product_images_params.get('image_path')
 
     params['id'] = product_id
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                if image_file:
+                    product_images_cols_str = ', '.join(product_images_params.keys())
+                    product_images_col_values_placeholders = ', '.join([f'%({col})s' for col in product_images_params.keys()])
+
+                    image_id = cur.execute(
+                        f'''
+                        INSERT INTO product_images
+                        ({product_images_cols_str})
+                        VALUES ({product_images_col_values_placeholders})
+                        RETURNING id''',
+                        product_images_params).fetchone()['id']
+
+                    params['image_id'] = image_id
+
+                col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
+
                 cur.execute(
                     f'''
                     UPDATE products
@@ -1438,31 +1541,23 @@ def edit_product():
                         ''',
                         params)
     except IntegrityError as e:
+        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
+        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         current_app.logger.exception('multiple rows updated for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
+    except:
+        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        raise
     
     if rows_affected == 0:
         return jsonify(error='product_not_found'), 404
     
-    # odstraň předchozí obrázek
-    if (remove_current_image or image_file) and product['image_path']:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
-                number_of_image_uses = len(cur.execute(
-                    '''
-                    SELECT image_path
-                    FROM products
-                    WHERE image_path = %s''',
-                    (product['image_path'],)).fetchall())
-        if number_of_image_uses == 0:
-
-            previous_image_path = os.path.join(current_app.static_folder, product['image_path'])
-
-            if os.path.exists(previous_image_path):
-                os.remove(previous_image_path)
+    # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
+    if remove_current_image or image_file:
+        delete_unused_images()
 
     return jsonify(), 200
 
@@ -1486,7 +1581,7 @@ def delete_product():
         with conn.cursor() as cur:
             product = cur.execute(
                 f'''
-                SELECT event_id, image_path
+                SELECT event_id
                 FROM products
                 WHERE id = %s''',
                 (product_id,)).fetchone()
@@ -1529,23 +1624,8 @@ def delete_product():
     if rows_affected == 0:
         return jsonify(error='product_not_found'), 404
     
-    # odstraň předchozí obrázek
-    if product['image_path']:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
-                number_of_image_uses = len(cur.execute(
-                    '''
-                    SELECT image_path
-                    FROM products
-                    WHERE image_path = %s''',
-                    (product['image_path'],)).fetchall())
-                
-        if number_of_image_uses == 0:
-
-            previous_image_path = os.path.join(current_app.static_folder, product['image_path'])
-
-            if os.path.exists(previous_image_path):
-                os.remove(previous_image_path)
+    # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
+    delete_unused_images()
 
     return jsonify(), 200
 
