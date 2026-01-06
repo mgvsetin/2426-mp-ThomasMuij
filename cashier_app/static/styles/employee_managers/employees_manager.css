@@ -141,8 +141,8 @@ thead th div {
 }
 
 thead th span {
- cursor: pointer;
- padding: 3px 0;
+  cursor: pointer;
+  padding: 3px 0;
 }
 
 thead th .order-by-arrow {

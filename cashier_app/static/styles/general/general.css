@@ -22,3 +22,37 @@ button {
 input[type=submit] {
   cursor: pointer;
 }
+
+
+.copy-paste-message-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column-reverse;
+  row-gap: 20px;
+  max-height: 100vh;
+  overflow: hidden;
+  width: 300px;
+  z-index: 500;
+  padding: 10px; /* pro shadow */
+}
+
+.copy-paste-message {
+  flex: 0 0;
+  flex-basis: content;
+  padding: 8px;
+  background-color: rgb(245, 246, 247);
+  border-radius: 5px;
+  box-shadow: 2px 2px 8px 3px rgba(0, 0, 0, 0.25);
+  max-height: 250px;
+  overflow: auto;
+  text-align: center;
+  opacity: 1;
+  transition: opacity 800ms ease;
+}
+
+.copy-paste-message.fade {
+  opacity: 0;
+}

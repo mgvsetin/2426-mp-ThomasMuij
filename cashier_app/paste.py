@@ -1838,7 +1838,7 @@ def redo_paste():
 
                 if not last_valid_undo_paste_dict:
                     raise NoPasteToRedo()
-                
+
                 undo_id = last_valid_undo_paste_dict.pop('undo_id')
                 
                 last_valid_undo_paste = CopyPasteRow(**last_valid_undo_paste_dict)

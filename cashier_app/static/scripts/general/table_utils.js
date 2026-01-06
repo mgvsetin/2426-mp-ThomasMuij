@@ -4,7 +4,7 @@ import { isPlainObject, isTypingInEditable, isUUID, mod } from "./utils.js";
 const selectedRowIds = new Set(); // pro markSelectedRows
 let lastSelectedRowId;
 let currentlyPasting = false;
-
+let copyPasteMesContainer;
 
 export function handleRowSelection(event) {
   if (event.type === 'keydown' && event.key === 'Escape') {
@@ -123,6 +123,25 @@ export function directTo(clickedDirectEl, parent) {
 }
 
 
+function makeCopyPasteMessage(message) {
+  if (!copyPasteMesContainer) {
+    copyPasteMesContainer = document.createElement('div');
+    copyPasteMesContainer.classList.add('copy-paste-message-container');
+    document.body.appendChild(copyPasteMesContainer);
+  }
+  const copyPasteMessage = document.createElement('div');
+  copyPasteMessage.classList.add('copy-paste-message');
+  copyPasteMessage.innerText = message;
+  copyPasteMesContainer.appendChild(copyPasteMessage);
+  setTimeout(() => {
+    copyPasteMessage.classList.add('fade');
+    setTimeout(() => {
+      copyPasteMessage.remove();
+    }, 800);
+  }, 2500);
+}
+
+
 async function copySelected() {
   const selectedRows = document.querySelectorAll('tr[selected]');
   const selected = {
@@ -139,7 +158,6 @@ async function copySelected() {
     if (!table) continue;
     const tableContents = table.getAttribute('table-contents');
 
-    // employees zde není schválně, protože nelze zkopírovat spojení se stánkem bez stánku
     if (tableContents === 'events') {
       selected.eventIds.push(row.id);
     } else if (tableContents === 'booths') {
@@ -168,7 +186,7 @@ async function pasteCopied(calledWithin) {
   try {
     data.dataToCopy = JSON.parse(localStorage.getItem('copied'));
   } catch {
-    // display error?
+    makeCopyPasteMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
     return;
   }
 
