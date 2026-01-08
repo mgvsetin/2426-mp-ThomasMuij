@@ -359,7 +359,7 @@ span[data-direct-to]:hover {
   overflow: auto;
 }
 
-.cross-close {
+/* .cross-close {
   background: transparent;
   border: none;
   height: 22px;
@@ -374,7 +374,7 @@ span[data-direct-to]:hover {
 
 .cross-close:hover {
   background-color: rgb(245, 245, 245);
-}
+} */
 
 .modal header {
   display: flex;

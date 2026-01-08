@@ -56,3 +56,64 @@ input[type=submit] {
 .copy-paste-message.fade {
   opacity: 0;
 }
+
+
+.unpaste-confirmation-container {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 14, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 70px 10px 15px 10px
+}
+
+.unpaste-confirmation-modal {
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(10, 10, 10, 0.24);
+  padding: 16px;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.cross-close {
+  background: transparent;
+  border: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.cross-close:hover {
+  background-color: rgb(245, 245, 245);
+}
+
+.unpaste-confirmation-modal header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center
+}
+
+.upaste-confirmation-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px
+}
+
+.cancel-unpaste {
+
+}
+
+.confirm-unpaste {
+  
+}

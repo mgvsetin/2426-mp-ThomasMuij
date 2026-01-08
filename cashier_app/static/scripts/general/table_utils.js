@@ -184,9 +184,19 @@ async function copySelected() {
 async function pasteCopied(calledWithin) {
   const data = {};
   try {
-    data.dataToCopy = JSON.parse(localStorage.getItem('copied'));
+    data.dataToCopy = JSON.parse(localStorage.getItem('copied')) ||
+    {
+      eventIds: [],
+      boothIds: [],
+      productIds: [],
+      categoryIds: [],
+      managerIds: [],
+      employeesToAssignToTargetBooths: [],
+      employeeIds: []
+    };
   } catch {
     makeCopyPasteMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
+    localStorage.removeItem('copied');
     return;
   }
 
@@ -198,7 +208,7 @@ async function pasteCopied(calledWithin) {
     || !Array.isArray(data.dataToCopy.managerIds)
     || !Array.isArray(data.dataToCopy.employeesToAssignToTargetBooths)
     || !Array.isArray(data.dataToCopy.employeeIds)) {
-    // display error
+    makeCopyPasteMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
     localStorage.removeItem('copied');
     return;
   }
@@ -208,9 +218,9 @@ async function pasteCopied(calledWithin) {
     && data.dataToCopy.productIds.length === 0
     && data.dataToCopy.categoryIds.length === 0
     && data.dataToCopy.managerIds.length === 0
-    && data.dataToCopy.managerIds.employeesToAssignToTargetBooths === 0
+    && data.dataToCopy.employeesToAssignToTargetBooths.length === 0
     && data.dataToCopy.employeeIds.length === 0) {
-    // display nothing copied
+    makeCopyPasteMessage('Nemáte nic zkopírováno.');
     return;
   }
 
@@ -246,13 +256,9 @@ async function pasteCopied(calledWithin) {
       boothIds: []
     };
   } else {
-    // error
+    makeCopyPasteMessage('Sem nelze vkládat zkopírované data.');
     return;
   }
-
-  // make confirmation
-
-  console.log(data)
 
   try {
     const response = await fetch('/api/paste', {
@@ -287,6 +293,75 @@ async function pasteCopied(calledWithin) {
 
 
 async function undoPaste() {
+  const isConfirmed = await new Promise((resolve) => {
+    if (document.querySelector('.unpaste-confirmation-modal')) resolve(false);
+
+    const unpasteConfirmationContainer = document.createElement('div');
+    unpasteConfirmationContainer.classList.add('unpaste-confirmation-container');
+    unpasteConfirmationContainer.innerHTML = `
+      <div class="unpaste-confirmation-modal">
+        <header>
+          <h2>Chcete opravdu vrátit poslední vložení?</h2>
+          <button class="close-unpaste-modal cross-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+        <div>Změny provedené po vložení nejdou automaticky obnovit.</div>
+        <div class="upaste-confirmation-actions">
+          <button class="cancel-unpaste">Ne</button>
+          <button class="confirm-unpaste">Ano</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(unpasteConfirmationContainer);
+
+    unpasteConfirmationContainer.addEventListener('click', (event) => {
+      if (event.target.matches('.cancel-unpaste')) {
+        unpasteConfirmationContainer?.remove();
+        resolve(false);
+        return;
+      }
+
+      if (event.target.matches('.confirm-unpaste')) {
+        unpasteConfirmationContainer?.remove();
+        resolve(true);
+        return;
+      }
+
+      const closeBut = event.target.closest('.close-unpaste-modal');
+      if (closeBut) {
+        unpasteConfirmationContainer?.remove();
+        closeBut.closest('.unpaste-confirmation-container')?.remove();
+        resolve(false);
+        return;
+      }
+    });
+
+    unpasteConfirmationContainer.addEventListener('keydown', (event) => {
+      const ctrlPressed = event.ctrlKey || event.metaKey;
+      if (!ctrlPressed) {
+        return;
+      }
+
+      const key = (event.key || '').toLowerCase();
+
+      if (isTypingInEditable()) {
+        return;
+      }
+
+      if (key === 'z') {
+        unpasteConfirmationContainer?.remove();
+        resolve(true);
+        return;
+      }
+    });
+  });
+
+  if (!isConfirmed) return;
+
+
   try {
     const response = await fetch('/api/paste/undo', { method: 'POST' });
 
@@ -297,8 +372,6 @@ async function undoPaste() {
     }
 
     const resData = await response.json();
-
-    console.log(resData);
 
     if (!response.ok) {
       throw new UnexpectedError();
