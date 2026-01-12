@@ -317,29 +317,7 @@ async function undoPaste() {
     `;
     document.body.appendChild(unpasteConfirmationContainer);
 
-    unpasteConfirmationContainer.addEventListener('click', (event) => {
-      if (event.target.matches('.cancel-unpaste')) {
-        unpasteConfirmationContainer?.remove();
-        resolve(false);
-        return;
-      }
-
-      if (event.target.matches('.confirm-unpaste')) {
-        unpasteConfirmationContainer?.remove();
-        resolve(true);
-        return;
-      }
-
-      const closeBut = event.target.closest('.close-unpaste-modal');
-      if (closeBut) {
-        unpasteConfirmationContainer?.remove();
-        closeBut.closest('.unpaste-confirmation-container')?.remove();
-        resolve(false);
-        return;
-      }
-    });
-
-    unpasteConfirmationContainer.addEventListener('keydown', (event) => {
+    const keydownFunc = (event) => {
       const ctrlPressed = event.ctrlKey || event.metaKey;
       if (!ctrlPressed) {
         return;
@@ -353,10 +331,38 @@ async function undoPaste() {
 
       if (key === 'z') {
         unpasteConfirmationContainer?.remove();
+        document.removeEventListener('keydown', keydownFunc);
         resolve(true);
         return;
       }
-    });
+    }
+
+    unpasteConfirmationContainer.addEventListener('click', (event) => {
+      if (event.target.matches('.cancel-unpaste')) {
+        unpasteConfirmationContainer?.remove();
+        document.removeEventListener('keydown', keydownFunc);
+        resolve(false);
+        return;
+      }
+
+      if (event.target.matches('.confirm-unpaste')) {
+        document.removeEventListener('keydown', keydownFunc);
+        unpasteConfirmationContainer?.remove();
+        resolve(true);
+        return;
+      }
+
+      const closeBut = event.target.closest('.close-unpaste-modal');
+      if (closeBut) {
+        document.removeEventListener('keydown', keydownFunc);
+        unpasteConfirmationContainer?.remove();
+        closeBut.closest('.unpaste-confirmation-container')?.remove();
+        resolve(false);
+        return;
+      }
+    }, { once: true });
+
+    document.addEventListener('keydown', keydownFunc);
   });
 
   if (!isConfirmed) return;
