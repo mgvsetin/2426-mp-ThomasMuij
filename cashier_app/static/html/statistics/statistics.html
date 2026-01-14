@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statistiky akce</title>
+
+  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <link rel="stylesheet" href="/static/styles/general/header.css">
+  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
+  <link rel="stylesheet" href="/static/styles/event_managers/event_graphs.css">
+
+  <!-- Chart.js pro grafy -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+  <div id="container">
+    <div id="card">
+      <div id="event-head">
+        <div id="event-info">
+          <div id="event-name">Akce: -</div>
+          <div id="event-start-at">Začíná: <span></span></div>
+          <div id="event-end-at">Končí: <span></span></div>
+        </div>
+        <div id="event-actions">
+          <button id="back-to-manager" class="btn btn-ghost">Zpět na správu</button>
+          <button id="refresh-stats" class="btn btn-primary">Obnovit data</button>
+        </div>
+      </div>
+
+      <!-- CELKOVÉ STATISTIKY -->
+      <section class="stats-section">
+        <h2>Celkové statistiky</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Celkové tržby</div>
+            <div class="stat-value" id="stat-total-revenue">0 Kč</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Počet transakcí</div>
+            <div class="stat-value" id="stat-total-transactions">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Vklady celkem</div>
+            <div class="stat-value" id="stat-total-deposits">0 Kč</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Výběry celkem</div>
+            <div class="stat-value" id="stat-total-withdrawals">0 Kč</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Počet plateb</div>
+            <div class="stat-value" id="stat-payment-count">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Jedinečných zákazníků</div>
+            <div class="stat-value" id="stat-unique-users">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Aktivních peněženek</div>
+            <div class="stat-value" id="stat-unique-wallets">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Zůstatek v peněženkách</div>
+            <div class="stat-value" id="stat-wallets-balance">0 Kč</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRAFY TRŽBY V ČASE -->
+      <section class="stats-section">
+        <h2>Vývoj tržeb v čase</h2>
+        <div class="chart-container">
+          <canvas id="revenue-timeline-chart"></canvas>
+        </div>
+      </section>
+
+      <!-- TRŽBY PODLE STÁNKŮ -->
+      <section class="stats-section">
+        <h2>Tržby podle stánků</h2>
+        <div class="chart-grid">
+          <div class="chart-container">
+            <canvas id="booth-revenue-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="booth-transactions-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TOP PRODUKTY -->
+      <section class="stats-section">
+        <h2>Nejprodávanější produkty</h2>
+        <div class="chart-grid">
+          <div class="chart-container">
+            <canvas id="top-products-revenue-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="top-products-quantity-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- DETAILNÍ TABULKA STÁNKŮ -->
+      <section class="stats-section">
+        <h2>Detail stánků</h2>
+        <div class="table-wrap">
+          <table id="booths-stats-table">
+            <thead>
+              <tr>
+                <th>Stánek</th>
+                <th>Typ</th>
+                <th>Tržby</th>
+                <th>Platby</th>
+                <th>Vklady</th>
+                <th>Výběry</th>
+                <th>Transakce</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- DETAILNÍ TABULKA PRODUKTŮ -->
+      <section class="stats-section">
+        <h2>Detail produktů</h2>
+        <div class="table-wrap">
+          <table id="products-stats-table">
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th>Prodáno kusů</th>
+                <th>Tržby</th>
+                <th>Průměrná cena</th>
+                <th>Počet transakcí</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script type="module" src="/static/scripts/event_managers/event_graphs.js"></script>
+</body>
+
+</html>

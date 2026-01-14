@@ -36,7 +36,8 @@ input[type=submit] {
   overflow: hidden;
   width: 300px;
   z-index: 500;
-  padding: 10px; /* pro shadow */
+  padding: 10px;
+  /* pro shadow */
 }
 
 .copy-paste-message {
@@ -103,17 +104,29 @@ input[type=submit] {
   align-items: center
 }
 
-.upaste-confirmation-actions {
+.unpaste-confirmation-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 12px
 }
 
-.cancel-unpaste {
-
+.cancel-unpaste,
+.confirm-unpaste {
+  border-radius: 5px;
+  border: none;
+  background-color: black;
+  color: white;
+  padding: 7px 10px;
+  transition: background-color 0.2s;
 }
 
-.confirm-unpaste {
-  
+.cancel-unpaste:hover,
+.confirm-unpaste:hover {
+  background-color: rgb(25, 25, 25);
+}
+
+.cancel-unpaste:active,
+.confirm-unpaste:active {
+  background-color: rgb(35, 35, 35);
 }

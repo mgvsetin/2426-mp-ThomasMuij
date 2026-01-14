@@ -294,79 +294,92 @@ async function pasteCopied(calledWithin) {
 
 async function undoPaste() {
   const isConfirmed = await new Promise((resolve) => {
-    if (document.querySelector('.unpaste-confirmation-modal')) resolve(false);
+    if (document.querySelector('.unpaste-confirmation-modal')) {
+      resolve(false);
+      return;
+    }
 
-    const unpasteConfirmationContainer = document.createElement('div');
-    unpasteConfirmationContainer.classList.add('unpaste-confirmation-container');
-    unpasteConfirmationContainer.innerHTML = `
-      <div class="unpaste-confirmation-modal">
+    const container = document.createElement('div');
+    container.className = 'unpaste-confirmation-container';
+    container.innerHTML = `
+      <div class="unpaste-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="unpaste-title" tabindex="-1">
         <header>
-          <h2>Chcete opravdu vrátit poslední vložení?</h2>
-          <button class="close-unpaste-modal cross-close">
+          <h2 id="unpaste-title">Chcete opravdu vrátit poslední vložení?</h2>
+          <button class="close-unpaste-modal cross-close" aria-label="Zavřít">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </header>
         <div>Změny provedené po vložení nejdou automaticky obnovit.</div>
-        <div class="upaste-confirmation-actions">
+        <div class="unpaste-confirmation-actions">
           <button class="cancel-unpaste">Ne</button>
           <button class="confirm-unpaste">Ano</button>
         </div>
       </div>
     `;
-    document.body.appendChild(unpasteConfirmationContainer);
+
+    document.body.appendChild(container);
+
+    const confirmBtn = container.querySelector('.confirm-unpaste');
+
+    confirmBtn?.focus();
+
+    let cleanedUp = false;
+    const cleanup = (result) => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      try { container.remove(); } catch (e) { }
+      document.removeEventListener('keydown', keydownFunc);
+      container.removeEventListener('click', clickHandler);
+      resolve(result);
+    };
 
     const keydownFunc = (event) => {
-      const ctrlPressed = event.ctrlKey || event.metaKey;
-      if (!ctrlPressed) {
+      if (isTypingInEditable()) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cleanup(false);
         return;
       }
+
+      const ctrlPressed = event.ctrlKey || event.metaKey;
+      if (!ctrlPressed) return;
 
       const key = (event.key || '').toLowerCase();
-
-      if (isTypingInEditable()) {
-        return;
-      }
-
       if (key === 'z') {
-        unpasteConfirmationContainer?.remove();
-        document.removeEventListener('keydown', keydownFunc);
-        resolve(true);
+        event.preventDefault();
+        cleanup(true);
+      }
+    };
+
+    const clickHandler = (event) => {
+      if (event.target.closest('.cancel-unpaste')) {
+        cleanup(false);
         return;
       }
-    }
-
-    unpasteConfirmationContainer.addEventListener('click', (event) => {
-      if (event.target.matches('.cancel-unpaste')) {
-        unpasteConfirmationContainer?.remove();
-        document.removeEventListener('keydown', keydownFunc);
-        resolve(false);
+      if (event.target.closest('.confirm-unpaste')) {
+        cleanup(true);
         return;
       }
-
-      if (event.target.matches('.confirm-unpaste')) {
-        document.removeEventListener('keydown', keydownFunc);
-        unpasteConfirmationContainer?.remove();
-        resolve(true);
+      if (event.target.closest('.close-unpaste-modal')) {
+        cleanup(false);
         return;
       }
 
-      const closeBut = event.target.closest('.close-unpaste-modal');
-      if (closeBut) {
-        document.removeEventListener('keydown', keydownFunc);
-        unpasteConfirmationContainer?.remove();
-        closeBut.closest('.unpaste-confirmation-container')?.remove();
-        resolve(false);
+      // If user clicks outside the modal (backdrop), cancel
+      if (!event.target.closest('.unpaste-confirmation-modal')) {
+        cleanup(false);
         return;
       }
-    }, { once: true });
+    };
 
+    container.addEventListener('click', clickHandler);
     document.addEventListener('keydown', keydownFunc);
   });
 
   if (!isConfirmed) return;
-
 
   try {
     const response = await fetch('/api/paste/undo', { method: 'POST' });
@@ -379,6 +392,11 @@ async function undoPaste() {
 
     const resData = await response.json();
 
+    if (resData?.message === 'no_paste_to_undo') {
+      makeCopyPasteMessage('Není nic k vrácení.');
+      return;
+    }
+
     if (!response.ok) {
       throw new UnexpectedError();
     }
@@ -386,6 +404,7 @@ async function undoPaste() {
     console.log(error);
   }
 }
+
 
 
 async function redoPaste() {
