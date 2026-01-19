@@ -85,7 +85,7 @@ def make_payment():
         return jsonify(error='wallet_balance_czk_is_not_enough'), 400
     if wallet['balance_czk'] + amount_czk > 1_000_000:
         return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
-    
+
     try:
         products_info = json.loads(products_info)
         total_products_price = 0
@@ -99,6 +99,11 @@ def make_payment():
             
             ok, errors = validate_product_price(product['price'])
             if not ok:
+                return jsonify(error='invalid_products_info'), 400
+            
+            try:
+                UUID(product['id'])
+            except (ValueError, TypeError):
                 return jsonify(error='invalid_products_info'), 400
             
             total_products_price -= product['price'] * product['quantity']
