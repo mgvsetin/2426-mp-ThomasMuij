@@ -6,20 +6,9 @@ import hashlib
 from psycopg.types.json import Jsonb
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
+from cashier_app.utils.general import convert_uuids_to_str
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
-
-
-def convert_uuids_to_str(obj):
-    if isinstance(obj, UUID):
-        return str(obj)
-    if isinstance(obj, dict):
-        return {k: convert_uuids_to_str(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [convert_uuids_to_str(v) for v in obj]
-    if isinstance(obj, tuple):
-        return tuple(convert_uuids_to_str(v) for v in obj)
-    return obj
 
 
 api_bp = Blueprint('transactions_api', __name__, url_prefix='/api/transactions')
@@ -268,18 +257,22 @@ def make_balance_change():
         return jsonify(error='wallet_balance_czk_is_not_enough'), 400
     if wallet['balance_czk'] + change_balance_by > 1_000_000:
         return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
-    
-    fingerprint_source = json.dumps({
+
+    fingerprint_cols = {
         'tag_id': tag_id,
         'wallet_id': wallet['id'],
         'user_id': wallet['owner_id'],
         'event_id': event['id'],
         'booth_id': booth['id'],
-        'transaction_type': 'payment',
+        'transaction_type': 'balance-change',
         'amount_czk': change_balance_by,
         'performed_by': logged_employee['id'],
         'products_info': '[]'
-    }, separators=(',', ':'), sort_keys=True)
+    }
+    
+    fingerprint_source = json.dumps(
+        {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
+        separators=(',', ':'), sort_keys=True)
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
     
     params = {

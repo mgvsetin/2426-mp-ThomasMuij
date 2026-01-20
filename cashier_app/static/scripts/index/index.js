@@ -714,9 +714,16 @@ document.addEventListener('submit', async (event) => {
     }
 
     if (cardJob === 'assign') {
+      const idempotencyKey = crypto.randomUUID();
+      formData.set('idempotency-key', idempotencyKey);
+
+      const headers = new Headers();
+      headers.set('Idempotency-Key', idempotencyKey);
+
       try {
         const response = await fetch('/api/users/wallets/create', {
           method: 'post',
+          headers,
           body: formData
         });
 
