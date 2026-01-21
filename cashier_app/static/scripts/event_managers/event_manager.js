@@ -2331,7 +2331,7 @@ async function openAddProductModal() {
           </div>
           <div class="form-row">
             <label for="product-price-input">Cena (Kč)</label>
-            <input id="product-price-input" name="price" type="number" step="1" min="0"/>
+            <input id="product-price-input" name="price" type="number" step="1"/>
             <div id="add-product-price-error" class="form-error"></div>
           </div>
           <div class="form-row image-form-row">
@@ -2404,7 +2404,7 @@ async function openEditProductModal(row) {
             </div>
             <div class="form-row">
               <label for="product-price-input">Cena (Kč)</label>
-              <input id="product-price-input" name="price" type="number" step="1" min="0" value="${escapeHTML(String(product.price))}"/>
+              <input id="product-price-input" name="price" type="number" step="1" value="${escapeHTML(String(product.price))}"/>
               <div id="edit-product-price-error" class="form-error"></div>
             </div>
             <div class="form-row">

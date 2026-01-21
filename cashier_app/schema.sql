@@ -388,11 +388,11 @@ CREATE TABLE IF NOT EXISTS products (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id      uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name          text NOT NULL,
-  price         int NOT NULL,
+  price         int NOT NULL, -- může být záporná
   image_id      uuid REFERENCES product_images(id) ON DELETE SET NULL,
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT price_is_positive_check
-    CHECK (price >= 0)
+  created_at    timestamptz NOT NULL DEFAULT now()
+  -- CONSTRAINT price_is_positive_check
+  --   CHECK (price >= 0)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (event_id, LOWER(name));
 

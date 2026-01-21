@@ -291,8 +291,8 @@ document.addEventListener('click', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 409 && data.error === 'idempotency_key_conflict') {
-        showPayError('idempotency_key_conflict', data.detail);
+      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+        showPayError('idempotency_key_data_conflict', data.detail);
         payButton.disabled = false;
         return;
       }
@@ -714,9 +714,16 @@ document.addEventListener('submit', async (event) => {
     }
 
     if (cardJob === 'assign') {
+      const idempotencyKey = crypto.randomUUID();
+      formData.set('idempotency-key', idempotencyKey);
+
+      const headers = new Headers();
+      headers.set('Idempotency-Key', idempotencyKey);
+
       try {
         const response = await fetch('/api/users/wallets/create', {
           method: 'post',
+          headers,
           body: formData
         });
 
@@ -731,6 +738,12 @@ document.addEventListener('submit', async (event) => {
         if (response.status === 400) {
           showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
+          return;
+        }
+
+        if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          payButton.disabled = false;
           return;
         }
 
@@ -769,6 +782,12 @@ document.addEventListener('submit', async (event) => {
         if (response.status === 400) {
           showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
+          return;
+        }
+
+        if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          payButton.disabled = false;
           return;
         }
 

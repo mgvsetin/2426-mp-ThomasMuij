@@ -6,20 +6,9 @@ import hashlib
 from psycopg.types.json import Jsonb
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
+from cashier_app.utils.general import convert_uuids_to_str
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
-
-
-def convert_uuids_to_str(obj):
-    if isinstance(obj, UUID):
-        return str(obj)
-    if isinstance(obj, dict):
-        return {k: convert_uuids_to_str(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [convert_uuids_to_str(v) for v in obj]
-    if isinstance(obj, tuple):
-        return tuple(convert_uuids_to_str(v) for v in obj)
-    return obj
 
 
 api_bp = Blueprint('transactions_api', __name__, url_prefix='/api/transactions')
@@ -85,7 +74,7 @@ def make_payment():
         return jsonify(error='wallet_balance_czk_is_not_enough'), 400
     if wallet['balance_czk'] + amount_czk > 1_000_000:
         return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
-    
+
     try:
         products_info = json.loads(products_info)
         total_products_price = 0
@@ -99,6 +88,11 @@ def make_payment():
             
             ok, errors = validate_product_price(product['price'])
             if not ok:
+                return jsonify(error='invalid_products_info'), 400
+            
+            try:
+                UUID(product['id'])
+            except (ValueError, TypeError):
                 return jsonify(error='invalid_products_info'), 400
             
             total_products_price -= product['price'] * product['quantity']
@@ -158,25 +152,23 @@ def make_payment():
                 # wallet se updatuje pomocí trigger v db
                 inserted = cur.fetchone()
 
-                if inserted:
-                    return jsonify(), 200
-                
-                cur.execute(
-                    '''
-                    SELECT id, request_fingerprint
-                    FROM transactions
-                    WHERE idempotency_key = %s
-                    ''', (idemp_key,))
-                existing = cur.fetchone()
+                if not inserted:                
+                    cur.execute(
+                        '''
+                        SELECT id, request_fingerprint
+                        FROM transactions
+                        WHERE idempotency_key = %s
+                        ''', (idemp_key,))
+                    existing = cur.fetchone()
 
-                if not existing:
-                    return jsonify(error='unexpected_error'), 500
-                
-                existing_fingerprint = existing['request_fingerprint']
+                    if not existing:
+                        return jsonify(error='unexpected_error'), 500
+                    
+                    existing_fingerprint = existing['request_fingerprint']
 
-                if existing_fingerprint != request_fingerprint:
-                    # stejný idempotency key s jinými daty
-                    return jsonify(error='idempotency_key_data_conflict'), 409
+                    if existing_fingerprint != request_fingerprint:
+                        # stejný idempotency key s jinými daty
+                        return jsonify(error='idempotency_key_data_conflict'), 409
     except RaiseException as e:
         text = str(e)
 
@@ -209,7 +201,7 @@ def make_balance_change():
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
     if not idemp_key:
-        return jsonify(error='missing-idempotency-key'), 400 ##### do on frontend errs
+        return jsonify(error='missing_idempotency_key'), 400 ##### do on frontend errs
 
     if not tag_id:
         return jsonify(error='missing_tag_id'), 400
@@ -270,7 +262,7 @@ def make_balance_change():
         'user_id': wallet['owner_id'],
         'event_id': event['id'],
         'booth_id': booth['id'],
-        'transaction_type': 'payment',
+        'transaction_type': 'balance-change',
         'amount_czk': change_balance_by,
         'performed_by': logged_employee['id'],
         'products_info': '[]'
@@ -312,25 +304,23 @@ def make_balance_change():
                 # wallet se updatuje pomocí trigger v db
                 inserted = cur.fetchone()
 
-                if inserted:
-                    return jsonify(), 200
-                
-                cur.execute(
-                    '''
-                    SELECT id, request_fingerprint
-                    FROM transactions
-                    WHERE idempotency_key = %s
-                    ''', (idemp_key,))
-                existing = cur.fetchone()
+                if not inserted:                
+                    cur.execute(
+                        '''
+                        SELECT id, request_fingerprint
+                        FROM transactions
+                        WHERE idempotency_key = %s
+                        ''', (idemp_key,))
+                    existing = cur.fetchone()
 
-                if not existing:
-                    return jsonify(error='unexpected_error'), 500
-                
-                existing_fingerprint = existing['request_fingerprint']
+                    if not existing:
+                        return jsonify(error='unexpected_error'), 500
+                    
+                    existing_fingerprint = existing['request_fingerprint']
 
-                if existing_fingerprint != request_fingerprint:
-                    # stejný idempotency key s jinými daty
-                    return jsonify(error='idempotency_key_conflict'), 409 ##### do on frontend errs
+                    if existing_fingerprint != request_fingerprint:
+                        # stejný idempotency key s jinými daty
+                        return jsonify(error='idempotency_key_data_conflict'), 409
     except RaiseException as e:
         text = str(e)
 
