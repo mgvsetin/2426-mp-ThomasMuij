@@ -152,25 +152,23 @@ def make_payment():
                 # wallet se updatuje pomocí trigger v db
                 inserted = cur.fetchone()
 
-                if inserted:
-                    return jsonify(), 200
-                
-                cur.execute(
-                    '''
-                    SELECT id, request_fingerprint
-                    FROM transactions
-                    WHERE idempotency_key = %s
-                    ''', (idemp_key,))
-                existing = cur.fetchone()
+                if not inserted:                
+                    cur.execute(
+                        '''
+                        SELECT id, request_fingerprint
+                        FROM transactions
+                        WHERE idempotency_key = %s
+                        ''', (idemp_key,))
+                    existing = cur.fetchone()
 
-                if not existing:
-                    return jsonify(error='unexpected_error'), 500
-                
-                existing_fingerprint = existing['request_fingerprint']
+                    if not existing:
+                        return jsonify(error='unexpected_error'), 500
+                    
+                    existing_fingerprint = existing['request_fingerprint']
 
-                if existing_fingerprint != request_fingerprint:
-                    # stejný idempotency key s jinými daty
-                    return jsonify(error='idempotency_key_data_conflict'), 409
+                    if existing_fingerprint != request_fingerprint:
+                        # stejný idempotency key s jinými daty
+                        return jsonify(error='idempotency_key_data_conflict'), 409
     except RaiseException as e:
         text = str(e)
 
@@ -203,7 +201,7 @@ def make_balance_change():
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
     if not idemp_key:
-        return jsonify(error='missing-idempotency-key'), 400 ##### do on frontend errs
+        return jsonify(error='missing_idempotency_key'), 400 ##### do on frontend errs
 
     if not tag_id:
         return jsonify(error='missing_tag_id'), 400
@@ -306,25 +304,23 @@ def make_balance_change():
                 # wallet se updatuje pomocí trigger v db
                 inserted = cur.fetchone()
 
-                if inserted:
-                    return jsonify(), 200
-                
-                cur.execute(
-                    '''
-                    SELECT id, request_fingerprint
-                    FROM transactions
-                    WHERE idempotency_key = %s
-                    ''', (idemp_key,))
-                existing = cur.fetchone()
+                if not inserted:                
+                    cur.execute(
+                        '''
+                        SELECT id, request_fingerprint
+                        FROM transactions
+                        WHERE idempotency_key = %s
+                        ''', (idemp_key,))
+                    existing = cur.fetchone()
 
-                if not existing:
-                    return jsonify(error='unexpected_error'), 500
-                
-                existing_fingerprint = existing['request_fingerprint']
+                    if not existing:
+                        return jsonify(error='unexpected_error'), 500
+                    
+                    existing_fingerprint = existing['request_fingerprint']
 
-                if existing_fingerprint != request_fingerprint:
-                    # stejný idempotency key s jinými daty
-                    return jsonify(error='idempotency_key_conflict'), 409 ##### do on frontend errs
+                    if existing_fingerprint != request_fingerprint:
+                        # stejný idempotency key s jinými daty
+                        return jsonify(error='idempotency_key_data_conflict'), 409
     except RaiseException as e:
         text = str(e)
 

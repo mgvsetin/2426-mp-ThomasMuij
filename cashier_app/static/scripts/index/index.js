@@ -291,8 +291,8 @@ document.addEventListener('click', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 409 && data.error === 'idempotency_key_conflict') {
-        showPayError('idempotency_key_conflict', data.detail);
+      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+        showPayError('idempotency_key_data_conflict', data.detail);
         payButton.disabled = false;
         return;
       }
@@ -741,6 +741,12 @@ document.addEventListener('submit', async (event) => {
           return;
         }
 
+        if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          payButton.disabled = false;
+          return;
+        }
+
         if (!response.ok) {
           showUserFormErrors('unexpected_error');
           saveButton.disabled = false;
@@ -776,6 +782,12 @@ document.addEventListener('submit', async (event) => {
         if (response.status === 400) {
           showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
+          return;
+        }
+
+        if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          payButton.disabled = false;
           return;
         }
 

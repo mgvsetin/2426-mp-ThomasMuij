@@ -785,6 +785,12 @@ export function showUserFormErrors(error, detail) {
     case 'resulting_wallet_balance_czk_is_too_high':
       setErr(generalError, 'Výsledný zůstatek je příliš vysoký.');
       return;
+    case 'missing_idempotency_key':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'idempotency_key_data_conflict':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
     case 'db_integrity_error':
       if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
         setErr(generalError, 'Uživatel se stejnými údaji už existuje.');

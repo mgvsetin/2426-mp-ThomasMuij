@@ -1316,11 +1316,13 @@ def add_product():
                         ''',
                         params)
     except IntegrityError as e:
-        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except:
-        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         raise
 
     return jsonify(), 200
@@ -1541,15 +1543,18 @@ def edit_product():
                         ''',
                         params)
     except IntegrityError as e:
-        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except RuntimeError:
-        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         current_app.logger.exception('multiple rows updated for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
     except:
-        remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         raise
     
     if rows_affected == 0:
