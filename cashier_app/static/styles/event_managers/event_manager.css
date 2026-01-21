@@ -558,3 +558,287 @@ input[type=checkbox] {
   display: block;
 }
 
+
+
+/* =====================================================
+   STATISTIKY A GRAFY - PŘIDAT NA KONEC event_manager.css
+   ===================================================== */
+
+#statistics-container {
+  margin-top: 30px;
+}
+
+#statistics-container h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  border-bottom: 2px solid rgb(230, 230, 230);
+  padding-bottom: 10px;
+}
+
+/* CELKOVÉ STATISTIKY - KARTY */
+.stats-overview {
+  margin-bottom: 30px;
+}
+
+.stats-overview h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: rgb(250, 250, 250);
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgb(100, 100, 100);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgb(30, 30, 30);
+}
+
+/* GRAFY */
+.stats-charts {
+  margin-bottom: 30px;
+}
+
+.stats-charts h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.chart-wrapper {
+  margin-bottom: 25px;
+}
+
+.chart-wrapper h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: rgb(60, 60, 60);
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+/* DETAIL STÁNKŮ */
+.stats-booths {
+  margin-bottom: 30px;
+}
+
+.stats-booths h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.stats-booths h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 10px 0;
+  color: rgb(60, 60, 60);
+}
+
+.booth-stat-card {
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.booth-stat-header {
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.booth-stat-header:hover {
+  background-color: rgb(248, 248, 248);
+}
+
+.booth-stat-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.booth-stat-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(30, 30, 30);
+}
+
+.booth-stat-revenue {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgb(0, 120, 212);
+}
+
+.booth-stat-details {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: rgb(100, 100, 100);
+  flex-wrap: wrap;
+}
+
+.expand-icon {
+  display: inline-block;
+  transition: transform 0.3s;
+  color: rgb(0, 120, 212);
+  font-weight: bold;
+}
+
+.booth-products {
+  border-top: 1px solid rgb(230, 230, 230);
+  padding: 15px;
+  background-color: rgb(252, 252, 252);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.booth-products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.booth-products-table thead {
+  background: rgb(245, 245, 245);
+}
+
+.booth-products-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgb(220, 220, 220);
+}
+
+.booth-products-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgb(240, 240, 240);
+}
+
+.booth-products-table tbody tr:hover {
+  background-color: rgb(248, 248, 248);
+}
+
+/* DETAIL PRODUKTŮ */
+.stats-products {
+  margin-bottom: 30px;
+}
+
+.stats-products h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.products-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.products-stats-table thead {
+  background: rgb(245, 245, 245);
+}
+
+.products-stats-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgb(220, 220, 220);
+  font-size: 14px;
+}
+
+.products-stats-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgb(240, 240, 240);
+  font-size: 14px;
+}
+
+.products-stats-table tbody tr:hover {
+  background: rgb(252, 252, 252);
+}
+
+/* RESPONSIVITA */
+@media (max-width: 768px) {
+  .stats-cards {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .booth-stat-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .booth-stat-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .booth-products-table {
+    font-size: 12px;
+  }
+
+  .booth-products-table th,
+  .booth-products-table td {
+    padding: 6px 8px;
+  }
+}

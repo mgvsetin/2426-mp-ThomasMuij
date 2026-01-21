@@ -470,8 +470,9 @@ def return_wallet():
                     SET balance_czk = 0, 
                         deleted_at = now()
                     WHERE tag_id = %s
+                    AND event_id = %s
                     AND deleted_at IS NULL''',
-                    (tag_id,))
+                    (tag_id, selected_event['id']))
                 
                 rows_affected = cur.rowcount
 

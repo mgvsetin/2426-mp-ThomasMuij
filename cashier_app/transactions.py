@@ -264,7 +264,7 @@ def make_balance_change():
     if wallet['balance_czk'] + change_balance_by > 1_000_000:
         return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
     
-    fingerprint_source = json.dumps({
+    fingerprint_cols = {
         'tag_id': tag_id,
         'wallet_id': wallet['id'],
         'user_id': wallet['owner_id'],
@@ -274,7 +274,11 @@ def make_balance_change():
         'amount_czk': change_balance_by,
         'performed_by': logged_employee['id'],
         'products_info': '[]'
-    }, separators=(',', ':'), sort_keys=True)
+    }
+    
+    fingerprint_source = json.dumps(
+        {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
+        separators=(',', ':'), sort_keys=True)
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
     
     params = {
