@@ -560,9 +560,7 @@ input[type=checkbox] {
 
 
 
-/* =====================================================
-   STATISTIKY A GRAFY - PŘIDAT NA KONEC event_manager.css
-   ===================================================== */
+
 
 #statistics-container {
   margin-top: 30px;
@@ -704,7 +702,7 @@ input[type=checkbox] {
 .booth-stat-revenue {
   font-size: 18px;
   font-weight: 700;
-  color: rgb(0, 120, 212);
+  color: #0f766e;
 }
 
 .booth-stat-details {

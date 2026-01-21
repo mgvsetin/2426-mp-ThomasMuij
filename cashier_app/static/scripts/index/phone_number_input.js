@@ -238,7 +238,10 @@ countryCodeContainer.addEventListener('focusin', () => {
 
 countryCodeContainer.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
-    dropdown.classList.remove('active');
+    if (dropdown.classList.contains('active')) {
+      dropdown.classList.remove('active');
+      event.stopPropagation();
+    }
   }
 
   let indexDirection;

@@ -177,7 +177,7 @@ def make_payment():
         else:
             return jsonify(error='unexpected_error'), 500
 
-    return jsonify(), 200
+    return jsonify(balance_changed_by=amount_czk), 200
 
 
 @api_bp.route('/make-balance-change', methods=('POST',))
@@ -329,4 +329,4 @@ def make_balance_change():
         else:
             return jsonify(error='unexpected_error'), 500
             
-    return jsonify(), 200
+    return jsonify(balance_changed_by=change_balance_by), 200

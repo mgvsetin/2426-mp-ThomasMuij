@@ -206,6 +206,11 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const boothStatHeader = event.target.closest('.booth-stat-header');
+  if (boothStatHeader) {
+    toggleBoothProducts(boothStatHeader.getAttribute('data-booth-id'));
+  }
+
   if (event.target.matches('.search-bar')) {
     return;
   }
@@ -1182,6 +1187,14 @@ document.addEventListener('keydown', (event) => {
       }
     }
   }
+
+  if (event.key === 'Escape') {
+    const overlay = document.querySelector('.overlay')
+    if (overlay) {
+      overlay.remove();
+      return;
+    }
+  }
 });
 
 
@@ -1906,12 +1919,12 @@ function makeProductsPicker(products, checkProducts = []) {
 
 function openModal(html) {
   if (document.querySelector('.overlay')) return; // max 1
-  const div = document.createElement('div');
-  div.className = 'overlay';
-  div.innerHTML = `<div class="modal">${html}</div>`;
-  document.body.appendChild(div);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  document.body.appendChild(overlay);
   document.body.classList.add('no-scroll');
-  return div;
+  return overlay;
 }
 
 function closeModal() {
@@ -3630,16 +3643,7 @@ function showDeleteCategoryErrors(error, detail) {
 }
 
 
-// =====================================================
-// ROZŠÍŘENÍ EVENT_MANAGER.JS PRO STATISTIKY A GRAFY
-// Přidejte tento kód na konec event_manager.js souboru
-// =====================================================
 
-
-
-// Přidat do loadPage funkce volání loadStatistics
-// Například:
-// if (statisticsSection) toLoad.push(loadStatistics());
 
 async function loadStatistics() {
   if (!eventId) return;
@@ -3698,7 +3702,7 @@ function renderStatistics() {
           <div class="stat-value">${formatNumber(overall.total_withdrawals_czk)} Kč</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Jedinečných zákazníků</div>
+          <div class="stat-label">Počet zákazníků</div>
           <div class="stat-value">${formatNumber(overall.unique_users)}</div>
         </div>
         <div class="stat-card">
@@ -3720,22 +3724,6 @@ function renderStatistics() {
           <canvas id="revenue-timeline-chart"></canvas>
         </div>
       </div>
-
-      <div class="charts-grid">
-        <div class="chart-wrapper">
-          <h4>Top stánky podle tržeb</h4>
-          <div class="chart-container">
-            <canvas id="booth-revenue-chart"></canvas>
-          </div>
-        </div>
-        
-        <div class="chart-wrapper">
-          <h4>Top produkty</h4>
-          <div class="chart-container">
-            <canvas id="top-products-chart"></canvas>
-          </div>
-        </div>
-      </div>
     </div>
   `;
 
@@ -3750,8 +3738,6 @@ function renderStatistics() {
   // Vykreslení grafů (musí být po přidání do DOM)
   setTimeout(() => {
     renderRevenueTimelineChart();
-    renderBoothRevenueChart();
-    renderTopProductsChart();
   }, 100);
 }
 
@@ -3782,7 +3768,7 @@ function renderBoothsStatistics() {
 
       html += `
         <div class="booth-stat-card">
-          <div class="booth-stat-header" onclick="toggleBoothProducts('${booth.booth_id}')">
+          <div class="booth-stat-header" data-booth-id="${booth.booth_id}">
             <div class="booth-stat-main">
               <div class="booth-stat-name">${escapeHTML(booth.booth_name)}</div>
               <div class="booth-stat-revenue">${formatNumber(booth.revenue_czk)} Kč</div>
@@ -3790,7 +3776,6 @@ function renderBoothsStatistics() {
             <div class="booth-stat-details">
               <span>Platby: ${formatNumber(booth.payment_count)}</span>
               <span>Transakce: ${formatNumber(booth.transaction_count)}</span>
-              ${hasProducts ? '<span class="expand-icon">▼</span>' : ''}
             </div>
           </div>
           ${hasProducts ? `
@@ -3831,7 +3816,6 @@ function renderBoothsStatistics() {
           <div class="booth-stat-header">
             <div class="booth-stat-main">
               <div class="booth-stat-name">${escapeHTML(booth.booth_name)}</div>
-              <div class="booth-stat-revenue">-</div>
             </div>
             <div class="booth-stat-details">
               <span>Vklady: ${formatNumber(booth.deposits_czk)} Kč</span>
@@ -3855,7 +3839,7 @@ function renderProductsStatistics() {
 
   let html = `
     <div class="stats-products">
-      <h3>Top produkty celkem</h3>
+      <h3>Produkty</h3>
       <table class="products-stats-table">
         <thead>
           <tr>
@@ -3885,19 +3869,12 @@ function renderProductsStatistics() {
 }
 
 // Funkce pro toggle produktů u stánku
-window.toggleBoothProducts = function (boothId) {
+function toggleBoothProducts(boothId) {
   const productsDiv = document.getElementById(`booth-products-${boothId}`);
   if (!productsDiv) return;
 
   const isVisible = productsDiv.style.display !== 'none';
   productsDiv.style.display = isVisible ? 'none' : 'block';
-
-  // Rotace šipky
-  const header = productsDiv.previousElementSibling;
-  const icon = header.querySelector('.expand-icon');
-  if (icon) {
-    icon.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-  }
 };
 
 // GRAFY
@@ -3953,95 +3930,7 @@ function renderRevenueTimelineChart() {
   });
 }
 
-function renderBoothRevenueChart() {
-  const ctx = document.getElementById('booth-revenue-chart');
-  if (!ctx) return;
 
-  if (charts.boothRevenue) {
-    charts.boothRevenue.destroy();
-  }
-
-  const sellerBooths = statsData.booth_statistics.filter(b => b.booth_type === 'seller');
-  const sortedBooths = sellerBooths.sort((a, b) => b.revenue_czk - a.revenue_czk).slice(0, 10);
-
-  charts.boothRevenue = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sortedBooths.map(b => b.booth_name),
-      datasets: [{
-        label: 'Tržby (Kč)',
-        data: sortedBooths.map(b => b.revenue_czk),
-        backgroundColor: 'rgba(75, 192, 192, 0.7)',
-        borderColor: 'rgb(75, 192, 192)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: function (value) {
-              return value.toLocaleString('cs-CZ') + ' Kč';
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-function renderTopProductsChart() {
-  const ctx = document.getElementById('top-products-chart');
-  if (!ctx) return;
-
-  if (charts.topProducts) {
-    charts.topProducts.destroy();
-  }
-
-  const products = statsData.top_products.slice(0, 10);
-
-  charts.topProducts = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: products.map(p => p.product_name),
-      datasets: [{
-        label: 'Tržby (Kč)',
-        data: products.map(p => p.total_revenue_czk),
-        backgroundColor: 'rgba(153, 102, 255, 0.7)',
-        borderColor: 'rgb(153, 102, 255)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: 'y',
-      plugins: {
-        legend: {
-          display: false
-        }
-      },
-      scales: {
-        x: {
-          beginAtZero: true,
-          ticks: {
-            callback: function (value) {
-              return value.toLocaleString('cs-CZ') + ' Kč';
-            }
-          }
-        }
-      }
-    }
-  });
-}
 
 function formatNumber(num) {
   return Number(num || 0).toLocaleString('cs-CZ');

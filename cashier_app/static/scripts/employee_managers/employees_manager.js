@@ -310,6 +310,14 @@ document.addEventListener('keydown', (event) => {
       openEditOverlay(selectedRows[0]);
     }
   }
+
+  if (event.key === 'Escape') {
+    const overlay = document.querySelector('.overlay')
+    if (overlay) {
+      overlay.remove();
+      return;
+    }
+  }
 });
 
 
@@ -504,8 +512,8 @@ async function renderTableRows() {
 
 function openAddEmployeeOverlay() {
   const overlayHTML = `
-    <div id="add-overlay">
-      <div id="add-modal">
+    <div id="add-overlay" class="overlay">
+      <div id="add-modal" class="modal">
         <header id="add-modal-header">
           <h2 id="add-overlay-title">Přidat zaměstnance</h2>
           <button id="add-modal-close">
@@ -591,8 +599,8 @@ function openEditOverlay(row) {
   }
 
   const overlayHTML = `
-    <div id="edit-overlay">
-      <div id="edit-modal">
+    <div id="edit-overlay" class="overlay">
+      <div id="edit-modal" class="modal">
         <header id="edit-modal-header">
           <h2 id="edit-overlay-title">Upravit zaměstnance</h2>
           <button id="edit-modal-close">
@@ -1035,8 +1043,8 @@ function openDeleteOverlay(row) {
   }
 
   const overlayHTML = `
-    <div id="delete-overlay">
-      <div id="delete-modal">
+    <div id="delete-overlay" class="overlay">
+      <div id="delete-modal" class="modal">
         <header id="delete-modal-header">
           <h2 id="delete-overlay-title">Smazat zaměstnance</h2>
           <button id="delete-modal-close">

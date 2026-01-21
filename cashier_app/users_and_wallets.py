@@ -316,7 +316,7 @@ def delete_user():
                     AND deleted_at IS NULL''',
                     (user_id,))
                 
-                # wallets od user se smažou sami
+                # wallets od user se smažou sami pomocí triggeru
                 
                 rows_affected = cur.rowcount
 
@@ -517,7 +517,7 @@ def add_wallet():
         # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
-    return jsonify(), 200
+    return jsonify(balance_changed_by=change_balance_by), 200
 
 
 @api_wallets_bp.route('/return', methods=('POST',))
@@ -654,4 +654,4 @@ def return_wallet():
     if rows_affected == 0:
         return jsonify(error='wallet_not_found'), 404
 
-    return jsonify(), 200
+    return jsonify(balance_changed_by=change_balance_by), 200

@@ -9,7 +9,7 @@ import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, remov
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
-import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { getWalletByTag, getWallets, resetWalletsCache, updateWalletBalance } from "./wallets.js";
 
 const pageContainer = document.querySelector('#page-container');
@@ -430,9 +430,16 @@ document.addEventListener('click', async (event) => {
 
     const formData = new FormData(editWalletForm);
 
+    const idempotencyKey = crypto.randomUUID();
+    formData.set('idempotency-key', idempotencyKey);
+
+    const headers = new Headers();
+    headers.set('Idempotency-Key', idempotencyKey);
+
     try {
       const response = await fetch('/api/users/wallets/return', {
         method: 'post',
+        headers,
         body: formData
       });
 
@@ -457,12 +464,20 @@ document.addEventListener('click', async (event) => {
         return;
       }
 
+      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+        showUserFormErrors('idempotency_key_data_conflict', data.detail);
+        payButton.disabled = false;
+        return;
+      }
+
       if (!response.ok) {
         showEditWalletFormErrors('unexpected_error');
         saveButton.disabled = false;
         returnCardButton.disabled = false;
         return;
       }
+
+      showMoneyToExchangeModal(data.balance_changed_by);
     } catch (err) {
       showEditWalletFormErrors('unexpected_error');
       saveButton.disabled = false;
@@ -523,7 +538,7 @@ usersTableBody.addEventListener('dblclick', async (event) => {
 document.addEventListener('keydown', (event) => {
   // headerKeydownListeners(event);
 
-  if (event.target.matches('#change-balance-by-input') && event.key === '-') {
+  if (event.target.matches('#change-balance-by-input, #edit-wallet-change-balance-by-input') && event.key === '-') {
     event.preventDefault();
     const changeBalanceByInput = event.target;
     let value = Number(changeBalanceByInput.value);
@@ -535,7 +550,7 @@ document.addEventListener('keydown', (event) => {
 
 
 
-  if (event.target.matches('#set-new-balance-input') && event.key === '-') {
+  if (event.target.matches('#set-new-balance-input, #edit-wallet-set-new-balance-input') && event.key === '-') {
     event.preventDefault();
     const setNewBalanceInput = event.target;
     let value = Number(setNewBalanceInput.value);
@@ -569,7 +584,26 @@ document.addEventListener('keydown', (event) => {
     });
     return;
   }
-})
+
+  if (event.key === 'Enter') {
+    const selectedRows = document.querySelectorAll('tr[selected]');
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0];
+      if (row && usersTableBody.contains(row)) {
+        selectUserForUpdate(row.id);
+      }
+    }
+  }
+
+  if (event.key === 'Escape') {
+    const overlay = document.querySelector('.overlay')
+    if (overlay) {
+      overlay.remove();
+      return;
+    }
+    unselectUserForUpdate();
+  }
+});
 
 document.addEventListener('submit', async (event) => {
   const eventForm = event.target.closest('#event-selector-form');
@@ -752,6 +786,8 @@ document.addEventListener('submit', async (event) => {
           saveButton.disabled = false;
           return;
         }
+
+        showMoneyToExchangeModal(data.balance_changed_by);
       } catch (err) {
         showUserFormErrors('unexpected_error');
         saveButton.disabled = false;
@@ -796,15 +832,24 @@ document.addEventListener('submit', async (event) => {
           saveButton.disabled = false;
           return;
         }
+
+        showMoneyToExchangeModal(data.balance_changed_by);
       } catch (err) {
         showUserFormErrors('unexpected_error');
         saveButton.disabled = false;
         return;
       }
     } else if (cardJob === 'return') {
+      const idempotencyKey = crypto.randomUUID();
+      formData.set('idempotency-key', idempotencyKey);
+
+      const headers = new Headers();
+      headers.set('Idempotency-Key', idempotencyKey);
+
       try {
         const response = await fetch('/api/users/wallets/return', {
           method: 'post',
+          headers,
           body: formData
         });
 
@@ -828,11 +873,19 @@ document.addEventListener('submit', async (event) => {
           return;
         }
 
+        if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          payButton.disabled = false;
+          return;
+        }
+
         if (!response.ok) {
           showUserFormErrors('unexpected_error');
           saveButton.disabled = false;
           return;
         }
+
+        showMoneyToExchangeModal(data.balance_changed_by);
       } catch (err) {
         showUserFormErrors('unexpected_error');
         saveButton.disabled = false;
@@ -956,12 +1009,20 @@ document.addEventListener('submit', async (event) => {
         return;
       }
 
+      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+        showEditWalletFormErrors('idempotency_key_data_conflict', data.detail);
+        payButton.disabled = false;
+        return;
+      }
+
       if (!response.ok) {
         showEditWalletFormErrors('unexpected_error');
         saveButton.disabled = false;
         returnCardButton.disabled = false;
         return;
       }
+
+      showMoneyToExchangeModal(data.balance_changed_by);
     } catch (err) {
       showEditWalletFormErrors('unexpected_error');
       saveButton.disabled = false;

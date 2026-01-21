@@ -1357,6 +1357,12 @@ label {
   margin-top: 12px
 }
 
+.money-to-exchange {
+  font-weight: 700;
+  margin: 5px 0 5px 10px;
+  font-size: 19px;
+}
+
 #user-wallets-list li {
   margin-top: 5px;
   padding: 2px 0;

@@ -1004,6 +1004,12 @@ export function showEditWalletFormErrors(error, detail) {
     case 'resulting_wallet_balance_czk_is_too_high':
       setErr(generalError, 'Výsledný zůstatek je příliš vysoký.');
       return;
+    case 'missing_idempotency_key':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'idempotency_key_data_conflict':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
     default:
       break;
   }
@@ -1034,4 +1040,45 @@ export function showEditWalletFormErrors(error, detail) {
   }
 
   setErr(generalError, errorStr); /////
+}
+
+
+export function showMoneyToExchangeModal(balanceChangedBy) {
+  let html = '';
+
+  if (balanceChangedBy <= 0) {
+    html = `
+      <div class="modal">
+        <header>
+          <h2>Peníze k vrácení zákazníkovi</h2>
+          <button class="close-modal cross-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+        <div class="money-to-exchange">${-balanceChangedBy} Kč</div>
+      </div>
+    `;
+  } else if (balanceChangedBy > 0) {
+    html = `
+      <div class="modal">
+        <header>
+          <h2>Peníze k zaplacení zákazníkem</h2>
+          <button class="close-modal cross-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </header>
+        <div class="money-to-exchange">${balanceChangedBy} Kč</div>
+      </div>
+    `;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.classList.add('overlay');
+  overlay.innerHTML = html;
+
+  document.body.appendChild(overlay);
 }

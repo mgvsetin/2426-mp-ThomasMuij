@@ -255,6 +255,14 @@ document.addEventListener('keydown', (event) => {
       window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
     }
   }
+
+  if (event.key === 'Escape') {
+    const overlay = document.querySelector('.overlay')
+    if (overlay) {
+      overlay.remove();
+      return;
+    }
+  }
 });
 
 
@@ -430,8 +438,8 @@ function openAddEventOverlay() {
   }
 
   const overlayHTML = `
-    <div id="add-event-overlay">
-      <div id="add-event-modal">
+    <div id="add-event-overlay" class="overlay">
+      <div id="add-event-modal" class="modal">
         <header id="add-event-modal-header">
           <h2 id="add-event-overlay-title">Přidat akci</h2>
           <button id="add-event-modal-close" type="button" aria-label="Zavřít">

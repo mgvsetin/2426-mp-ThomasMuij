@@ -26,7 +26,7 @@ export let newCardReadPromise = new Promise(resolve => {
   newCardReadResolve = resolve;
 });
 
-handleCardRead('newcard');
+handleCardRead('newcard'); /////////
 
 async function getReaderInfo() {
   if (readerInfo) return readerInfo;
