@@ -1256,7 +1256,8 @@ label {
   box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.06);
 }
 
-#open-user-cards-modal {
+#more-user-options-actions button,
+#open-more-user-options {
   background: rgb(68, 68, 235);
   color: white;
   box-shadow: 0 6px 18px rgba(68, 68, 235, 0.1);
@@ -1268,15 +1269,23 @@ label {
   font-size: 14px;
 }
 
-#open-user-cards-modal:hover {
+#more-user-options-actions button:hover,
+#open-more-user-options:hover {
   background: rgb(62, 62, 234);
   box-shadow: 3px 3px 8px rgba(62, 62, 234, 0.3);
 }
 
-#open-user-cards-modal:disabled {
+#more-user-options-actions button:disabled,
+#open-more-user-options:disabled {
   background: rgba(68, 68, 235, 0.6);
   box-shadow: 0 6px 18px rgba(68, 68, 235, 0.1);
   cursor: initial;
+}
+
+#more-user-options-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px
 }
 
 .save-form {

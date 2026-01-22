@@ -21,7 +21,7 @@ const otherIdentifierInput = document.querySelector('#other-identifier-input');
 const changeBalanceByInput = document.querySelector('#change-balance-by-input');
 const setNewBalanceInput = document.querySelector('#set-new-balance-input');
 
-const openUserCardsModalBtn = document.querySelector('#open-user-cards-modal');
+const openMoreUserOptionsModalBtn = document.querySelector('#open-more-user-options');
 const saveUserFormBtn = document.querySelector('#save-user-form');
 
 export let selectedUserForUpdate;
@@ -416,13 +416,13 @@ export async function editUserFormOnChange(inputEvent = null) {
   if (user && valuesMatch) {
     saveUserFormBtn.textContent = 'Žádná změna';
     saveUserFormBtn.setAttribute('user-job', '');
-    openUserCardsModalBtn.disabled = false;
+    openMoreUserOptionsModalBtn.disabled = false;
   } else if (user && !valuesMatch) {
     saveUserFormBtn.textContent = 'Upravit';
     saveUserFormBtn.setAttribute('user-job', 'edit');
-    openUserCardsModalBtn.disabled = false;
+    openMoreUserOptionsModalBtn.disabled = false;
   } else {
-    openUserCardsModalBtn.disabled = true;
+    openMoreUserOptionsModalBtn.disabled = true;
     if (userId) {
       userIdInput.value = '';
       const selectedRow = document.querySelector('tr.selected-for-update');
@@ -521,6 +521,36 @@ export async function openDeleteUserModal(row) {
   div.className = 'overlay';
   div.innerHTML = html;
   document.body.appendChild(div);
+}
+
+
+export async function openMoreUserOptionsModal(userId) {
+  userId = userId.trim();
+  const users = await getUsers().catch(() => { });
+  if (!users) return;
+  const user = users.find(user => user.id === userId);
+  if (!user) return;
+
+  const overlay = document.createElement('div');
+  overlay.classList.add('overlay');
+  overlay.innerHTML = `
+    <div class="modal">
+      <header>
+        <h2>Dalsí možnosti pro "${user.first_name} ${user.last_name}"</h2>
+        <button class="close-modal cross-close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </header>
+      <div id="more-user-options-actions">
+        <button id="open-user-cards-modal">Zobrazit všechny karty</button>
+        <a href=""><button id="open-user-transaction-history">Zobrazit transakce</button></a>
+      </div>
+    </div>
+  `; ///////// finish here (mainly href above, make it open a new window)
+
+  document.body.appendChild(overlay);
 }
 
 

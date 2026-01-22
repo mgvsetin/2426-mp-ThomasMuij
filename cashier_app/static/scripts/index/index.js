@@ -9,7 +9,7 @@ import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, remov
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
-import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { getWalletByTag, getWallets, resetWalletsCache, updateWalletBalance } from "./wallets.js";
 
 const pageContainer = document.querySelector('#page-container');
@@ -401,21 +401,36 @@ document.addEventListener('click', async (event) => {
   const cancelUserFormBtn = event.target.closest('#cancel-user-form');
   if (cancelUserFormBtn) {
     await unselectUserForUpdate();
+    return;
+  }
+
+  if (event.target.matches('#open-more-user-options')) {
+    const userId = userIdInput.value.trim();
+    if (userId) {
+      openMoreUserOptionsModal(userId);
+      return;
+    }
   }
 
   if (event.target.matches('#open-user-cards-modal')) {
+    event.target.closest('.overlay')?.remove();
     const userId = userIdInput.value.trim();
-    if (userId) openUserCardsModal(userId);
+    if (userId) {
+      openUserCardsModal(userId);
+      return;
+    }
   }
 
   const userWalletLi = event.target.closest('li[tag-id]');
   if (userWalletLi) {
     openUserCardModal(userWalletLi);
+    return;
   }
 
   const backToUserCardsBtn = event.target.closest('#back-to-user-cards');
   if (backToUserCardsBtn) {
     openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'), backToUserCardsBtn.closest('.modal'));
+    return;
   }
 
   if (event.target.matches('#return-card-button')) {

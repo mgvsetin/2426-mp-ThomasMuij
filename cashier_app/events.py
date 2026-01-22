@@ -2002,6 +2002,46 @@ def delete_category():
     return jsonify(), 200
 
 
+@api_bp.route('/users/<uuid:user_id>/transaction-hisotry')
+def get_user_transaction_history_for_event(user_id):
+    logged_employee = load_logged_in_employee()
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+    
+    if not user_id:
+        return jsonify(error='missing_user_id'), 400
+
+    try:
+        user_id = UUID(str(user_id))
+    except (TypeError, ValueError):
+        return jsonify(error='invalid_user_id'), 400
+    
+    selected_event = load_selected_event()
+
+    if selected_event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    selected_booth = load_selected_booth()
+
+    if selected_booth is None:
+        return jsonify(error='no_selected_booth'), 400
+    
+    if selected_booth['booth_type'] != 'cashier':
+        return jsonify(error='invalid_booth_type'), 400
+    
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            user_transaction_history = cur.execute(
+                '''
+                SELECT ?
+                FROM transactions t
+                JOIN users u ON u.id = t.user_id
+                WHERE u.deleted_at IS NULL
+                AND ?
+                ''') ################ finish here
+
+
+
 @api_bp.route('/<uuid:event_id>/statistics')
 def get_event_statistics(event_id):
     """
