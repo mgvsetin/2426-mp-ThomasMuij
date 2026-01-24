@@ -299,8 +299,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showEditEventErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditEventErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -365,8 +365,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showDeleteEventErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showDeleteEventErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -429,8 +429,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showAddBoothErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAddBoothErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -485,8 +485,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showEditBoothErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditBoothErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -546,8 +546,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showDeleteBoothErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showDeleteBoothErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -612,8 +612,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showAssignEmployeeErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAssignEmployeeErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -669,8 +669,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showEditEmployeeErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditEmployeeErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -725,8 +725,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showRemoveEmployeeErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showRemoveEmployeeErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -782,8 +782,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showAddProductErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAddProductErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -844,8 +844,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showEditProductErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditProductErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -911,8 +911,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showDeleteProductErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showDeleteProductErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -974,8 +974,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showAddCategoryErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAddCategoryErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -1030,8 +1030,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showEditCategoryErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditCategoryErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -1091,8 +1091,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showDeleteCategoryErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showDeleteCategoryErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -2666,7 +2666,7 @@ function showEditEventErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění upravit akci.');
       return;
     case 'invalid_id':
@@ -2755,7 +2755,7 @@ function showDeleteEventErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění smazat akci.');
       return;
     case 'invalid_id':
@@ -2798,7 +2798,7 @@ function showAddBoothErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění přidat stánek.');
       return;
     case 'invalid_event_id':
@@ -2899,7 +2899,7 @@ function showEditBoothErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění upravit stánek.');
       return;
     case 'invalid_id':
@@ -2994,7 +2994,7 @@ function showDeleteBoothErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění smazat stánek.');
       return;
     case 'invalid_id':
@@ -3035,7 +3035,7 @@ function showAssignEmployeeErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění přiřadit zaměstnance.');
       return;
     case 'invalid_event_id':
@@ -3093,7 +3093,7 @@ function showEditEmployeeErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění upravit zaměstnance.');
       return;
     case 'invalid_event_id':
@@ -3150,7 +3150,7 @@ function showRemoveEmployeeErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění odebrat zaměstnance.');
       return;
     case 'invalid_event_id':
@@ -3197,7 +3197,7 @@ function showAddProductErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění přidat produkt.');
       return;
     case 'invalid_event_id':
@@ -3307,7 +3307,7 @@ function showEditProductErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění upravit produkt.');
       return;
     case 'invalid_id':
@@ -3430,7 +3430,7 @@ function showDeleteProductErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění smazat produkt.');
       return;
     case 'invalid_id':
@@ -3472,7 +3472,7 @@ function showAddCategoryErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění přidat kategorii.');
       return;
     case 'invalid_event_id':
@@ -3549,7 +3549,7 @@ function showEditCategoryErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění upravit kategorii.');
       return;
     case 'invalid_id':
@@ -3623,7 +3623,7 @@ function showDeleteCategoryErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění smazat kategorii.');
       return;
     case 'invalid_id':

@@ -279,7 +279,7 @@ async function pasteCopied(calledWithin) {
 
     console.log(resData);
 
-    if (response.status === 403 && resData.error === 'insufficient_priviliges') {
+    if (response.status === 403 && resData.error === 'insufficient_privileges') {
       throw new ForbiddenError();
     }
 
@@ -421,7 +421,7 @@ async function redoPaste() {
 
     console.log(resData);
 
-    if (response.status === 403 && resData.error === 'insufficient_priviliges') {
+    if (response.status === 403 && resData.error === 'insufficient_privileges') {
       throw new ForbiddenError();
     }
 

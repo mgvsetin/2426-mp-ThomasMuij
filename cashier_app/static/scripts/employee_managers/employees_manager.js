@@ -729,7 +729,7 @@ function showAddErrors(error) {
   const resStr = String(error);
 
   switch (resStr) {
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'db_integrity_error':
@@ -869,7 +869,7 @@ function showEditErrors(error) {
   const resStr = String(error).toLowerCase().trim();
 
   switch (resStr) {
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'employee_not_found':
@@ -1008,7 +1008,7 @@ function showDeleteErrors(error) {
 
   const resStr = String(error);
   switch (resStr) {
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'employee_not_found':
@@ -1100,8 +1100,8 @@ async function addEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
+    if (response.status === 403 && data.error === 'insufficient_privileges') {
+      return 'insufficient_privileges';
     }
 
     if (response.status === 400) {
@@ -1135,8 +1135,8 @@ async function editEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
+    if (response.status === 403 && data.error === 'insufficient_privileges') {
+      return 'insufficient_privileges';
     }
 
     if (response.status === 400) {
@@ -1174,8 +1174,8 @@ async function deleteEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_priviliges') {
-      return 'insufficient_priviliges';
+    if (response.status === 403 && data.error === 'insufficient_privileges') {
+      return 'insufficient_privileges';
     }
 
     if (response.status === 400) {

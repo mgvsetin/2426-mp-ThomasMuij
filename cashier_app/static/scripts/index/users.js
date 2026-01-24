@@ -1,6 +1,7 @@
 import { cloneData } from "../general/cache.js";
 import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
+import { getSessionInfo } from "../general/session.js";
 import { markSelectedRows } from "../general/table_utils.js";
 import { lastReadCardId, removeReadCard, renderCard } from "./cards.js";
 import { changeSelectedCode } from "./phone_number_input.js";
@@ -531,6 +532,9 @@ export async function openMoreUserOptionsModal(userId) {
   const user = users.find(user => user.id === userId);
   if (!user) return;
 
+  const sessionInfo = await getSessionInfo().catch(() => { });
+  if (!sessionInfo || !sessionInfo.event) return;
+
   const overlay = document.createElement('div');
   overlay.classList.add('overlay');
   overlay.innerHTML = `
@@ -545,10 +549,10 @@ export async function openMoreUserOptionsModal(userId) {
       </header>
       <div id="more-user-options-actions">
         <button id="open-user-cards-modal">Zobrazit všechny karty</button>
-        <a href=""><button id="open-user-transaction-history">Zobrazit transakce</button></a>
+        <a href="/events/${sessionInfo.event.id}/users/${user.id}/transaction-history" target="_blank"><button id="open-user-transaction-history">Zobrazit transakce</button></a>
       </div>
     </div>
-  `; ///////// finish here (mainly href above, make it open a new window)
+  `;
 
   document.body.appendChild(overlay);
 }

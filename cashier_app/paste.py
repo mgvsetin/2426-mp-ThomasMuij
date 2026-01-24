@@ -1539,7 +1539,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                 save_copy_paste(copy_paste_row)
 
     except ForbiddenError:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
     except CanNotMakeNewEventIfNotCopyingEvent:
         return jsonify(error='can_not_make_new_event_if_not_copying_event'), 400
 
@@ -1572,7 +1572,7 @@ def paste():
         return jsonify(error='missing_targets'), 400
     
     if frontend_targets in ['newEvents', 'newEmployees'] and not logged_employee['is_admin']:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     targets_are_new_employees = False
     targets_are_new_events = False

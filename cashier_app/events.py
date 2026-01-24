@@ -27,7 +27,7 @@ def get_events_manager_page():
     #     return redirect(url_for('auth.get_login_page'))
 
     # # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
-    # #     return jsonify(error='insufficient_priviliges'), 403
+    # #     return jsonify(error='insufficient_privileges'), 403
 
     return current_app.send_static_file('html/event_managers/events_manager.html')
 
@@ -40,9 +40,14 @@ def get_event_manager_page(event_id):
     #     return redirect(url_for('auth.get_login_page'))
 
     # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
-    #     return jsonify(error='insufficient_priviliges'), 403
+    #     return jsonify(error='insufficient_privileges'), 403
 
     return current_app.send_static_file('html/event_managers/event_manager.html')
+
+
+@bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
+def get_user_transaction_history_page(event_id, user_id):
+    return current_app.send_static_file('html/index/user_transaction_history.html')
 
 
 api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
@@ -156,7 +161,7 @@ def get_event(event_id):
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -265,7 +270,7 @@ def add_event():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin']:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
     start_at = request.form.get('start-at', '').strip()
@@ -345,7 +350,7 @@ def edit_event():
         return jsonify(error='missing_id'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
     start_at = request.form.get('start-at', '').strip()
@@ -443,7 +448,7 @@ def delete_event():
         return jsonify(error='missing_id'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     try:
         with get_pool().connection() as conn:
@@ -517,7 +522,7 @@ def add_booth():
         return jsonify(error='missing_event_id'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
     booth_type = request.form.get('type', '').strip()
@@ -663,7 +668,7 @@ def edit_booth():
     booth_type = booth['booth_type']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
 
@@ -822,7 +827,7 @@ def delete_booth():
     event_id = event_id['event_id']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     try:
         with get_pool().connection() as conn:
@@ -950,7 +955,7 @@ def assign_manager():
         return jsonify(error='event_not_found'), 400
     
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     if not employee:
         return jsonify(error='employee_not_found'), 400
@@ -1045,7 +1050,7 @@ def assign_employee():
                 return jsonify(error='can_not_assign_admin'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
             
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -1105,7 +1110,7 @@ def unassign_employee_or_manager():
         return jsonify(error='missing_event_id'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
     
     try:
         id = UUID(request.form.get('id'))
@@ -1205,7 +1210,7 @@ def add_product():
                     return jsonify(error='category_not_found'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     params = {
         'event_id': event_id
@@ -1366,7 +1371,7 @@ def edit_product():
     event_id = product['event_id']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     
     name = request.form.get('name', '').strip()
@@ -1597,7 +1602,7 @@ def delete_product():
     event_id = product['event_id']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     try:
         with get_pool().connection() as conn:
@@ -1711,7 +1716,7 @@ def add_category():
                     return jsonify(error='product_not_found'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     params = {
         'event_id': event_id
@@ -1801,7 +1806,7 @@ def edit_category():
     event_id = category['event_id']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     
     name = request.form.get('name', '').strip()
@@ -1967,7 +1972,7 @@ def delete_category():
     event_id = category['event_id']
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     try:
         with get_pool().connection() as conn:
@@ -2002,12 +2007,20 @@ def delete_category():
     return jsonify(), 200
 
 
-@api_bp.route('/users/<uuid:user_id>/transaction-hisotry')
-def get_user_transaction_history_for_event(user_id):
+@api_bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
+def get_user_transaction_history_for_event(event_id, user_id):
     logged_employee = load_logged_in_employee()
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
+
+    if not event_id:
+        return jsonify(error='missing_event_id'), 400
+
+    try:
+        event_id = UUID(str(event_id))
+    except (TypeError, ValueError):
+        return jsonify(error='invalid_event_id'), 400
+
     if not user_id:
         return jsonify(error='missing_user_id'), 400
 
@@ -2016,29 +2029,31 @@ def get_user_transaction_history_for_event(user_id):
     except (TypeError, ValueError):
         return jsonify(error='invalid_user_id'), 400
     
-    selected_event = load_selected_event()
+    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+        selected_event = load_selected_event()
+        if not selected_event or selected_event['id'] != event_id:
+            return jsonify(error='insufficient_privileges'), 403
 
-    if selected_event is None:
-        return jsonify(error='no_selected_event'), 400
+        selected_booth = load_selected_booth()
+        
+        if not selected_booth or selected_booth['booth_type'] != 'cashier':
+            return jsonify(error='insufficient_privileges'), 403
 
-    selected_booth = load_selected_booth()
-
-    if selected_booth is None:
-        return jsonify(error='no_selected_booth'), 400
-    
-    if selected_booth['booth_type'] != 'cashier':
-        return jsonify(error='invalid_booth_type'), 400
-    
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             user_transaction_history = cur.execute(
                 '''
-                SELECT ?
+                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info
                 FROM transactions t
                 JOIN users u ON u.id = t.user_id
-                WHERE u.deleted_at IS NULL
-                AND ?
-                ''') ################ finish here
+                WHERE t.user_id = %s
+                AND t.event_id = %s
+                -- AND u.deleted_at IS NULL
+                ORDER BY t.occurred_at
+                ''',
+                (user_id, event_id)).fetchall()
+            
+    return jsonify(user_transaction_history=user_transaction_history), 200
 
 
 
@@ -2065,7 +2080,7 @@ def get_event_statistics(event_id):
         return jsonify(error='invalid_event_id'), 400
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -2360,7 +2375,7 @@ def get_event_statistics(event_id):
 #         return jsonify(error='invalid_event_id'), 400
 
 #     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-#         return jsonify(error='insufficient_priviliges'), 403
+#         return jsonify(error='insufficient_privileges'), 403
 
 #     with get_pool().connection() as conn:
 #         with conn.cursor() as cur:

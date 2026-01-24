@@ -58,7 +58,7 @@ def add_employee():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin']:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip().lower()
@@ -123,7 +123,7 @@ def edit_employee():
         return jsonify(error='missing_id'), 400
 
     if not logged_employee['is_admin'] and logged_employee['id'] != edit_employee_id:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     new_username = request.form.get('username', '').strip()
     new_email = request.form.get('email', '').strip().lower()
@@ -206,7 +206,7 @@ def delete_employee():
         return jsonify(error='missing_id'), 400
 
     if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
-        return jsonify(error='insufficient_priviliges'), 403
+        return jsonify(error='insufficient_privileges'), 403
 
     try:
         with get_pool().connection() as conn:

@@ -209,7 +209,7 @@ const countryCodes = [
 
 
 // LocalStorage
-const recendCodesKey = 'recentCountryCodes';
+const recentCodesKey = 'recentCountryCodes';
 const maxRecent = 5;
 
 const countryCodeContainer = document.querySelector('.country-code-container');
@@ -337,7 +337,7 @@ export function changeSelectedCode(code) {
 
 
 function getRecentCodes() {
-  const stored = localStorage.getItem(recendCodesKey);
+  const stored = localStorage.getItem(recentCodesKey);
   return stored ? JSON.parse(stored) : [];
 }
 
@@ -347,7 +347,7 @@ function saveRecentCode(code) {
   recent = recent.filter(c => c !== code);
   recent.unshift(code);
   recent = recent.slice(0, maxRecent);
-  localStorage.setItem(recendCodesKey, JSON.stringify(recent));
+  localStorage.setItem(recentCodesKey, JSON.stringify(recent));
 }
 
 

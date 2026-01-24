@@ -91,11 +91,8 @@ def create_app(test_config=None):
 
     # @app.before_request
     # def simulate_slow_connection():
-        # import time
-        # time.sleep(1)
-        # from flask import request
-        # with open(r'/home/thoma/code/2426-mp-ThomasMuij/prints.txt', 'a', encoding='utf-8') as f:
-        #     print(request, file=f)
+    #     import time
+    #     time.sleep(1)
 
 
 

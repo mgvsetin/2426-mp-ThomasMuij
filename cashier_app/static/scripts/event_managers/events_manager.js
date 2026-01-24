@@ -199,8 +199,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_priviliges') {
-        showAddEventErrors('insufficient_priviliges');
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAddEventErrors('insufficient_privileges');
         saveButton.disabled = false;
         return;
       }
@@ -519,7 +519,7 @@ function showAddEventErrors(error, detail) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
-    case 'insufficient_priviliges':
+    case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění vytvořit akci.');
       return;
     case 'missing_name':
