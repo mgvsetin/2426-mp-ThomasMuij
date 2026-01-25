@@ -31,6 +31,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s ease;
 }
 
 #open-sidebar-button:hover {
@@ -56,58 +57,6 @@
   min-width: 0;
 }
 
-/* #search-bar-container {
-  margin: 0 20px;
-  position: relative;
-  flex: 1 1 auto;
-  max-width: 700px;
-  display: flex;
-  min-width: 91px;
-  align-items: center;
-  justify-content: center;
-}
-
-#search-bar {
-  flex: 1;
-  min-width: 0;
-  outline: none;
-  border: 1px solid rgb(205, 205, 205);
-  border-radius: 100px;
-  padding: 6px 35px 6px 9px;
-}
-
-#search-button {
-  position: absolute;
-  right: 8px;
-  top: auto;
-  width: 24px;
-  height: 24px;
-  background-color: rgba(0, 0, 0, 0);
-  border: none;
-  outline: none;
-  padding: 0;
-  border-radius: 20px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#search-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-#search-button:active {
-  background-color: rgba(0, 0, 0, 0.15);
-}
-
-#search-icon {
-  width: 18px;
-  height: 18px;
-  object-fit: cover;
-  display: block;
-} */
-
 
 #header-right {
   flex: 0;
@@ -124,7 +73,8 @@
 #account-button {
   flex: 0 0 auto;
   border: none;
-  border-radius: 50px;
+  outline: none;
+  border-radius: 50%;
   height: 32px;
   width: 32px;
   display: flex;
@@ -134,6 +84,7 @@
   padding: 0;
   background: transparent;
   margin-right: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 #account-icon {
@@ -146,92 +97,100 @@
 
 #account-dropdown {
   position: absolute;
-  top: 50px;
-  right: 10px;
-  background-color: rgb(248, 248, 248);
-  width: 200px;
-  /* border: 1px solid rgb(230, 230, 230); */
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.18);
-  border-radius: 2px;
-  display: none;
+  top: 55px;
+  right: 12px;
+  width: 260px;
+  background: linear-gradient(180deg, #fbfdff, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(16,24,40,0.12);
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 10px;
+  transform-origin: top right;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.96) translateY(-6px);
+  transition: transform .16s cubic-bezier(.2, .9, .2, 1), opacity .12s ease;
+  will-change: transform, opacity;
 }
 
 #account-dropdown[opened] {
-  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1) translateY(0)
 }
 
 #session-info {
-  border-bottom: 2px solid rgb(230, 230, 230);
-  padding: 4px 5px;
-  font-size: 16px;
   display: flex;
   flex-direction: column;
-  row-gap: 2px;
-}
-
-#session-info div {
-  border-bottom: 1px solid rgb(237, 237, 237);;
-}
-
-#session-info div:last-child {
-  border: none;
+  min-width: 0;
+  padding: 4px 4px 2px 4px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4));
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02) inset;
 }
 
 #username {
   font-weight: 700;
+  font-size: 15px;
+  line-height: 1
 }
 
-#username,
-#event,
-#booth {
+#event-booth {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.2;
+  margin-top: 2px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
-#account-dropdown button,
-#account-dropdown a {
+.dropdown-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px
+}
+
+.dropdown-actions a,
+.dropdown-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: none;
-  border-bottom: 1px solid rgb(230, 230, 230);
-  background-color: inherit;
-  padding: 4px 5px;
+  background: transparent;
   text-align: left;
-  font-size: 16px;
   text-decoration: none;
+  font-size: 15px;
+  color: inherit;
   cursor: pointer;
-  color: black;
+  width: 100%;
+  transition: background .12s ease, transform .08s ease;
 }
 
-#account-dropdown *:last-child {
-  border-bottom: none;
+.dropdown-actions a:hover,
+.dropdown-actions button:hover {
+  background: rgba(15, 23, 42, 0.04);
 }
 
-#account-dropdown button:hover,
-#account-dropdown a:hover {
-  background-color: rgb(240, 240, 240);
+.dropdown-actions a:active,
+.dropdown-actions button:active {
+  background: rgba(15, 23, 42, 0.06);
 }
 
-#account-dropdown button:active,
-#account-dropdown a:active {
-  background-color: rgb(235, 235, 235);
+.logout {
+  font-weight: 600
 }
 
-/* #choose-new-event-button {
-  border: none;
-  background-color: white;
-  padding: 4px 5px;
-  text-align: left;
-  font-size: 16px;
+.divider {
+  height: 2px;
+  background: rgba(233, 233, 235, 0.8);
+  margin: 2px 0;
+  border-radius: 1px
 }
-
-#logout-link {
-  text-decoration: none;
-  cursor: pointer;
-  color: black;
-  padding: 4px 5px;
-} */

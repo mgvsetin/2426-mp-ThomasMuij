@@ -1319,12 +1319,17 @@ label {
   padding: 16px;
   max-height: 90vh;
   overflow: auto;
+  position: relative;
 }
 
 .modal header {
   display: flex;
   justify-content: space-between;
   align-items: center
+}
+
+.modal header h2 {
+  margin: 5px 0 20px 0;
 }
 
 .save-form.user-form-delete-button {
@@ -1345,14 +1350,17 @@ label {
 .cross-close {
   background: transparent;
   border: none;
-  height: 22px;
-  width: 22px;
+  height: 24px;
+  width: 24px;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  position: absolute;
+  top: 15px;
+  right: 12px;
 }
 
 .cross-close:hover {

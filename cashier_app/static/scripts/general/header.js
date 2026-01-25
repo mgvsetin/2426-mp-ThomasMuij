@@ -42,10 +42,16 @@ function initHeader() {
 
       <div id="account-dropdown">
         <div id="session-info"></div>
-        ${newEventButtonHTML}
-        <a id="logout-link" href="/api/auth/logout">
-          Odhlásit
-        </a>
+  
+        
+        <div class="dropdown-actions">
+          <a href="/settings">Nastavení</a>
+        </div>
+        <div class="divider"></div>
+        <div class="dropdown-actions">
+          ${newEventButtonHTML}
+          <a id="logout-link" href="/api/auth/logout" class="logout">Odhlásit</a>
+        </div>
       </div>
     </div>
   `;
@@ -82,8 +88,7 @@ async function renderDropdownSessionInfo() {
   let sessionInfoHTML = '';
 
   try { sessionInfoHTML += `<div id="username">${sessionInfo.employee.username}</div>`; } catch { }
-  try { sessionInfoHTML += `<div id="event">${sessionInfo.event.name}</div>`; } catch { }
-  try { sessionInfoHTML += `<div id="booth">${sessionInfo.booth.name}</div>`; } catch { }
+  try { sessionInfoHTML += `<div id="event-booth">${sessionInfo.event.name} - ${sessionInfo.booth.name}</div>`; } catch { }
 
   sessionInfoEl.innerHTML = sessionInfoHTML;
 }
