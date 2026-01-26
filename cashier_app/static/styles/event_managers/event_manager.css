@@ -732,6 +732,7 @@ input[type=checkbox] {
     opacity: 0;
     max-height: 0;
   }
+
   to {
     opacity: 1;
     max-height: 500px;
@@ -839,4 +840,34 @@ input[type=checkbox] {
   .booth-products-table td {
     padding: 6px 8px;
   }
+}
+
+
+.event-connected-yes {
+  color: #059669;
+  font-weight: 600;
+}
+
+.event-connected-no {
+  color: #6b7280;
+}
+
+.icon-btn.view {
+  background: #eff6ff;
+  border-color: rgba(59, 130, 246, 0.06);
+  color: #3b82f6;
+}
+
+.icon-btn.view:hover {
+  background: #dbeafe;
+}
+
+td span[data-direct-to] {
+  cursor: pointer;
+  color: #1f6feb;
+  text-decoration: none;
+}
+
+td span[data-direct-to]:hover {
+  text-decoration: underline;
 }

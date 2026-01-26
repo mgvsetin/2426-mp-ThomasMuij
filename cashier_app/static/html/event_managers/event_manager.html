@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/static/styles/general/header.css">
   <link rel="stylesheet" href="/static/styles/general/sidebar.css">
   <link rel="stylesheet" href="/static/styles/event_managers/event_manager.css">
-  
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
@@ -196,6 +196,84 @@
                   </th>
                   <th id="categories-booths-header">
                     <div><span>Stánky</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="users-panel">
+          <div class="panel-header">
+            <h3>Uživatelé</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="users-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-user" class="btn btn-primary">+ Přidat uživatele</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="users-table" table-contents="users">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="users-first-name-header">
+                    <div><span>Jméno</span></div>
+                  </th>
+                  <th id="users-last-name-header">
+                    <div><span>Příjmení</span></div>
+                  </th>
+                  <th id="users-email-header">
+                    <div><span>Email</span></div>
+                  </th>
+                  <th id="users-phone-header">
+                    <div><span>Telefon</span></div>
+                  </th>
+                  <th id="users-other-identifier-header">
+                    <div><span>Jiný identifikátor</span></div>
+                  </th>
+                  <th id="users-event-connected-header">
+                    <div><span>Připojeno</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="wallets-panel">
+          <div class="panel-header">
+            <h3>Peněženky</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="wallets-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="wallets-table" table-contents="wallets">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="wallets-tag-id-header">
+                    <div><span>ID karty</span></div>
+                  </th>
+                  <th id="wallets-owner-header">
+                    <div><span>Vlastník</span></div>
+                  </th>
+                  <th id="wallets-balance-header">
+                    <div><span>Zůstatek (Kč)</span></div>
                   </th>
                   <th class="actions-header"></th>
                 </tr>

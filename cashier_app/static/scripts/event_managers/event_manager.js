@@ -15,12 +15,16 @@ const managersSearchBar = document.querySelector('#managers-search-bar');
 const employeesSearchBar = document.querySelector('#employees-search-bar');
 const productsSearchBar = document.querySelector('#products-search-bar');
 const categoriesSearchBar = document.querySelector('#categories-search-bar');
+const usersSearchBar = document.querySelector('#users-search-bar');
+const walletsSearchBar = document.querySelector('#wallets-search-bar');
 
 const boothsTableBody = document.querySelector('#booths-table tbody');
 const managersTableBody = document.querySelector('#managers-table tbody');
 const employeesTableBody = document.querySelector('#employees-table tbody');
 const productsTableBody = document.querySelector('#products-table tbody');
 const categoriesTableBody = document.querySelector('#categories-table tbody');
+const usersTableBody = document.querySelector('#users-table tbody');
+const walletsTableBody = document.querySelector('#wallets-table tbody');
 
 let statsData = null;
 let charts = {};
@@ -30,7 +34,9 @@ const orderBy = {
   managers: { key: '', ascending: true },
   employees: { key: '', ascending: true },
   products: { key: '', ascending: true },
-  categories: { key: '', ascending: true }
+  categories: { key: '', ascending: true },
+  users: { key: '', ascending: true },
+  wallets: { key: '', ascending: true }
 };
 
 let _getEventDataPromise = null;
@@ -52,6 +58,8 @@ loadPage({
   employeesTable: true,
   productsTable: true,
   categoriesTable: true,
+  usersTable: true,
+  walletsTable: true,
   statistics: true
 });
 
@@ -174,6 +182,37 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  // přidat uživatele
+  if (event.target.matches('#add-user')) {
+    openAddUserModal();
+    return;
+  }
+
+  // upravit uživatele
+  const editUserBtn = event.target.closest('.edit-user');
+  if (editUserBtn) {
+    const row = editUserBtn.closest('tr[id]');
+    await openEditUserModal(row);
+    return;
+  }
+
+  // smazat uživatele
+  const deleteUserBtn = event.target.closest('.delete-user');
+  if (deleteUserBtn) {
+    const row = deleteUserBtn.closest('tr[id]');
+    await openDeleteUserModal(row);
+    return;
+  }
+
+  // zobrazit transakce uživatele
+  const viewUserTransactionsBtn = event.target.closest('.view-user-transactions');
+  if (viewUserTransactionsBtn) {
+    const row = viewUserTransactionsBtn.closest('tr[id]');
+    const userId = row.id;
+    window.open(`/events/${encodeURIComponent(eventId)}/users/${userId}/transaction-history`, '_blank');
+    return;
+  }
+
 
   const closeModalBtn = event.target.closest('.close-modal');
   if (closeModalBtn) {
@@ -237,6 +276,9 @@ document.addEventListener('dblclick', async (event) => {
       return;
     } else if (parentTable.id === 'categories-table') {
       await openEditCategoryModal(row);
+      return;
+    } else if (parentTable.id === 'users-table') {
+      await openEditUserModal(row);
       return;
     }
   }
@@ -1126,6 +1168,193 @@ document.addEventListener('submit', async (event) => {
     }
     return;
   }
+
+  // ADD USER FORM
+  const addUserForm = event.target.closest('#add-user-form');
+  if (addUserForm) {
+    event.preventDefault();
+    const saveButton = addUserForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(addUserForm);
+    formData.set('first-name', formData.get('first-name').trim());
+    formData.set('last-name', formData.get('last-name').trim());
+    formData.set('email', formData.get('email').trim());
+    formData.set('phone-number', formData.get('phone-number').trim());
+    formData.set('other-identifier', formData.get('other-identifier').trim());
+
+    try {
+      const response = await fetch('/api/users/create', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showAddUserErrors('insufficient_privileges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showAddUserErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showAddUserErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ usersTable: true, walletsTable: true });
+
+    } catch (err) {
+      showAddUserErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // EDIT USER FORM
+  const editUserForm = event.target.closest('#edit-user-form');
+  if (editUserForm) {
+    event.preventDefault();
+    const saveButton = editUserForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(editUserForm);
+    formData.set('first-name', formData.get('first-name').trim());
+    formData.set('last-name', formData.get('last-name').trim());
+    formData.set('email', formData.get('email').trim());
+    formData.set('phone-number', formData.get('phone-number').trim());
+    formData.set('other-identifier', formData.get('other-identifier').trim());
+
+    try {
+      const response = await fetch('/api/users/edit', {
+        method: 'post',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showEditUserErrors('insufficient_privileges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'user_not_found') {
+        showEditUserErrors('user_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showEditUserErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showEditUserErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ usersTable: true, walletsTable: true });
+
+    } catch (err) {
+      showEditUserErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
+
+  // DELETE USER FORM
+  const deleteUserForm = event.target.closest('#delete-user-form');
+  if (deleteUserForm) {
+    event.preventDefault();
+    const saveButton = deleteUserForm.querySelector('button[type=submit]');
+    saveButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(deleteUserForm);
+
+    try {
+      const response = await fetch('/api/users/delete', {
+        method: 'delete',
+        body: formData
+      });
+
+      if (response.status === 401) {
+        const json = await response.json();
+        window.location.href = json.redirect_url;
+        return;
+      }
+
+      const data = await response.json();
+
+      if (response.status === 403 && data.error === 'insufficient_privileges') {
+        showDeleteUserErrors('insufficient_privileges');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 404 && data.error === 'user_not_found') {
+        showDeleteUserErrors('user_not_found');
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (response.status === 400) {
+        showDeleteUserErrors(data.error || 'invalid_request', data.detail);
+        saveButton.disabled = false;
+        return;
+      }
+
+      if (!response.ok) {
+        showDeleteUserErrors('unexpected_error');
+        saveButton.disabled = false;
+        return;
+      }
+
+      closeModal();
+      resetEventDataCache();
+      loadPage({ usersTable: true, walletsTable: true });
+
+    } catch (err) {
+      showDeleteUserErrors('unexpected_error');
+    } finally {
+      saveButton.disabled = false;
+    }
+    return;
+  }
 });
 
 
@@ -1142,6 +1371,10 @@ document.addEventListener('input', (event) => {
       loadPage({ productsTable: true });
     } else if (searchBar === categoriesSearchBar) {
       loadPage({ categoriesTable: true });
+    } else if (searchBar === usersSearchBar) {
+      loadPage({ usersTable: true });
+    } else if (searchBar === walletsSearchBar) {
+      loadPage({ walletsTable: true });
     }
   }
 });
@@ -1182,6 +1415,9 @@ document.addEventListener('keydown', (event) => {
           return;
         } else if (parentTable.id === 'categories-table') {
           openEditCategoryModal(row);
+          return;
+        } else if (parentTable.id === 'users-table') {
+          openEditUserModal(row);
           return;
         }
       }
@@ -1224,6 +1460,8 @@ async function loadPage({
   employeesTable = false,
   productsTable = false,
   categoriesTable = false,
+  usersTable = false,
+  walletsTable = false,
   statistics = false } = {}) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
@@ -1236,6 +1474,8 @@ async function loadPage({
   if (employeesTable) toLoad.push(renderEmployees(eventData));
   if (productsTable) toLoad.push(renderProducts(eventData));
   if (categoriesTable) toLoad.push(renderCategories(eventData));
+  if (usersTable) toLoad.push(renderUsers(eventData));
+  if (walletsTable) toLoad.push(renderWallets(eventData));
   if (statistics) toLoad.push(loadStatistics());
   await Promise.all(toLoad);
 }
@@ -1298,7 +1538,9 @@ function getEventData() {
         booths: resData.booths,
         employees: resData.employees,
         products: resData.products,
-        categories: resData.categories
+        categories: resData.categories,
+        users: resData.users,
+        wallets: resData.wallets
       };
 
       data.employees.forEach((emp) => {
@@ -1383,6 +1625,33 @@ function setOrder(headerEl) {
     case 'categories-booths-header':
       toggleOrder(orderBy.categories, 'booths', headerEl);
       break;
+    case 'users-first-name-header':
+      toggleOrder(orderBy.users, 'first_name', headerEl);
+      break;
+    case 'users-last-name-header':
+      toggleOrder(orderBy.users, 'last_name', headerEl);
+      break;
+    case 'users-email-header':
+      toggleOrder(orderBy.users, 'email', headerEl);
+      break;
+    case 'users-phone-header':
+      toggleOrder(orderBy.users, 'phone_number', headerEl);
+      break;
+    case 'users-other-identifier-header':
+      toggleOrder(orderBy.users, 'other_identifier', headerEl);
+      break;
+    case 'users-event-connected-header':
+      toggleOrder(orderBy.users, 'event_connected', headerEl);
+      break;
+    case 'wallets-tag-id-header':
+      toggleOrder(orderBy.wallets, 'tag_id', headerEl);
+      break;
+    case 'wallets-owner-header':
+      toggleOrder(orderBy.wallets, 'owner_name', headerEl);
+      break;
+    case 'wallets-balance-header':
+      toggleOrder(orderBy.wallets, 'balance_czk', headerEl);
+      break;
   }
 
   const parentPanel = headerEl.closest('.panel');
@@ -1403,6 +1672,12 @@ function setOrder(headerEl) {
       break;
     case 'categories-panel':
       loadPage({ categoriesTable: true });
+      break;
+    case 'users-panel':
+      loadPage({ usersTable: true });
+      break;
+    case 'wallets-panel':
+      loadPage({ walletsTable: true });
       break;
   }
 }
@@ -1594,6 +1869,72 @@ function categoryIsSearchedFor(category, searchQuery) {
         if (!name.includes(search)) return false;
       } else if (['stánek', 'stanek', 'booth', 'stánky', 'stanky', 'booths'].includes(searchKeyWord)) {
         if (!booths.includes(search)) return false;
+      } else {
+        if (!searchable.includes(query)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+
+function userIsSearchedFor(user, searchQuery) {
+  if (!searchQuery) return true;
+  const queries = searchQuery.toLowerCase().trim().split(/\s+/);
+  const firstName = String(user.first_name || '').toLowerCase();
+  const lastName = String(user.last_name || '').toLowerCase();
+  const email = String(user.email || '-').toLowerCase();
+  const phone = String(user.phone_number || '-').toLowerCase();
+  const otherIdentifier = String(user.other_identifier || '-').toLowerCase();
+  const eventConnected = user.event_connected ? 'ano' : 'ne';
+
+  const searchable = `${firstName} ${lastName} ${email} ${phone} ${otherIdentifier} ${eventConnected}`;
+
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
+    } else {
+      const [searchKeyWord, search] = query.split('=');
+      if (['first_name', 'firstname', 'jméno', 'jmeno'].includes(searchKeyWord)) {
+        if (!firstName.includes(search)) return false;
+      } else if (['last_name', 'lastname', 'příjmení', 'prijmeni'].includes(searchKeyWord)) {
+        if (!lastName.includes(search)) return false;
+      } else if (['email', 'e-mail', 'mail'].includes(searchKeyWord)) {
+        if (!email.includes(search)) return false;
+      } else if (['phone', 'phone_number', 'telefon', 'číslo', 'cislo'].includes(searchKeyWord)) {
+        if (!phone.includes(search)) return false;
+      } else if (['other_identifier', 'identifier', 'identifikátor', 'identifikator'].includes(searchKeyWord)) {
+        if (!otherIdentifier.includes(search)) return false;
+      } else if (['connected', 'připojeno', 'pripojeno', 'event_connected'].includes(searchKeyWord)) {
+        if (!eventConnected.includes(search)) return false;
+      } else {
+        if (!searchable.includes(query)) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function walletIsSearchedFor(wallet, searchQuery) {
+  if (!searchQuery) return true;
+  const queries = searchQuery.toLowerCase().trim().split(/\s+/);
+  const tagId = String(wallet.tag_id || '').toLowerCase();
+  const ownerName = `${wallet.first_name || ''} ${wallet.last_name || ''}`.toLowerCase().trim();
+  const balance = String(wallet.balance_czk || '').toLowerCase();
+
+  const searchable = `${tagId} ${ownerName} ${balance}`;
+
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
+    } else {
+      const [searchKeyWord, search] = query.split('=');
+      if (['tag_id', 'tagid', 'tag', 'id', 'karta', 'card'].includes(searchKeyWord)) {
+        if (!tagId.includes(search)) return false;
+      } else if (['owner', 'vlastník', 'vlastnik', 'name', 'jméno', 'jmeno'].includes(searchKeyWord)) {
+        if (!ownerName.includes(search)) return false;
+      } else if (['balance', 'zůstatek', 'zustatek'].includes(searchKeyWord)) {
+        if (!balance.includes(search)) return false;
       } else {
         if (!searchable.includes(query)) return false;
       }
@@ -1829,6 +2170,98 @@ function renderCategories(eventData) {
 
   categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné kategorie.</td></tr>`;
   markSelectedRows(card);
+}
+
+
+function renderUsers(eventData) {
+  const searchQuery = usersSearchBar.value;
+  const sorter = sorterFactory(orderBy.users);
+  const sortedUsers = eventData.users.toSorted(sorter);
+
+  let rows = '';
+
+  sortedUsers.forEach((user, idx) => {
+    if (!userIsSearchedFor(user, searchQuery)) return;
+    const eventConnectedText = user.event_connected ? 'Ano' : 'Ne';
+    const eventConnectedClass = user.event_connected ? 'event-connected-yes' : 'event-connected-no';
+
+    rows += `
+      <tr id="${user.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHTML(user.first_name)}</td>
+        <td>${escapeHTML(user.last_name)}</td>
+        <td>${escapeHTML(user.email || '-')}</td>
+        <td>${escapeHTML(user.phone_number || '-')}</td>
+        <td>${escapeHTML(user.other_identifier || '-')}</td>
+        <td><span class="${eventConnectedClass}">${eventConnectedText}</span></td>
+        <td class="actions">
+          <button class="icon-btn view view-user-transactions" title="Zobrazit transakce">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4"/>
+            </svg>
+          </button>
+          <button class="icon-btn edit edit-user">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete delete-user">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  usersTableBody.innerHTML = rows || `<tr><td class="muted" colspan="8">Žádní uživatelé.</td></tr>`;
+  markSelectedRows(card);
+}
+
+function renderWallets(eventData) {
+  const searchQuery = walletsSearchBar.value;
+  const sorter = sorterFactory(orderBy.wallets);
+
+  // Add owner_name field for sorting
+  const walletsWithOwnerName = eventData.wallets.map(w => ({
+    ...w,
+    owner_name: `${w.first_name || ''} ${w.last_name || ''}`.trim()
+  }));
+
+  const sortedWallets = walletsWithOwnerName.toSorted(sorter);
+
+  let rows = '';
+
+  sortedWallets.forEach((wallet, idx) => {
+    if (!walletIsSearchedFor(wallet, searchQuery)) return;
+    const ownerName = wallet.owner_name || '-';
+
+    rows += `
+      <tr id="${wallet.id}">
+        <td>${idx + 1}</td>
+        <td>${escapeHTML(wallet.tag_id)}</td>
+        <td><span data-direct-to="${wallet.owner_id}">${escapeHTML(ownerName)}</span></td>
+        <td>${formatNumber(wallet.balance_czk)} Kč</td>
+        <td class="actions">
+          <button class="icon-btn view view-user-transactions" data-user-id="${wallet.owner_id}" title="Zobrazit transakce">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4"/>
+            </svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  walletsTableBody.innerHTML = rows || `<tr><td class="muted" colspan="5">Žádné peněženky.</td></tr>`;
+  markSelectedRows(card);
+}
+
+function formatNumber(num) {
+  return Number(num || 0).toLocaleString('cs-CZ');
 }
 
 
@@ -2621,6 +3054,156 @@ async function openDeleteCategoryModal(row) {
 
       <div class="form-row">
         <div id="delete-category-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Smazat</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
+}
+
+
+async function openAddUserModal() {
+  const html = `
+    <header>
+      <h2>Přidat uživatele</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="add-user-form">
+      <div class="form-row">
+        <label for="user-first-name-input">Jméno</label>
+        <input id="user-first-name-input" name="first-name" type="text"/>
+        <div id="add-user-first-name-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-last-name-input">Příjmení</label>
+        <input id="user-last-name-input" name="last-name" type="text"/>
+        <div id="add-user-last-name-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-email-input">Email</label>
+        <input id="user-email-input" name="email" type="email"/>
+        <div id="add-user-email-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-phone-input">Telefonní číslo</label>
+        <input id="user-phone-input" name="phone-number" type="tel" placeholder="+420123456789"/>
+        <div id="add-user-phone-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-other-identifier-input">Jiný identifikátor</label>
+        <input id="user-other-identifier-input" name="other-identifier" type="text"/>
+        <div id="add-user-other-identifier-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <div class="muted">Vyplňte alespoň jeden z: email, telefon, jiný identifikátor</div>
+      </div>
+
+      <div class="form-row">
+        <div id="add-user-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
+}
+
+async function openEditUserModal(row) {
+  const id = row.id;
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const user = eventData.users.find(u => u.id === id);
+  if (!user) return;
+
+  const html = `
+    <header>
+      <h2>Upravit uživatele</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="edit-user-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <label for="user-first-name-input">Jméno</label>
+        <input id="user-first-name-input" name="first-name" type="text" value="${escapeHTML(user.first_name)}"/>
+        <div id="edit-user-first-name-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-last-name-input">Příjmení</label>
+        <input id="user-last-name-input" name="last-name" type="text" value="${escapeHTML(user.last_name)}"/>
+        <div id="edit-user-last-name-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-email-input">Email</label>
+        <input id="user-email-input" name="email" type="email" value="${escapeHTML(user.email || '')}"/>
+        <div id="edit-user-email-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-phone-input">Telefonní číslo</label>
+        <input id="user-phone-input" name="phone-number" type="tel" value="${escapeHTML(user.phone_number || '')}" placeholder="+420123456789"/>
+        <div id="edit-user-phone-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <label for="user-other-identifier-input">Jiný identifikátor</label>
+        <input id="user-other-identifier-input" name="other-identifier" type="text" value="${escapeHTML(user.other_identifier || '')}"/>
+        <div id="edit-user-other-identifier-error" class="form-error"></div>
+      </div>
+      <div class="form-row">
+        <div class="muted">Vyplňte alespoň jeden z: email, telefon, jiný identifikátor</div>
+      </div>
+
+      <div class="form-row">
+        <div id="edit-user-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
+  `;
+  openModal(html);
+}
+
+async function openDeleteUserModal(row) {
+  const id = row.id;
+  const eventData = await getEventData().catch(() => { });
+  if (!eventData) return;
+  const user = eventData.users.find(u => u.id === id);
+  if (!user) return;
+
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Smazat uživatele</h2>
+      <button class="close-modal cross-close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </header>
+    <form id="delete-user-form">
+      <input type="hidden" name="id" value="${id}"/>
+      <div class="form-row">
+        <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
+        <div class="muted" style="margin-top: 8px;">Smazání uživatele také smaže všechny jeho peněženky.</div>
+      </div>
+
+      <div class="form-row">
+        <div id="delete-user-general-error" class="form-error"></div>
       </div>
 
       <div class="modal-actions">
@@ -3639,6 +4222,161 @@ function showDeleteCategoryErrors(error, detail) {
       break;
   }
 
+  setErr(generalError, errorStr);
+}
+
+
+function showAddUserErrors(error, detail) {
+  const firstNameError = document.querySelector('#add-user-first-name-error');
+  const lastNameError = document.querySelector('#add-user-last-name-error');
+  const emailError = document.querySelector('#add-user-email-error');
+  const phoneError = document.querySelector('#add-user-phone-error');
+  const otherIdentifierError = document.querySelector('#add-user-other-identifier-error');
+  const generalError = document.querySelector('#add-user-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_privileges':
+      setErr(generalError, 'Nemáte oprávnění přidat uživatele.');
+      return;
+    case 'missing_first_name':
+      setErr(firstNameError, 'Chybí jméno.');
+      return;
+    case 'missing_last_name':
+      setErr(lastNameError, 'Chybí příjmení.');
+      return;
+    case 'invalid_phone_number':
+      setErr(phoneError, 'Telefonní číslo není platné.');
+      return;
+    case 'at_least_one_of_email_phone_number_other_identifier_is_required':
+      setErr(generalError, 'Vyplňte alespoň jeden z: email, telefonní číslo, jiný identifikátor.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_users_email_active')) {
+        setErr(emailError, 'Email už má jiný uživatel.');
+      } else if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
+        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+  setErr(generalError, errorStr);
+}
+
+function showEditUserErrors(error, detail) {
+  const firstNameError = document.querySelector('#edit-user-first-name-error');
+  const lastNameError = document.querySelector('#edit-user-last-name-error');
+  const emailError = document.querySelector('#edit-user-email-error');
+  const phoneError = document.querySelector('#edit-user-phone-error');
+  const otherIdentifierError = document.querySelector('#edit-user-other-identifier-error');
+  const generalError = document.querySelector('#edit-user-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_privileges':
+      setErr(generalError, 'Nemáte oprávnění upravit uživatele.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID uživatele není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID uživatele.');
+      return;
+    case 'user_not_found':
+      setErr(generalError, 'Uživatel nebyl nalezen.');
+      return;
+    case 'missing_first_name':
+      setErr(firstNameError, 'Chybí jméno.');
+      return;
+    case 'missing_last_name':
+      setErr(lastNameError, 'Chybí příjmení.');
+      return;
+    case 'invalid_phone_number':
+      setErr(phoneError, 'Telefonní číslo není platné.');
+      return;
+    case 'at_least_one_of_email_phone_number_other_identifier_is_required':
+      setErr(generalError, 'Vyplňte alespoň jeden z: email, telefonní číslo, jiný identifikátor.');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_users_email_active')) {
+        setErr(emailError, 'Email už má jiný uživatel.');
+      } else if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
+        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+  setErr(generalError, errorStr);
+}
+
+function showDeleteUserErrors(error, detail) {
+  const generalError = document.querySelector('#delete-user-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+  switch (errorStr) {
+    case 'unexpected_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'insufficient_privileges':
+      setErr(generalError, 'Nemáte oprávnění smazat uživatele.');
+      return;
+    case 'invalid_id':
+      setErr(generalError, 'ID uživatele není správné.');
+      return;
+    case 'missing_id':
+      setErr(generalError, 'Chybí ID uživatele.');
+      return;
+    case 'user_not_found':
+      setErr(generalError, 'Uživatel nebyl nalezen.');
+      return;
+    default:
+      break;
+  }
   setErr(generalError, errorStr);
 }
 

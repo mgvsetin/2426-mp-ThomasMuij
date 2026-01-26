@@ -257,9 +257,38 @@ def get_event(event_id):
                 GROUP BY cat.id''',
                 (event_id,)).fetchall()
             
+            users = cur.execute(
+            '''
+            SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.other_identifier,
+                CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM wallets w 
+                    WHERE w.owner_id = u.id AND w.event_id = %s AND w.deleted_at IS NULL
+                ) OR EXISTS (
+                    SELECT 1 FROM transactions t 
+                    WHERE t.user_id = u.id AND t.event_id = %s
+                ) THEN true 
+                ELSE false 
+                END as event_connected
+            FROM users u
+            WHERE u.deleted_at IS NULL
+            ORDER BY u.created_at''',
+            (event_id, event_id)).fetchall()
+
+            wallets = cur.execute(
+            '''
+            SELECT w.id, w.tag_id, w.balance_czk, w.owner_id,
+                u.first_name, u.last_name
+            FROM wallets w
+            LEFT JOIN users u ON u.id = w.owner_id
+            WHERE w.event_id = %s
+            AND w.deleted_at IS NULL
+            ORDER BY w.created_at''',
+            (event_id,)).fetchall()
+            
     convert_image_paths_from_relative(products)
             
-    return jsonify(event=event, employees=employees, products=products, booths=booths, categories=categories), 200
+    return jsonify(event=event, employees=employees, products=products, booths=booths, categories=categories, users=users, wallets=wallets), 200
 
 
 @api_bp.route('/create', methods=('POST',))
