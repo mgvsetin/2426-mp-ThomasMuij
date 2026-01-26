@@ -16,7 +16,7 @@ from cashier_app.db import get_pool
 from cashier_app.utils.general import convert_uuids_to_str
 from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
-from cashier_app.utils.employees_users import is_manager, validate_email, validate_first_or_last_name, validate_phone_number, format_valid_phone_number, validate_other_identifier
+from cashier_app.utils.employees_users import is_manager, validate_email, validate_first_or_last_name, validate_phone_number, format_valid_phone_number, add_more_phone_number_info, validate_other_identifier
 from cashier_app.utils.products import convert_image_paths_from_relative
 
 
@@ -52,22 +52,7 @@ def get_users():
                 ORDER BY created_at''',
                 ).fetchall()
             
-    for user in users:
-        phone_number_formats = {
-            'e164': None,
-            'international': None,
-            'national': None,
-            'national_significant_number': None,
-            'country_code': None
-        }
-        if user['phone_number']:
-            phone_number_formats = format_valid_phone_number(user['phone_number'])
-
-        user['phone_number'] = phone_number_formats['e164'] # už by mělo být
-        user['phone_number_international'] = phone_number_formats['international']
-        user['phone_number_national'] = phone_number_formats['national']
-        user['phone_number_national_significant_number'] = phone_number_formats['national_significant_number']
-        user['phone_number_country_code'] = phone_number_formats['country_code']
+    add_more_phone_number_info(users)
     
     return jsonify(users=users), 200
 
@@ -82,14 +67,26 @@ def add_user():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     if not logged_employee['is_admin']:
-        if selected_event is None:
-            return jsonify(error='no_selected_event'), 400
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                is_any_manager = cur.execute(
+                    '''
+                    SELECT 1 FROM employee_event_booth_roles
+                    WHERE employee_id = %s AND booth_id IS NULL
+                    LIMIT 1
+                    ''',
+                    (logged_employee['id'],)
+                ).fetchone()
+                
+        if not is_any_manager:
+            if selected_event is None:
+                return jsonify(error='no_selected_event'), 400
 
-        if selected_booth is None:
-            return jsonify(error='no_selected_booth'), 400
-        
-        if selected_booth['booth_type'] != 'cashier':
-            return jsonify(error='invalid_booth_type'), 400
+            if selected_booth is None:
+                return jsonify(error='no_selected_booth'), 400
+            
+            if selected_booth['booth_type'] != 'cashier':
+                return jsonify(error='invalid_booth_type'), 400
     
     first_name = request.form.get('first-name', '').strip().capitalize()
     last_name = request.form.get('last-name', '').strip().capitalize()

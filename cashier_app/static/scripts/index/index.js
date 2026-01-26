@@ -7,7 +7,7 @@ import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { getSessionInfo } from "../general/session.js";
 import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise } from "./cards.js";
 import { escapeHTML } from "../general/html_display_utils.js";
-import { phoneInputClickListeners } from "./phone_number_input.js";
+import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
 import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { getWalletByTag, getWallets, resetWalletsCache, updateWalletBalance } from "./wallets.js";
@@ -552,6 +552,9 @@ usersTableBody.addEventListener('dblclick', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   // headerKeydownListeners(event);
+  if (phoneInputKeydownListeners(event)) return;
+  
+  handleRowSelection(event);
 
   if (event.target.matches('#change-balance-by-input, #edit-wallet-change-balance-by-input') && event.key === '-') {
     event.preventDefault();
@@ -561,6 +564,7 @@ document.addEventListener('keydown', (event) => {
       changeBalanceByInput.value = -value;
       changeBalanceByInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
+    return;
   }
 
 
@@ -573,6 +577,7 @@ document.addEventListener('keydown', (event) => {
       setNewBalanceInput.value = -value;
       setNewBalanceInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
+    return;
   }
 
 
@@ -1079,8 +1084,13 @@ document.addEventListener('input', (event) => {
   }
 
   editWalletInputListeners(event);
+  phoneInputInputisteners(event);
 })
 
+
+document.addEventListener('focusin', (event) => {
+  phoneInputFocusinisteners(event);
+});
 
 
 sellerPage.addEventListener('focusout', (event) => {
@@ -1097,11 +1107,6 @@ sellerPage.addEventListener('focusout', (event) => {
 
 navigator.serial.addEventListener('connect', (event) => {
   setUpCardReading(false);
-});
-
-
-document.addEventListener('keydown', (event) => {
-  handleRowSelection(event);
 });
 
 

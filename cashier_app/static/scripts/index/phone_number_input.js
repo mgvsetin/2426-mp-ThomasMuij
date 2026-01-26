@@ -212,89 +212,9 @@ const countryCodes = [
 const recentCodesKey = 'recentCountryCodes';
 const maxRecent = 5;
 
-const countryCodeContainer = document.querySelector('.country-code-container');
-const countryCodeInput = document.querySelector('#country-code-input');
-const dropdown = document.querySelector('.country-code-dropdown');
-const dropdownContent = document.querySelector('.dropdown-content');
-
 
 initValues();
 renderDropdown();
-
-
-countryCodeInput.addEventListener('input', async (event) => {
-  countryCodeInput.value = countryCodeInput.value.trim();
-  renderDropdown();
-  dropdown.classList.add('active');
-});
-
-
-countryCodeContainer.addEventListener('focusin', () => {
-  dropdown.classList.add('active');
-});
-
-// focusout listener (dropdown.classList.remove('active')) tu není schválně (nešlo by kliknout na dropdown)
-
-
-countryCodeContainer.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    if (dropdown.classList.contains('active')) {
-      dropdown.classList.remove('active');
-      event.stopPropagation();
-    }
-  }
-
-  let indexDirection;
-  if (event.key === 'ArrowDown') indexDirection = 1;
-  if (event.key === 'ArrowUp') indexDirection = -1;
-  if (indexDirection) {
-    event.preventDefault();
-    dropdown.classList.add('active');
-    const options = document.querySelectorAll('.country-code-option');
-    if (!options.length) return;
-
-    const activeOption = document.querySelector('.country-code-option.active');
-
-    if (!activeOption) {
-      const index = indexDirection === 1 ? 0 : options.length - 1;
-      const option = options[index];
-      option?.classList.add('active');
-      option?.scrollIntoView({ behavior: 'instant', block: 'center' });
-      return;
-    }
-
-    for (let i = 0; i < options.length; i++) {
-      const option = options[i];
-      if (option.classList.contains('active')) {
-        option.classList.remove('active');
-        let nextOption = options[i + indexDirection];
-        if (!nextOption) nextOption = options[indexDirection === 1 ? 0 : options.length - 1];
-        nextOption?.classList.add('active');
-        nextOption?.scrollIntoView({ behavior: 'instant', block: 'center' });
-        return;
-      }
-    }
-    return;
-  }
-
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    if (!dropdown.classList.contains('active')) return;
-    let activeOption = document.querySelector('.country-code-option.active');
-    if (!activeOption) {
-      const options = document.querySelectorAll('.country-code-option');
-      if (options.length === 1) {
-        activeOption = options[0];
-      } else {
-        return;
-      }
-    }
-    changeSelectedCode(activeOption.dataset.code);
-    saveRecentCode(activeOption.dataset.code);
-    dropdown.classList.remove('active');
-    return;
-  }
-});
 
 
 export function phoneInputClickListeners(event) {
@@ -305,8 +225,12 @@ export function phoneInputClickListeners(event) {
     saveRecentCode(selectedCode);
     const prevActive = document.querySelector('.country-code-option.active');
     prevActive?.classList.remove('active');
-    countryCodeOption.classList.add('active');
-    dropdown.classList.remove('active');
+    if (!countryCodeOption) {
+      countryCodeOption = document.querySelector('#country-code-input');
+    }
+    countryCodeOption?.classList.add('active');
+    const dropdown = document.querySelector('.country-code-dropdown');
+    dropdown?.classList.remove('active');
     return true;
   }
 
@@ -314,15 +238,111 @@ export function phoneInputClickListeners(event) {
 }
 
 
+export function phoneInputInputisteners(event) {
+  if (event.target.matches('#country-code-input')) {
+    const countryCodeInput = event.target;
+    countryCodeInput.value = countryCodeInput.value.trim();
+    renderDropdown();
+    const dropdown = document.querySelector('.country-code-dropdown');
+    dropdown?.classList.add('active');
+    return true;
+  }
+  return false;
+}
+
+// focusout listener (dropdown.classList.remove('active')) tu není schválně (nešlo by kliknout na dropdown)
+
+export function phoneInputFocusinisteners(event) {
+  const countryCodeContainer = event.target.closest('.country-code-container');
+  if (countryCodeContainer) {
+    const dropdown = document.querySelector('.country-code-dropdown');
+    dropdown?.classList.add('active');
+    return true;
+  }
+  return false;
+}
+
+
+export function phoneInputKeydownListeners(event) {
+  const countryCodeContainer = event.target.closest('.country-code-container');
+  if (countryCodeContainer) {
+    const dropdown = document.querySelector('.country-code-dropdown');
+
+    if (!dropdown) return false;
+
+    if (event.key === 'Escape') {
+      if (dropdown?.classList.contains('active')) {
+        dropdown?.classList.remove('active');
+        return true;
+      }
+    }
+
+    let indexDirection;
+    if (event.key === 'ArrowDown') indexDirection = 1;
+    if (event.key === 'ArrowUp') indexDirection = -1;
+    if (indexDirection) {
+      event.preventDefault();
+      dropdown?.classList.add('active');
+      const options = document.querySelectorAll('.country-code-option');
+      if (!options || !options.length) return true;
+
+      const activeOption = document.querySelector('.country-code-option.active');
+
+      if (!activeOption) {
+        const index = indexDirection === 1 ? 0 : options.length - 1;
+        const option = options[index];
+        option?.classList.add('active');
+        option?.scrollIntoView({ behavior: 'instant', block: 'center' });
+        return true;
+      }
+
+      for (let i = 0; i < options.length; i++) {
+        const option = options[i];
+        if (option?.classList.contains('active')) {
+          option?.classList.remove('active');
+          let nextOption = options[i + indexDirection];
+          if (!nextOption) nextOption = options[indexDirection === 1 ? 0 : options.length - 1];
+          nextOption?.classList.add('active');
+          nextOption?.scrollIntoView({ behavior: 'instant', block: 'center' });
+          return true;
+        }
+      }
+      return true;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (!dropdown?.classList.contains('active')) return true;
+      let activeOption = document.querySelector('.country-code-option.active');
+      if (!activeOption) {
+        const options = document.querySelectorAll('.country-code-option');
+        if (options && options.length === 1) {
+          activeOption = options[0];
+        } else {
+          return true;
+        }
+      }
+      changeSelectedCode(activeOption.dataset.code);
+      saveRecentCode(activeOption.dataset.code);
+      dropdown?.classList.remove('active');
+      return true;
+    }
+  }
+  return false;
+}
+
+
 document.addEventListener('click', (event) => {
-  if (!countryCodeContainer.contains(event.target)) {
-    dropdown.classList.remove('active');
+  const countryCodeContainer = document.querySelector('.country-code-container');
+  if (countryCodeContainer && !countryCodeContainer.contains(event.target)) {
+    const dropdown = document.querySelector('.country-code-dropdown');
+    dropdown?.classList.remove('active');
   }
 });
 
 
 
-function initValues() {
+export function initValues() {
   const recent = getRecentCodes();
   if (recent.length > 0) {
     changeSelectedCode(recent[0]);
@@ -331,8 +351,11 @@ function initValues() {
 
 
 export function changeSelectedCode(code) {
-  countryCodeInput.value = code;
-  renderDropdown();
+  const countryCodeInput = document.querySelector('#country-code-input');
+  if (countryCodeInput) {
+    countryCodeInput.value = code;
+    renderDropdown();
+  }
 }
 
 
@@ -351,7 +374,16 @@ function saveRecentCode(code) {
 }
 
 
-function renderDropdown() {
+export function renderDropdown() {
+  const countryCodeInput = document.querySelector('#country-code-input');
+  if (!countryCodeInput) {
+    return;
+  }
+  const dropdownContent = document.querySelector('.dropdown-content');
+  if (!dropdownContent) {
+    return;
+  }
+
   const recent = getRecentCodes();
   const recentCodes = recent.map(code => countryCodes.find(ac => ac.code === code)).filter(Boolean);
   const searchTerm = countryCodeInput.value.trim();

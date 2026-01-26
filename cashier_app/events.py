@@ -13,7 +13,7 @@ from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
-from cashier_app.utils.employees_users import is_manager
+from cashier_app.utils.employees_users import is_manager, format_valid_phone_number, add_more_phone_number_info
 from cashier_app.utils.products import convert_image_paths_from_relative
 
 bp = Blueprint('events', __name__, url_prefix='/events')
@@ -285,7 +285,8 @@ def get_event(event_id):
             AND w.deleted_at IS NULL
             ORDER BY w.created_at''',
             (event_id,)).fetchall()
-            
+
+    add_more_phone_number_info(users)
     convert_image_paths_from_relative(products)
             
     return jsonify(event=event, employees=employees, products=products, booths=booths, categories=categories, users=users, wallets=wallets), 200

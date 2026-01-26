@@ -6,6 +6,7 @@ import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRow
 import { cloneData } from "../general/cache.js";
 import { getEmployees } from "../general/employees.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
+import { changeSelectedCode, initValues, phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners, renderDropdown } from "../index/phone_number_input.js";
 
 
 const card = document.querySelector('#card');
@@ -68,6 +69,10 @@ document.addEventListener('click', async (event) => {
   const headerClick = headerClickListeners(event);
   const sidebarClick = sidebarClickListeners(event);
   if (headerClick || sidebarClick) return;
+
+  if (phoneInputClickListeners(event)) {
+    return;
+  }
 
   // open graphs
   if (event.target.matches('#open-graphs')) {
@@ -1377,11 +1382,15 @@ document.addEventListener('input', (event) => {
       loadPage({ walletsTable: true });
     }
   }
+
+  phoneInputInputisteners(event);
 });
 
 
 document.addEventListener('keydown', (event) => {
+  if (phoneInputKeydownListeners(event)) return;
   handleRowSelection(event);
+
   handleCopyPasteOnKeydown(event, eventId).then((result) => {
     if (['paste', 'undo-paste', 'redo-paste'].includes(result)) {
       resetEventDataCache();
@@ -1448,6 +1457,11 @@ document.addEventListener('change', (event) => {
       categoriesRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     }
   }
+});
+
+
+document.addEventListener('focusin', (event) => {
+  phoneInputFocusinisteners(event);
 });
 
 
@@ -3076,7 +3090,7 @@ async function openAddUserModal() {
         </svg>
       </button>
     </header>
-    <form id="add-user-form">
+    <form id="add-user-form" autocomplete="off">
       <div class="form-row">
         <label for="user-first-name-input">Jméno</label>
         <input id="user-first-name-input" name="first-name" type="text"/>
@@ -3092,11 +3106,27 @@ async function openAddUserModal() {
         <input id="user-email-input" name="email" type="email"/>
         <div id="add-user-email-error" class="form-error"></div>
       </div>
+
       <div class="form-row">
         <label for="user-phone-input">Telefonní číslo</label>
-        <input id="user-phone-input" name="phone-number" type="tel" placeholder="+420123456789"/>
-        <div id="add-user-phone-error" class="form-error"></div>
+        <div class="phone-input-wrapper">
+          <div class="country-code-container">
+            <input type="text" id="country-code-input" name="phone-number-country-code">
+            <!-- <div class="country-code-selector" tabindex="0">
+              <span class="selected-code"></span>
+            </div> -->
+            <div class="country-code-dropdown">
+              <!-- <div class="search-box">
+                <input type="text" placeholder="Hledat zemi nebo kód..." class="search-input">
+              </div> -->
+              <div class="dropdown-content"></div>
+            </div>
+          </div>
+          <input id="user-phone-input" class="user-phone-input" name="phone-number" type="tel" />
+        </div>
+        <div id="phone-number-error" class="form-error"></div>
       </div>
+
       <div class="form-row">
         <label for="user-other-identifier-input">Jiný identifikátor</label>
         <input id="user-other-identifier-input" name="other-identifier" type="text"/>
@@ -3117,6 +3147,9 @@ async function openAddUserModal() {
     </form>
   `;
   openModal(html);
+
+  initValues();
+  renderDropdown();
 }
 
 async function openEditUserModal(row) {
@@ -3135,8 +3168,8 @@ async function openEditUserModal(row) {
         </svg>
       </button>
     </header>
-    <form id="edit-user-form">
-      <input type="hidden" name="id" value="${id}"/>
+    <form id="edit-user-form" autocomplete="off">
+      <input type="hidden" name="user-id" value="${id}"/>
       <div class="form-row">
         <label for="user-first-name-input">Jméno</label>
         <input id="user-first-name-input" name="first-name" type="text" value="${escapeHTML(user.first_name)}"/>
@@ -3152,11 +3185,27 @@ async function openEditUserModal(row) {
         <input id="user-email-input" name="email" type="email" value="${escapeHTML(user.email || '')}"/>
         <div id="edit-user-email-error" class="form-error"></div>
       </div>
+
       <div class="form-row">
         <label for="user-phone-input">Telefonní číslo</label>
-        <input id="user-phone-input" name="phone-number" type="tel" value="${escapeHTML(user.phone_number || '')}" placeholder="+420123456789"/>
-        <div id="edit-user-phone-error" class="form-error"></div>
+        <div class="phone-input-wrapper">
+          <div class="country-code-container">
+            <input type="text" id="country-code-input" name="phone-number-country-code">
+            <!-- <div class="country-code-selector" tabindex="0">
+              <span class="selected-code"></span>
+            </div> -->
+            <div class="country-code-dropdown">
+              <!-- <div class="search-box">
+                <input type="text" placeholder="Hledat zemi nebo kód..." class="search-input" value="${escapeHTML(user.phone_number_country_code || '')}>
+              </div> -->
+              <div class="dropdown-content"></div>
+            </div>
+          </div>
+          <input id="user-phone-input" class="user-phone-input" name="phone-number" type="tel" value="${escapeHTML(user.phone_number_national_significant_number || '')}"/>
+        </div>
+        <div id="phone-number-error" class="form-error"></div>
       </div>
+
       <div class="form-row">
         <label for="user-other-identifier-input">Jiný identifikátor</label>
         <input id="user-other-identifier-input" name="other-identifier" type="text" value="${escapeHTML(user.other_identifier || '')}"/>
@@ -3177,6 +3226,10 @@ async function openEditUserModal(row) {
     </form>
   `;
   openModal(html);
+
+  initValues();
+  changeSelectedCode(user.phone_number_country_code);
+  renderDropdown();
 }
 
 async function openDeleteUserModal(row) {
@@ -3199,7 +3252,6 @@ async function openDeleteUserModal(row) {
       <input type="hidden" name="id" value="${id}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
-        <div class="muted" style="margin-top: 8px;">Smazání uživatele také smaže všechny jeho peněženky.</div>
       </div>
 
       <div class="form-row">
@@ -4666,10 +4718,4 @@ function renderRevenueTimelineChart() {
       }
     }
   });
-}
-
-
-
-function formatNumber(num) {
-  return Number(num || 0).toLocaleString('cs-CZ');
 }

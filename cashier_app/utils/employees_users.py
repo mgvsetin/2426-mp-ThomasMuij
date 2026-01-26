@@ -326,6 +326,25 @@ def format_valid_phone_number(phone_number: str) -> dict[str]:
     }
 
 
+def add_more_phone_number_info(users):
+    for user in users:
+        phone_number_formats = {
+            'e164': None,
+            'international': None,
+            'national': None,
+            'national_significant_number': None,
+            'country_code': None
+        }
+        if user['phone_number']:
+            phone_number_formats = format_valid_phone_number(user['phone_number'])
+
+        user['phone_number'] = phone_number_formats['e164'] # už by mělo být
+        user['phone_number_international'] = phone_number_formats['international']
+        user['phone_number_national'] = phone_number_formats['national']
+        user['phone_number_national_significant_number'] = phone_number_formats['national_significant_number']
+        user['phone_number_country_code'] = phone_number_formats['country_code']
+
+
 def validate_other_identifier(
     other_identifier: str,
     min_len: int = 1,
