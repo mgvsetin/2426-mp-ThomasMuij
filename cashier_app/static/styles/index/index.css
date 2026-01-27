@@ -67,6 +67,24 @@ body {
   justify-content: center;
 }
 
+#user-inputs-search-table-toggle {
+  width: 24px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  outline: none;
+  padding: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#user-inputs-search-table-toggle:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
 /* #search-button:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
@@ -987,6 +1005,12 @@ tbody tr.selected-for-update {
   padding: 10px;
   row-gap: 12px;
   overflow: auto;
+}
+
+#user-selection-or-creation header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 

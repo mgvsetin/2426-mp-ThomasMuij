@@ -87,8 +87,15 @@ async function renderDropdownSessionInfo() {
 
   let sessionInfoHTML = '';
 
-  try { sessionInfoHTML += `<div id="username">${sessionInfo.employee.username}</div>`; } catch { }
-  try { sessionInfoHTML += `<div id="event-booth">${sessionInfo.event.name} - ${sessionInfo.booth.name}</div>`; } catch { }
+  if (sessionInfo.employee) {
+    sessionInfoHTML += `<div id="username">${sessionInfo.employee.username}</div>`;
+  }
+
+  if (sessionInfo.event && !sessionInfo.booth) {
+    sessionInfoHTML += `<div id="event-booth">${sessionInfo.event.name}</div>`;
+  } else if (sessionInfo.event && sessionInfo.booth) {
+    sessionInfoHTML += `<div id="event-booth">${sessionInfo.event.name} - ${sessionInfo.booth.name}</div>`;
+  }
 
   sessionInfoEl.innerHTML = sessionInfoHTML;
 }

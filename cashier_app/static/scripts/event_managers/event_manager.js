@@ -212,8 +212,7 @@ document.addEventListener('click', async (event) => {
   // zobrazit transakce uživatele
   const viewUserTransactionsBtn = event.target.closest('.view-user-transactions');
   if (viewUserTransactionsBtn) {
-    const row = viewUserTransactionsBtn.closest('tr[id]');
-    const userId = row.id;
+    const userId = viewUserTransactionsBtn.getAttribute('data-user-id');
     window.open(`/events/${encodeURIComponent(eventId)}/users/${userId}/transaction-history`, '_blank');
     return;
   }
@@ -222,6 +221,18 @@ document.addEventListener('click', async (event) => {
   const closeModalBtn = event.target.closest('.close-modal');
   if (closeModalBtn) {
     closeModal();
+    return;
+  }
+
+
+  const panelHeader = event.target.closest('.panel-header');
+  if (panelHeader) {
+    if (event.target.closest('button, input, .search-icon-container')) return;
+
+    const panel = panelHeader.closest('.panel');
+    const tableWrap = panel.querySelector('.table-wrap, #statistics');
+
+    tableWrap.classList.toggle('closed');
     return;
   }
 
@@ -1736,7 +1747,7 @@ function sorterFactory(dict) {
     } else if (key === 'booth_type') {
       aValue = boothTypeToDisplay(aValue).toLowerCase();
       bValue = boothTypeToDisplay(bValue).toLowerCase();
-    } else if (key === 'price') {
+    } else if (key === 'price' || key === 'balance_czk') {
       return (Number(aValue) - Number(bValue)) * (dict.ascending ? 1 : -1);
     } else {
       aValue = String(aValue).toLowerCase();
@@ -2209,7 +2220,7 @@ function renderUsers(eventData) {
         <td>${escapeHTML(user.other_identifier || '-')}</td>
         <td><span class="${eventConnectedClass}">${eventConnectedText}</span></td>
         <td class="actions">
-          <button class="icon-btn view view-user-transactions" title="Zobrazit transakce">
+          <button class="icon-btn view view-user-transactions" data-user-id="${user.id}" title="Zobrazit transakce">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
               <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4"/>
@@ -2238,7 +2249,6 @@ function renderWallets(eventData) {
   const searchQuery = walletsSearchBar.value;
   const sorter = sorterFactory(orderBy.wallets);
 
-  // Add owner_name field for sorting
   const walletsWithOwnerName = eventData.wallets.map(w => ({
     ...w,
     owner_name: `${w.first_name || ''} ${w.last_name || ''}`.trim()

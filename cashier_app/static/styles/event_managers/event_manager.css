@@ -202,6 +202,17 @@ body.no-scroll {
   border-radius: 8px;
   border: 1px solid #e6eef6;
   max-height: var(--max-height);
+  transition: max-height 300ms ease;
+}
+
+.table-wrap.closed {
+  max-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-wrap {
+    transition: none;
+  }
 }
 
 table {
@@ -574,6 +585,22 @@ input[type=checkbox] {
   padding-bottom: 10px;
 }
 
+#statistics {
+  overflow: auto;
+  max-height: 5000px;
+  transition: max-height 300ms ease;
+}
+
+#statistics.closed {
+  max-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statistics {
+    transition: none;
+  }
+}
+
 /* CELKOVÉ STATISTIKY - KARTY */
 .stats-overview {
   margin-bottom: 30px;
@@ -713,13 +740,6 @@ input[type=checkbox] {
   flex-wrap: wrap;
 }
 
-.expand-icon {
-  display: inline-block;
-  transition: transform 0.3s;
-  color: rgb(0, 120, 212);
-  font-weight: bold;
-}
-
 .booth-products {
   border-top: 1px solid rgb(230, 230, 230);
   padding: 15px;
@@ -736,6 +756,12 @@ input[type=checkbox] {
   to {
     opacity: 1;
     max-height: 500px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booth-products {
+    animation: none;
   }
 }
 
@@ -805,41 +831,6 @@ input[type=checkbox] {
 
 .products-stats-table tbody tr:hover {
   background: rgb(252, 252, 252);
-}
-
-/* RESPONSIVITA */
-@media (max-width: 768px) {
-  .stats-cards {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-container {
-    height: 250px;
-  }
-
-  .booth-stat-main {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-
-  .booth-stat-details {
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .booth-products-table {
-    font-size: 12px;
-  }
-
-  .booth-products-table th,
-  .booth-products-table td {
-    padding: 6px 8px;
-  }
 }
 
 

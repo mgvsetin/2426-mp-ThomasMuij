@@ -27,7 +27,7 @@ const orderBy = { key: '', ascending: true }; // key: 'start_at', 'end_at', 'cre
 async function addAddEventButton() {
   const sessionInfo = await getSessionInfo().catch(() => { });
   if (!sessionInfo) return;
-  if (!sessionInfo.employee.is_admin) return;
+  if (!sessionInfo.employee?.is_admin) return;
   addEventButton.classList.add('show');
 }
 addAddEventButton();

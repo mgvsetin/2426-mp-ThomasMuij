@@ -5,12 +5,57 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tests</title>
+
+  <style>
+    .dropdown2 {
+      transform-origin: top;
+      transform: scaleY(0);
+      transition: transform 220ms cubic-bezier(.2, .9, .2, 1);
+      will-change: transform;
+      overflow: hidden;
+      /* hide overflow during scale */
+    }
+
+    /* keep layout space if you want by setting height or using visibility */
+    .dropdown2.open {
+      transform: scaleY(1);
+    }
+
+    /* @media (prefers-reduced-motion: reduce) {
+      .dropdown2 {
+        transition: none;
+        transform: none;
+      }
+    } */
+  </style>
 </head>
 
 <body>
-  <button>a button</button>
-  <script>
+  <button id="btn2" aria-expanded="false" aria-controls="menu2">Toggle</button>
+  <div id="menu2" class="dropdown2" hidden>
+    <div class="inner">
+      <!-- content -->
+      <p>Some content...</p>
+      <p>More content...</p>
+    </div>
+  </div>
 
+
+  <script>
+    const btn2 = document.getElementById('btn2');
+    const menu2 = document.getElementById('menu2');
+
+    btn2.addEventListener('click', () => {
+      const open = btn2.getAttribute('aria-expanded') === 'true';
+      btn2.setAttribute('aria-expanded', String(!open));
+      if (!open) {
+        menu2.hidden = false;
+        requestAnimationFrame(() => menu2.classList.add('open'));
+      } else {
+        menu2.classList.remove('open');
+        menu2.addEventListener('transitionend', () => (menu2.hidden = true), { once: true });
+      }
+    });
   </script>
 </body>
 

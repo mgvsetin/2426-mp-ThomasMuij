@@ -383,6 +383,12 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const toggleUserSearch = event.target.closest('#user-inputs-search-table-toggle');
+  if (toggleUserSearch) {
+    const toggleUserSearch = document.createElement('div')
+    toggleUserSearch.toggleAttribute('search-users')
+  }
+
   // smazat uživatele
   const deleteUserBtn = event.target.closest('.delete-user');
   if (deleteUserBtn) {
