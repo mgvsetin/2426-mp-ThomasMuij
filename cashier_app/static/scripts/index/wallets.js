@@ -56,6 +56,7 @@ export function getWallets() {
 export function resetWalletsCache() {
   _walletsCache.wallets = null;
   _walletsCache.expiry = 0;
+  getWallets()
 }
 
 
@@ -70,23 +71,5 @@ export function getWalletByTag(wallets, tagId) {
     }
   }
 
-  const newWallet = {
-    tag_id: tagId,
-    owner_id: null,
-    balance_czk: 0
-  }
-
-  if (!wallets) wallets = [];
-
-  wallets.push(newWallet);
-  _walletsCache.wallets.push(newWallet);
-
-  return newWallet;
-}
-
-
-export function updateWalletBalance(tagId, amountCzk) {
-  if (!tagId) return;
-  const wallet = getWalletByTag(_walletsCache.wallets, tagId);
-  wallet.balance_czk += amountCzk;
+  return null;
 }

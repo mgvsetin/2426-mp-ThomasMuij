@@ -6,105 +6,65 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Compact No / Yes Toggle</title>
   <style>
-    :root {
-      --w: 180px;
-      --h: 72px;
-      --accent: #10b981;
-      --muted: #6b7280
+    .my-table {
+      width: 100%;
+      table-layout: auto;
     }
 
-    * {
-      box-sizing: border-box
+    /* Important: ensure the td can shrink/overflow children if needed */
+    td {
+      min-width: 0;
     }
 
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: #f8fafc;
-      margin: 0;
-      font-family: Inter, system-ui, system-ui, -apple-system, Segoe UI, Roboto
+    /* allow contents to be smaller than intrinsic sizes */
+
+    /* The wrapper must fill the cell so @container measures cell width */
+    
+
+    .td-container {
+      display: flow-root;
+      /* establishes a new block formatting context */
+      inline-size: 100%;
+      min-width: 0;
     }
 
-    /* pill-like rounded rectangle (very circular) */
-    .toggle {
-      width: var(--w);
-      height: var(--h);
-      border-radius: 999px;
-      padding: 6px;
-      display: flex;
-      position: relative;
-      background: #eaf2ff;
-      cursor: pointer;
-      align-items: center
+    /* content gets a soft cap */
+    .content {
+      inline-size: 100%;
+      /* fill wrapper by default */
+      max-inline-size: 400px;
+      /* soft max when the cell is narrow */
+      overflow-wrap: anywhere;
+      box-sizing: border-box;
     }
 
-    .track {
-      position: absolute;
-      left: 6px;
-      top: 6px;
-      bottom: 6px;
-      width: calc(50% - 12px);
-      background: var(--accent);
-      border-radius: 999px;
-      z-index: 1;
-      transition: transform .18s ease
-    }
-
-    .toggle[data-state="yes"] .track {
-      transform: translateX(100%)
-    }
-
-    .option {
-      flex: 1;
-      text-align: center;
-      font-weight: 700;
-      z-index: 2;
-      color: var(--muted);
-      user-select: none
-    }
-
-    /* selected label becomes white for contrast */
-    .toggle[data-state="no"] .option.no,
-    .toggle[data-state="yes"] .option.yes {
-      color: #fff
+    /* when the wrapper (i.e. the cell) is wider than 400px, remove the cap */
+    @container (min-width: 401px) {
+      .content {
+        max-inline-size: none;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <div id="toggle" class="toggle" role="switch" tabindex="0" aria-checked="false" aria-label="No or Yes"
-    data-state="no">
-    <div class="track" aria-hidden="true"></div>
-    <div class="option no">No</div>
-    <div class="option yes">Yes</div>
-  </div>
+  <table class="my-table" style="width:100%;">
+    <tr>
+      <td>
+        <div class="td-container">
+          <div class="content">
+            Very long text that should be capped when narrow but fill the cell when there's extra room.
+          </div>
+        </div>
+      </td>
+      <td>Other column</td>
+    </tr>
+  </table>
+
 
   <script>
-    (() => {
-      const t = document.getElementById('toggle');
-      let state = t.dataset.state || 'no';
-      const set = s => { state = s; t.dataset.state = s; t.setAttribute('aria-checked', s === 'yes'); };
 
-      // click either label to select it, or click the empty area to toggle
-      t.addEventListener('click', e => {
-        const opt = e.target.closest('.option');
-        if (opt) return set(opt.classList.contains('yes') ? 'yes' : 'no');
-        set(state === 'yes' ? 'no' : 'yes');
-      });
-
-      // keyboard: Space/Enter toggle, arrows set direction
-      t.addEventListener('keydown', e => {
-        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); set(state === 'yes' ? 'no' : 'yes'); }
-        if (e.key === 'ArrowLeft') set('no');
-        if (e.key === 'ArrowRight') set('yes');
-      });
-
-      set(state);
-      window.myTwoWayToggle = { get value() { return state }, set value(v) { if (v === 'yes' || v === 'no') set(v) } };
-    })();
   </script>
 
 </body>

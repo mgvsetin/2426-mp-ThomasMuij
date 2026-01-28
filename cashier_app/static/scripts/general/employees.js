@@ -15,6 +15,7 @@ let _getEmployeesPromise = null;
 export function resetEmployeesCache() {
   _employeesCache.employees = null;
   _employeesCache.expiry = 0;
+  getEmployees();
 }
 
 

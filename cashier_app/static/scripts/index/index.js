@@ -10,7 +10,7 @@ import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
 import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
-import { getWalletByTag, getWallets, resetWalletsCache, updateWalletBalance } from "./wallets.js";
+import { getWalletByTag, getWallets, resetWalletsCache } from "./wallets.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
@@ -317,8 +317,9 @@ document.addEventListener('click', async (event) => {
 
     showPaySuccess();
     order.reset();
-    updateWalletBalance(lastReadCardId, amount_czk);
-    removeReadCard()
+    // updateWalletBalance(lastReadCardId, amount_czk);
+    resetWalletsCache();
+    removeReadCard();
     await loadPage({
       products: true,
       cardInfo: true,
@@ -925,8 +926,8 @@ document.addEventListener('submit', async (event) => {
     }
 
     if (userJob || cardJob) {
-      unselectUserForUpdate();
-      removeReadCard();
+      unselectUserForUpdate(); // volá i removeReadCard()
+      // removeReadCard();
 
       // figure out what happens if user gets created but there is a problem with wallet
 

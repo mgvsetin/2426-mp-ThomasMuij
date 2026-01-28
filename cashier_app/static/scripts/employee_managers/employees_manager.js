@@ -68,20 +68,15 @@ document.addEventListener('click', (event) => {
   if (isAdminToggle) {
     const state = isAdminToggle.dataset.state || 'no';
     const option = event.target.closest('.option');
-    const warningMessage = document.querySelector('.making-admin-warning');
 
     if (option && option.classList.contains('yes')) {
       isAdminToggle.dataset.state = 'yes';
-      warningMessage?.classList.add('show-warning-message');
     } else if (option) {
       isAdminToggle.dataset.state = 'no';
-      warningMessage?.classList.remove('show-warning-message');
     } else if (state === 'yes') {
       isAdminToggle.dataset.state = 'no';
-      warningMessage?.classList.remove('show-warning-message');
     } else {
       isAdminToggle.dataset.state = 'yes';
-      warningMessage?.classList.add('show-warning-message');
     }
     return;
   }
@@ -725,7 +720,6 @@ function openEditOverlay(row) {
               <div class="option no">Ne</div>
               <div class="option yes">Ano</div>
             </div>
-            ${employee.is_admin ? '' : '<div class="muted making-admin-warning">Pozor: nastavení zaměstnance adminem nevratně zruší všechny jeho role.</div>'}
             <div id="is-admin-edit-error" class="edit-error"></div>
           </div>
           

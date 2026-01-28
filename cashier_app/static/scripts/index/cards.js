@@ -188,8 +188,8 @@ export async function renderCard(wallet = null) {
   cashierBalanceDisplay.innerHTML = `Zůstatek: ${balanceCzk}`;
 
   if (!changeBalanceByInput.value && !setNewBalanceInput.value) {
-    changeBalanceByInput.value = wallet ? 0 : '';
-    setNewBalanceInput.value = wallet ? wallet.balance_czk : '';
+    changeBalanceByInput.value = lastReadCardId ? 0 : '';
+    setNewBalanceInput.value = wallet ? wallet.balance_czk : lastReadCardId ? 0 : '';
   }
 
   return wallet;

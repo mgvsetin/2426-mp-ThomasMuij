@@ -432,13 +432,14 @@ CREATE TABLE IF NOT EXISTS product_booth_link (
 );
 
 -- zkontroluje jestli se product event_id a booth event_id shodují
--- zkontroluje, že booth existuje
+-- zkontroluje, že booth a product existují
 -- kontroluje že booth je seller
 CREATE OR REPLACE FUNCTION product_booth_link_limit_update_insert()
 RETURNS trigger AS $$
 DECLARE
   booth_event_id uuid;
   product_event_id uuid;
+  found_row int;
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     SELECT event_id INTO booth_event_id
@@ -449,6 +450,15 @@ BEGIN
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'booth % does not exist, is not a seller or is deleted', NEW.booth_id;
+    END IF;
+
+    SELECT 1 INTO found_row
+      FROM products
+      WHERE NEW.product_id = id
+      AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'product % does not exist', NEW.product_id;
     END IF;
 
     SELECT event_id INTO product_event_id
@@ -525,24 +535,33 @@ CREATE TABLE IF NOT EXISTS category_booth_link (
 
 -- u insert/update kontroluje: 
 --   - jestli je event stejný u categories i booth a booth existuje
---   - zkontroluje, že booth existuje
+--   - zkontroluje, že booth a category existuje
 --   - kontroluje že booth je seller
 CREATE OR REPLACE FUNCTION category_booth_link_limit_insert_update()
 RETURNS trigger AS $$
 DECLARE
   category_event_id uuid;
   booth_event_id uuid;
+  found_row int;
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     SELECT event_id INTO booth_event_id
     FROM booths
     WHERE id = NEW.booth_id
-    AND deleted_at IS NULL
     AND booth_type = 'seller'
     AND deleted_at IS NULL;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'booth % does not exist, is not a seller or is deleted', NEW.booth_id;
+    END IF;
+
+    SELECT 1 INTO found_row
+    FROM categories
+    WHERE id = NEW.category_id
+    AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'category % does not exist', NEW.category_id;
     END IF;
 
     SELECT event_id INTO category_event_id
@@ -578,6 +597,7 @@ CREATE TABLE IF NOT EXISTS category_product_link (
 
 -- u insert/update kontroluje: 
 --   - jestli je event stejný u categories i products
+--   - jestli category a product existují
 CREATE OR REPLACE FUNCTION category_product_link_limit_insert_update()
 RETURNS trigger AS $$
 DECLARE
@@ -587,11 +607,21 @@ BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     SELECT event_id INTO product_event_id
     FROM products
-    WHERE id = NEW.product_id;
+    WHERE id = NEW.product_id
+    AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'product % does not exist', NEW.product_id;
+    END IF;
 
     SELECT event_id INTO category_event_id
     FROM categories
-    WHERE id = NEW.category_id;
+    WHERE id = NEW.category_id
+    AND deleted_at IS NULL;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'category % does not exist', NEW.category_id;
+    END IF;
 
     IF category_event_id IS DISTINCT FROM product_event_id THEN
       RAISE EXCEPTION 'products event_id % and category event_id % do not match', product_event_id, category_event_id;
@@ -638,7 +668,8 @@ WHERE booth_id IS NOT NULL;
 --   - jestli je event stejný tady i booth a booth existuje (pokud booth_id není null)
 --   - jestli se booths.booth_type a role shodují (pokud role není null)
 --   - zajistí, že pokud je employee pro event event_manager, tak nemůže být přirazen k specifickému stánku
---   - zajistí, že zde nemůže být přiřazen admin
+--   - zkontroluje jestli employee existuje
+--(   - zajistí, že zde nemůže být přiřazen admin) už ne
 CREATE OR REPLACE FUNCTION employee_event_booth_roles_limit_autocomplete_insert_update()
 RETURNS trigger AS $$
 DECLARE
@@ -661,9 +692,9 @@ BEGIN
       RAISE EXCEPTION 'employee % does not exist or is deleted', NEW.employee_id;
     END IF;
 
-    IF emp_is_admin THEN
-      RAISE EXCEPTION 'admins cannot be assigned to employee_event_booth_roles (employee %)', NEW.employee_id;
-    END IF;
+    -- IF emp_is_admin THEN
+    --   RAISE EXCEPTION 'admins cannot be assigned to employee_event_booth_roles (employee %)', NEW.employee_id;
+    -- END IF;
 
     IF NEW.booth_id IS NOT NULL THEN
       SELECT event_id, booth_type INTO booth_event_id, booths_type

@@ -15,6 +15,7 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager, format_valid_phone_number, add_more_phone_number_info
 from cashier_app.utils.products import convert_image_paths_from_relative
+from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
 
 bp = Blueprint('events', __name__, url_prefix='/events')
 
@@ -188,6 +189,7 @@ def get_event(event_id):
                 JOIN employee_event_booth_roles AS link ON link.employee_id = em.id
                 LEFT JOIN booths ON booths.id = link.booth_id
                 WHERE em.deleted_at IS NULL
+                AND em.is_admin IS FALSE
                 AND link.event_id = %s
                 GROUP BY em.id
                 ORDER BY em.created_at''',
@@ -447,17 +449,18 @@ def edit_event():
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {event_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
     except IntegrityError as e:
         # jestli někdy půjde nastavit start_at nebo end_at, když už je jedna hodnotav db,
         # tak se musí ověření start_at <= end_at vzít z db (detail=events_start_at_before_end_at_check)
         # jméno už existuje: detail obsahuje unique_index_events_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='event_not_found'), 404
 
     return jsonify(), 200
@@ -496,14 +499,15 @@ def delete_event():
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {event_id}')
-    except RuntimeError:
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
-
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='event_not_found'), 404
+        
 
     return jsonify(redirect_url=url_for('events.get_events_manager_page')), 200
 
@@ -773,7 +777,9 @@ def edit_booth():
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {booth_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
                 
                 # Delete existing product and category links
                 cur.execute(
@@ -818,11 +824,10 @@ def edit_booth():
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for booth id %s', booth_id)
         return jsonify(error='internal_server_error'), 500
-    
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='booth_not_found'), 404
 
     return jsonify(), 200
@@ -873,15 +878,14 @@ def delete_booth():
                     (booth_id,))
 
                 rows_affected = cur.rowcount
-
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {booth_id}')
-    except RuntimeError:
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for booth id %s', booth_id)
         return jsonify(error='internal_server_error'), 500
-
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='booth_not_found'), 404
 
     return jsonify(), 200
@@ -1543,7 +1547,9 @@ def edit_product():
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {product_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
                 
                 cur.execute(
                     '''
@@ -1590,18 +1596,20 @@ def edit_product():
             remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         if created_image_path:
             remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         current_app.logger.exception('multiple rows updated for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
+    except NoRowsAffectedError:
+        if created_image_path:
+            remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
+        return jsonify(error='product_not_found'), 404
     except:
         if created_image_path:
             remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
         raise
-    
-    if rows_affected == 0:
-        return jsonify(error='product_not_found'), 404
+        
 
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
     if remove_current_image or image_file:
@@ -1655,7 +1663,9 @@ def delete_product():
                     (product_id,))
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {product_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
                 
                 # měly by se dít sami:
                 cur.execute(
@@ -1668,11 +1678,10 @@ def delete_product():
                     DELETE FROM category_product_link
                     WHERE product_id = %s''',
                     (product_id,))
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
-    
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='product_not_found'), 404
     
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
@@ -1935,8 +1944,10 @@ def edit_category():
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {category_id}')
-                
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
+
                 cur.execute(
                     '''
                     DELETE FROM category_booth_link
@@ -1977,11 +1988,10 @@ def edit_category():
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_categories_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for category id %s', category_id)
         return jsonify(error='internal_server_error'), 500
-    
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='category_not_found'), 404
 
     return jsonify(), 200
@@ -2032,7 +2042,9 @@ def delete_category():
                     (cateogry_id,))
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {cateogry_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
                 
                 # měly by se dít sami:
                 cur.execute(
@@ -2045,11 +2057,10 @@ def delete_category():
                     DELETE FROM category_product_link
                     WHERE category_id = %s''',
                     (cateogry_id,))
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for category id %s', cateogry_id)
         return jsonify(error='internal_server_error'), 500
-    
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='category_not_found'), 404
 
     return jsonify(), 200

@@ -135,14 +135,20 @@
 #username {
   font-weight: 700;
   font-size: 15px;
-  line-height: 1
+  line-height: 1;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
 }
 
 #event-booth {
   font-size: 13px;
   color: #6b7280;
-  line-height: 1.2;
   margin-top: 2px;
+  line-height: 1.2;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

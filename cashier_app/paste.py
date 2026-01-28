@@ -20,22 +20,8 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.utils.products import convert_image_paths_from_relative
+from cashier_app.errors import ForbiddenError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError, NoPasteToUndoError, NoPasteToRedoError
 
-
-class ForbiddenError(Exception):
-    pass
-
-class CanNotMakeNewEventIfNotCopyingEvent(Exception):
-    pass
-
-class NoValidEmployeesToCopy(Exception):
-    pass
-
-class NoPasteToUndo(Exception):
-    pass
-
-class NoPasteToRedo(Exception):
-    pass
 
 
 def change_keys_make_values_UUID(from_dict: dict[str, list[str]], old_to_new_keys_dict: dict[str, str]):
@@ -346,7 +332,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         (data_to_copy['employee_ids'],)).fetchall()
                     
                     if not copied_employees:
-                        raise NoValidEmployeesToCopy()
+                        raise NoValidEmployeesToCopyError()
                     
                     employee_event_booth_roles_to_copy = cur.execute(
                         '''
@@ -426,7 +412,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         
                     save_copy_paste(copy_paste_row)
 
-        except NoValidEmployeesToCopy:
+        except NoValidEmployeesToCopyError:
             return jsonify(error='no_valid_employees_to_copy'), 400
 
         return jsonify(), 200
@@ -479,7 +465,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
 
                 if targets_are_new_events:
                     if not directly_copied_events:
-                        raise CanNotMakeNewEventIfNotCopyingEvent()
+                        raise CanNotMakeNewEventIfNotCopyingEventError()
 
                     lower_all_event_names = cur.execute(
                         '''
@@ -1547,7 +1533,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
 
     except ForbiddenError:
         return jsonify(error='insufficient_privileges'), 403
-    except CanNotMakeNewEventIfNotCopyingEvent:
+    except CanNotMakeNewEventIfNotCopyingEventError:
         return jsonify(error='can_not_make_new_event_if_not_copying_event'), 400
 
     return jsonify(), 200
@@ -1688,7 +1674,7 @@ def undo_paste():
                     (logged_employee['id'],)).fetchone()
 
                 if not last_valid_paste:
-                    raise NoPasteToUndo()
+                    raise NoPasteToUndoError()
 
                 last_valid_paste = CopyPasteRow(**last_valid_paste)
                 
@@ -1815,7 +1801,7 @@ def undo_paste():
                     ''',
                     (last_valid_paste.id,))
 
-    except NoPasteToUndo:
+    except NoPasteToUndoError:
         return jsonify(message='no_paste_to_undo'), 200
 
     return jsonify(), 200
@@ -1844,7 +1830,7 @@ def redo_paste():
                     (logged_employee['id'],)).fetchone()
 
                 if not last_valid_undo_paste_dict:
-                    raise NoPasteToRedo()
+                    raise NoPasteToRedoError()
 
                 undo_id = last_valid_undo_paste_dict.pop('undo_id')
                 
@@ -1870,5 +1856,5 @@ def redo_paste():
                     last_valid_undo_paste.targets_were_new_events,
                     logged_employee)
 
-    except NoPasteToRedo:
+    except NoPasteToRedoError:
         return jsonify(message='no_paste_to_redo'), 200

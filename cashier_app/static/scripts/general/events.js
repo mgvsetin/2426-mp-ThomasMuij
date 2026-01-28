@@ -14,6 +14,7 @@ let _getEventsPromise = null;
 export function resetEventsCache() {
   _eventsCache.events = null;
   _eventsCache.expiry = 0;
+  getEvents()
 }
 
 

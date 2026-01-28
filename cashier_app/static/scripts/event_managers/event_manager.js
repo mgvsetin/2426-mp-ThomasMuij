@@ -74,12 +74,6 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  // open graphs
-  if (event.target.matches('#open-graphs')) {
-    window.location.href = `/events/${encodeURIComponent(eventId)}/graphs`;
-    return;
-  }
-
   // upravit akci
   if (event.target.matches('#edit-event')) {
     await openEditEventModal();
@@ -99,22 +93,6 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  // upravit stánek
-  const editBoothBtn = event.target.closest('.edit-booth');
-  if (editBoothBtn) {
-    const row = editBoothBtn.closest('tr[id]');
-    await openEditBoothModal(row);
-    return;
-  }
-
-  // smazat stánek
-  const deleteBoothBtn = event.target.closest('.delete-booth');
-  if (deleteBoothBtn) {
-    const row = deleteBoothBtn.closest('tr[id]');
-    await openDeleteBoothModal(row);
-    return;
-  }
-
   // přiřadit manažera
   if (event.target.matches('#add-manager')) {
     await openAssignEmployeeModal(true);
@@ -127,41 +105,9 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  // upravit zaměstnance (vrámci akce)
-  const editEmployeeButton = event.target.closest('.edit-employee');
-  if (editEmployeeButton) {
-    const row = editEmployeeButton.closest('tr[id]');
-    await openEditEmployeeModal(row);
-    return;
-  }
-
-  // odendat zaměstnance/managera z akce
-  const removeEmployeeBtn = event.target.closest('.remove-employee');
-  if (removeEmployeeBtn) {
-    const row = removeEmployeeBtn.closest('tr[id]');
-    await openRemoveEmployeeModal(row);
-    return;
-  }
-
   // přidat produkt
   if (event.target.matches('#add-product')) {
     await openAddProductModal();
-    return;
-  }
-
-  // upravit produkt
-  const editProductButton = event.target.closest('.edit-product');
-  if (editProductButton) {
-    const row = editProductButton.closest('tr[id]');
-    await openEditProductModal(row);
-    return;
-  }
-
-  // smazat produkt
-  const deleteProductBtn = event.target.closest('.delete-product');
-  if (deleteProductBtn) {
-    const row = deleteProductBtn.closest('tr[id]');
-    await openDeleteProductModal(row);
     return;
   }
 
@@ -171,41 +117,48 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  // upravit kategorii
-  const editCategoryButton = event.target.closest('.edit-category');
-  if (editCategoryButton) {
-    const row = editCategoryButton.closest('tr[id]');
-    await openEditCategoryModal(row);
-    return;
-  }
-
-  // smazat kategorii
-  const deleteCategoryBtn = event.target.closest('.delete-category');
-  if (deleteCategoryBtn) {
-    const row = deleteCategoryBtn.closest('tr[id]');
-    await openDeleteCategoryModal(row);
-    return;
-  }
-
   // přidat uživatele
   if (event.target.matches('#add-user')) {
     openAddUserModal();
     return;
   }
 
-  // upravit uživatele
-  const editUserBtn = event.target.closest('.edit-user');
-  if (editUserBtn) {
-    const row = editUserBtn.closest('tr[id]');
-    await openEditUserModal(row);
+  // upravit stánek, zaměstnance (vrámci akce), produkt,...
+  const editIcon = event.target.closest('.edit.icon-btn');
+  if (editIcon) {
+    const row = editIcon.closest('tr[id]');
+    await openRowModal(row, 'edit');
     return;
   }
 
-  // smazat uživatele
-  const deleteUserBtn = event.target.closest('.delete-user');
-  if (deleteUserBtn) {
-    const row = deleteUserBtn.closest('tr[id]');
-    await openDeleteUserModal(row);
+  // smazat stánek, produkt...
+  const deleteIcon = event.target.closest('.delete.icon-btn');
+  if (deleteIcon) {
+    const row = deleteIcon.closest('tr[id]');
+    await openRowModal(row, 'delete');
+    return;
+  }
+
+  const openDeleteModalBtn = event.target.closest('.open-delete-modal');
+  if (openDeleteModalBtn) {
+    const toOpen = openDeleteModalBtn.getAttribute('data-modal-to-open');
+    const targetId = openDeleteModalBtn.getAttribute('data-target-id');
+
+    closeModal();
+
+    if (toOpen === 'event') {
+      openDeleteEventModal();
+    } else if (toOpen === 'booth') {
+      openDeleteBoothModal(targetId);
+    } else if (toOpen === 'employee') {
+      openRemoveEmployeeModal(targetId);
+    } else if (toOpen === 'product') {
+      openDeleteProductModal(targetId);
+    } else if (toOpen === 'category') {
+      openDeleteCategoryModal(targetId);
+    } else if (toOpen === 'user') {
+      openDeleteUserModal(targetId);
+    }
     return;
   }
 
@@ -277,26 +230,7 @@ document.addEventListener('click', async (event) => {
 document.addEventListener('dblclick', async (event) => {
   const row = event.target.closest('tr[id]');
   if (row) {
-    const parentTable = row.closest('table');
-
-    if (parentTable.id === 'booths-table') {
-      await openEditBoothModal(row);
-      return;
-    } else if (parentTable.id === 'managers-table') {
-      return;
-    } else if (parentTable.id === 'employees-table') {
-      await openEditEmployeeModal(row);
-      return;
-    } else if (parentTable.id === 'products-table') {
-      await openEditProductModal(row);
-      return;
-    } else if (parentTable.id === 'categories-table') {
-      await openEditCategoryModal(row);
-      return;
-    } else if (parentTable.id === 'users-table') {
-      await openEditUserModal(row);
-      return;
-    }
+    openRowModal(row, 'edit')
   }
 });
 
@@ -1420,26 +1354,7 @@ document.addEventListener('keydown', (event) => {
     if (selectedRows.length === 1) {
       const row = selectedRows[0];
       if (row) {
-        const parentTable = row.closest('table');
-
-        if (parentTable.id === 'booths-table') {
-          openEditBoothModal(row);
-          return;
-        } else if (parentTable.id === 'managers-table') {
-          return;
-        } else if (parentTable.id === 'employees-table') {
-          openEditEmployeeModal(row);
-          return;
-        } else if (parentTable.id === 'products-table') {
-          openEditProductModal(row);
-          return;
-        } else if (parentTable.id === 'categories-table') {
-          openEditCategoryModal(row);
-          return;
-        } else if (parentTable.id === 'users-table') {
-          openEditUserModal(row);
-          return;
-        }
+        openRowModal(row, 'edit');
       }
     }
   }
@@ -1520,6 +1435,7 @@ function getEventIdFromPath() {
 function resetEventDataCache() {
   _eventDataCache.data = null;
   _eventDataCache.expiry = 0;
+  getEventData();
 }
 
 function getEventData() {
@@ -2391,6 +2307,59 @@ function closeModal() {
 }
 
 
+async function openRowModal(row, type) {
+  const parentTable = row.closest('table');
+  const id = row.id;
+
+  if (!['edit', 'delete'].includes(type)) {
+    throw new Error('openRowModal type has to be edit or delete');
+  }
+
+  if (parentTable.id === 'booths-table') {
+    if (type === 'edit') {
+      await openEditBoothModal(id);
+    } else if (type === 'delete') {
+      await openDeleteBoothModal(id)
+    }
+    return;
+  } else if (parentTable.id === 'managers-table') {
+    if (type === 'edit') {
+    } else if (type === 'delete') {
+      await openRemoveEmployeeModal(id);
+    }
+    return;
+  } else if (parentTable.id === 'employees-table') {
+    if (type === 'edit') {
+      await openEditEmployeeModal(id);
+    } else if (type === 'delete') {
+      await openRemoveEmployeeModal(id);
+    }
+    return;
+  } else if (parentTable.id === 'products-table') {
+    if (type === 'edit') {
+      await openEditProductModal(id);
+    } else if (type === 'delete') {
+      await openDeleteProductModal(id)
+    }
+    return;
+  } else if (parentTable.id === 'categories-table') {
+    if (type === 'edit') {
+      await openEditCategoryModal(id);
+    } else if (type === 'delete') {
+      await openDeleteCategoryModal(id)
+    }
+    return;
+  } else if (parentTable.id === 'users-table') {
+    if (type === 'edit') {
+      await openEditUserModal(id);
+    } else if (type === 'delete') {
+      await openDeleteUserModal(id)
+    }
+    return;
+  }
+}
+
+
 async function openEditEventModal() {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
@@ -2430,6 +2399,7 @@ async function openEditEventModal() {
 
           <div class="modal-actions">
             <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+            <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="event">Smazat</button>
             <button type="submit" class="save-form btn btn-primary">Uložit</button>
           </div>
         </form>
@@ -2543,18 +2513,17 @@ async function openAddBoothModal() {
 }
 
 
-async function openEditBoothModal(row) {
-  const id = row.id;
+async function openEditBoothModal(boothId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const booth = eventData.booths.find(booth => booth.id === id);
+  const booth = eventData.booths.find(booth => booth.id === boothId);
   if (!booth) return;
 
   const boothProducts = eventData.products.filter(p =>
-    p.booths.some(b => b.id === id)
+    p.booths.some(b => b.id === boothId)
   );
   const boothCategories = eventData.categories.filter(c =>
-    c.booths.some(b => b.id === id)
+    c.booths.some(b => b.id === boothId)
   );
 
   const productsPickerStr = makeProductsPicker(eventData.products, boothProducts);
@@ -2570,7 +2539,7 @@ async function openEditBoothModal(row) {
       </button>
     </header>
     <form id="edit-booth-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${boothId}"/>
       <div class="form-row">
         <label for="booth-name-input">Název</label>
         <input id="booth-name-input" name="name" type="text" value="${escapeHTML(booth.name)}"/>
@@ -2596,6 +2565,7 @@ async function openEditBoothModal(row) {
 
       <div class="modal-actions">
         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="booth" data-target-id="${booth.id}">Smazat</button>
         <button type="submit" class="save-form btn btn-primary">Uložit</button>
       </div>
     </form>
@@ -2611,11 +2581,10 @@ async function openEditBoothModal(row) {
 }
 
 
-async function openDeleteBoothModal(row) {
-  const id = row.id;
+async function openDeleteBoothModal(boothId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const booth = eventData.booths.find(booth => booth.id === id);
+  const booth = eventData.booths.find(booth => booth.id === boothId);
   if (!booth) return;
 
   const html = `
@@ -2628,7 +2597,7 @@ async function openDeleteBoothModal(row) {
       </button>
     </header>
     <form id="delete-booth-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${boothId}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat stánek "${escapeHTML(booth.name)}"?</div>
       </div>
@@ -2698,11 +2667,10 @@ async function openAssignEmployeeModal(assignManager) {
 }
 
 
-async function openEditEmployeeModal(row) {
-  const id = row.id;
+async function openEditEmployeeModal(employeeId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const emp = eventData.employees.find(employee => employee.id === id);
+  const emp = eventData.employees.find(employee => employee.id === employeeId);
   if (!emp) return;
   const boothsPickerStr = makeBoothsPicker(eventData.booths, emp.booths);
 
@@ -2732,6 +2700,7 @@ async function openEditEmployeeModal(row) {
 
             <div class="modal-actions">
               <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="employee" data-target-id="${emp.id}">Odebrat</button>
               <button type="submit" class="save-form btn btn-primary">Uložit</button>
             </div>
           </form>
@@ -2740,11 +2709,10 @@ async function openEditEmployeeModal(row) {
 }
 
 
-async function openRemoveEmployeeModal(row) {
-  const id = row.id;
+async function openRemoveEmployeeModal(employeeId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const emp = eventData.employees.find(employee => employee.id === id);
+  const emp = eventData.employees.find(employee => employee.id === employeeId);
   if (!emp) return;
 
   const html = `
@@ -2757,7 +2725,7 @@ async function openRemoveEmployeeModal(row) {
       </button>
     </header>
     <form id="remove-employee-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${employeeId}"/>
       <div class="form-row">
         <div>Opravdu chcete odebrat ${emp.isManager ? 'manažera' : 'zaměstnance'} "${escapeHTML(emp.username)}" z této akce?</div>
       </div>
@@ -2836,11 +2804,10 @@ async function openAddProductModal() {
 }
 
 
-async function openEditProductModal(row) {
-  const id = row.id;
+async function openEditProductModal(productId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const product = eventData.products.find(product => product.id === id);
+  const product = eventData.products.find(product => product.id === productId);
   if (!product) return;
   const boothsPickerStr = makeBoothsPicker(eventData.booths, product.booths, 'seller');
   const categoriesPickerStr = makeCategoriesPicker(eventData.categories, product.categories);
@@ -2866,7 +2833,7 @@ async function openEditProductModal(row) {
             </button>
           </header>
           <form id="edit-product-form">
-            <input type="hidden" name="id" value="${id}"/>
+            <input type="hidden" name="id" value="${productId}"/>
             <div class="form-row">
               <label for="product-name-input">Název</label>
               <input id="product-name-input" name="name" type="text" value="${escapeHTML(product.name)}"/>
@@ -2910,6 +2877,7 @@ async function openEditProductModal(row) {
 
             <div class="modal-actions">
               <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="product" data-target-id="${product.id}">Smazat</button>
               <button type="submit" class="save-form btn btn-primary">Uložit</button>
             </div>
           </form>
@@ -2918,11 +2886,10 @@ async function openEditProductModal(row) {
 }
 
 
-async function openDeleteProductModal(row) {
-  const id = row.id;
+async function openDeleteProductModal(productId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const product = eventData.products.find(product => product.id === id);
+  const product = eventData.products.find(product => product.id === productId);
   if (!product) return;
 
   const html = `
@@ -2935,7 +2902,7 @@ async function openDeleteProductModal(row) {
       </button>
     </header>
     <form id="delete-product-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${productId}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat produkt "${escapeHTML(product.name)}"?</div>
       </div>
@@ -3000,16 +2967,15 @@ async function openAddCategoryModal() {
 }
 
 
-async function openEditCategoryModal(row) {
-  const id = row.id;
+async function openEditCategoryModal(categoryId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const category = eventData.categories.find(category => category.id === id);
+  const category = eventData.categories.find(category => category.id === categoryId);
   if (!category) return;
 
   // Get products for this category
   const categoryProducts = eventData.products.filter(p =>
-    p.categories.some(c => c.id === id)
+    p.categories.some(c => c.id === categoryId)
   );
 
   const boothsPickerStr = makeBoothsPicker(eventData.booths, category.booths, 'seller');
@@ -3025,7 +2991,7 @@ async function openEditCategoryModal(row) {
             </button>
           </header>
           <form id="edit-category-form">
-            <input type="hidden" name="id" value="${id}"/>
+            <input type="hidden" name="id" value="${categoryId}"/>
             <div class="form-row">
               <label for="category-name-input">Název</label>
               <input id="category-name-input" name="name" type="text" value="${escapeHTML(category.name)}"/>
@@ -3046,6 +3012,7 @@ async function openEditCategoryModal(row) {
 
             <div class="modal-actions">
               <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="category" data-target-id="${category.id}">Smazat</button>
               <button type="submit" class="save-form btn btn-primary">Uložit</button>
             </div>
           </form>
@@ -3054,11 +3021,10 @@ async function openEditCategoryModal(row) {
 }
 
 
-async function openDeleteCategoryModal(row) {
-  const id = row.id;
+async function openDeleteCategoryModal(categoryId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const category = eventData.categories.find(category => category.id === id);
+  const category = eventData.categories.find(category => category.id === categoryId);
   if (!category) return;
 
   const html = `
@@ -3071,7 +3037,7 @@ async function openDeleteCategoryModal(row) {
       </button>
     </header>
     <form id="delete-category-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${categoryId}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat kategorii "${escapeHTML(category.name)}"?</div>
       </div>
@@ -3162,11 +3128,10 @@ async function openAddUserModal() {
   renderDropdown();
 }
 
-async function openEditUserModal(row) {
-  const id = row.id;
+async function openEditUserModal(userId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const user = eventData.users.find(u => u.id === id);
+  const user = eventData.users.find(u => u.id === userId);
   if (!user) return;
 
   const html = `
@@ -3179,7 +3144,7 @@ async function openEditUserModal(row) {
       </button>
     </header>
     <form id="edit-user-form" autocomplete="off">
-      <input type="hidden" name="user-id" value="${id}"/>
+      <input type="hidden" name="user-id" value="${userId}"/>
       <div class="form-row">
         <label for="user-first-name-input">Jméno</label>
         <input id="user-first-name-input" name="first-name" type="text" value="${escapeHTML(user.first_name)}"/>
@@ -3231,6 +3196,7 @@ async function openEditUserModal(row) {
 
       <div class="modal-actions">
         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="user" data-target-id="${user.id}">Smazat</button>
         <button type="submit" class="save-form btn btn-primary">Uložit</button>
       </div>
     </form>
@@ -3242,11 +3208,10 @@ async function openEditUserModal(row) {
   renderDropdown();
 }
 
-async function openDeleteUserModal(row) {
-  const id = row.id;
+async function openDeleteUserModal(userId) {
   const eventData = await getEventData().catch(() => { });
   if (!eventData) return;
-  const user = eventData.users.find(u => u.id === id);
+  const user = eventData.users.find(u => u.id === userId);
   if (!user) return;
 
   const html = `
@@ -3259,7 +3224,7 @@ async function openDeleteUserModal(row) {
       </button>
     </header>
     <form id="delete-user-form">
-      <input type="hidden" name="id" value="${id}"/>
+      <input type="hidden" name="id" value="${userId}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
       </div>

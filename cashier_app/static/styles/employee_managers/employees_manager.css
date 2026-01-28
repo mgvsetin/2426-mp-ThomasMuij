@@ -493,15 +493,6 @@ tbody tr[selected] {
   color: #fff
 }
 
-.making-admin-warning {
-  opacity: 0;
-}
-
-.is-admin-toggle[data-state="yes"]~.making-admin-warning,
-.making-admin-warning.show-warning-message {
-  opacity: 1;
-}
-
 
 .add-error,
 .edit-error,

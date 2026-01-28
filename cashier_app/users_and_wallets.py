@@ -18,6 +18,7 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager, validate_email, validate_first_or_last_name, validate_phone_number, format_valid_phone_number, add_more_phone_number_info, validate_other_identifier
 from cashier_app.utils.products import convert_image_paths_from_relative
+from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError
 
 
 api_bp = Blueprint('users_api', __name__, url_prefix='/api/users')
@@ -253,10 +254,12 @@ def edit_user():
                     WHERE id = %(id)s
                     AND deleted_at IS NULL''',
                     params)
-                rows_affected = cur.rowcount
 
+                rows_affected = cur.rowcount
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows updated for id {user_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
                 
                 # delete wallets?
 
@@ -264,12 +267,10 @@ def edit_user():
         # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
         # email už existuje: unique_index_users_email_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for user id %s', user_id)
         return jsonify(error='internal_server_error'), 500
-
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='user_not_found'), 404
 
     return jsonify(), 200
@@ -316,15 +317,14 @@ def delete_user():
                 # wallets od user se smažou sami pomocí triggeru
                 
                 rows_affected = cur.rowcount
-
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for id {user_id}')
-    except RuntimeError:
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for user id %s', user_id)
         return jsonify(error='internal_server_error'), 500
-
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='user_not_found'), 404
 
     return jsonify(), 200
@@ -635,7 +635,9 @@ def return_wallet():
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
-                    raise RuntimeError(f'multiple rows deleted for tag_id {tag_id}')
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
     except RaiseException as e:
         text = str(e)
 
@@ -643,12 +645,10 @@ def return_wallet():
             return jsonify(error='wallet_balance_czk_is_not_enough'), 400
         else:
             return jsonify(error='unexpected_error'), 500
-    except RuntimeError:
+    except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for wallet tag id %s', tag_id)
         return jsonify(error='internal_server_error'), 500
-
-
-    if rows_affected == 0:
+    except NoRowsAffectedError:
         return jsonify(error='wallet_not_found'), 404
 
     return jsonify(balance_changed_by=change_balance_by), 200

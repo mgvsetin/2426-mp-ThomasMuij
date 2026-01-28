@@ -92,6 +92,7 @@ export function getProductsAndCategories() { // make sure that if this changes i
 export function resetProductsCache() {
   _productsCache.data = null;
   _productsCache.expiry = 0;
+  getProductsAndCategories()
 }
 
 

@@ -111,6 +111,7 @@ export function getUsers() {
 export function resetUsersCache() {
   _usersCache.users = null;
   _usersCache.expiry = 0;
+  getUsers();
 }
 
 
@@ -399,13 +400,24 @@ export async function unselectUserForUpdate() {
 
 
 export async function editUserFormOnChange(inputEvent = null) {
-  const [users, wallet] = await Promise.all([
+  const result = await Promise.all([
     getUsers().catch(() => { }),
     renderCard().catch(() => { })
   ]);
 
+  const users = result[0];
+  let wallet = result[1]
+
   if (wallet && wallet.owner_id && wallet.owner_id !== userIdInput.value.toLowerCase().trim()) {
     await selectUserForUpdate(wallet.owner_id);
+  }
+
+  if (!wallet && lastReadCardId) {
+    wallet = {
+      tag_id: lastReadCardId,
+      owner_id: null,
+      balance_czk: 0
+    }
   }
 
   const userId = userIdInput.value.trim();
@@ -447,14 +459,18 @@ export async function editUserFormOnChange(inputEvent = null) {
     saveUserFormBtn.setAttribute('user-job', 'create');
   }
 
-  if (wallet) {
+  if (lastReadCardId) {
     if (inputEvent && inputEvent.target === changeBalanceByInput) {
       let changeBalanceBy = Number(changeBalanceByInput.value);
 
       if (!isNaN(changeBalanceBy)) {
         const newBalance = wallet.balance_czk + changeBalanceBy;
         setNewBalanceInput.value = newBalance;
-        changeBalanceByInput.value = changeBalanceBy; // pro 0
+        if (changeBalanceByInput.value === '' || changeBalanceBy !== 0) {
+          // odendá navíc nuly na začátku, pokud hodnota není nula (když je nula tak ne protože můžu chytít přepsat 1000 na 2000 přes 000)
+          // a změní '' na 0
+          changeBalanceByInput.value = changeBalanceBy;
+        }
       }
     }
 
@@ -464,7 +480,11 @@ export async function editUserFormOnChange(inputEvent = null) {
       if (!isNaN(newBalance)) {
         const changeBalanceBy = newBalance - wallet.balance_czk;
         changeBalanceByInput.value = changeBalanceBy;
-        setNewBalanceInput.value = newBalance; // pro 0
+        if (setNewBalanceInput.value === '' || newBalance !== 0) {
+          // odendá navíc nuly na začátku, pokud hodnota není nula (když je nula tak ne protože můžu chytít přepsat 1000 na 2000 přes 000)
+          // a změní '' na 0
+          setNewBalanceInput.value = newBalance;
+        }
       }
     }
 
