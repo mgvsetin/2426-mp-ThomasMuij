@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_username_active ON employees (LOWER(username)) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_employees_email_active ON employees (email) WHERE deleted_at IS NULL;
 
--- blokuje delete a změnu created_at, created_by a znovu nastavení deleted_at, když není null:
+-- blokuje delete a změnu created_at, created_by:
 -- u insert/update odstraní mezery na začátku a konci pro email/username a u email dá všchno malým
 CREATE OR REPLACE FUNCTION employees_block_delete_limit_update_insert()
 RETURNS trigger AS $$
@@ -82,9 +82,6 @@ BEGIN
     END IF;
     IF (NEW.created_by IS DISTINCT FROM OLD.created_by) THEN
       RAISE EXCEPTION 'created_by is immutable and cannot be changed';
-    END IF;
-    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
-      RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
   ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
     IF OLD.deleted_at IS NULL THEN
@@ -136,7 +133,7 @@ CREATE UNIQUE INDEX unique_index_users_names_email_phone_identifier
   WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_users_email_active ON users (email) WHERE deleted_at IS NULL;
 
--- blokuje delete a změnu created_at a znovu nastavení deleted_at, když není null:
+-- blokuje delete a změnu created_at:
 -- u insert/update:
   -- odstraní mezery na začátku a konci pro email/first_name/last_name/phone_number/other_identifier
   -- email dá všechno malým
@@ -150,9 +147,6 @@ BEGIN
   IF TG_OP = 'UPDATE' THEN
     IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
       RAISE EXCEPTION 'created_at is immutable and cannot be changed';
-    END IF;
-    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
-      RAISE EXCEPTION 'can not change deleted_at after deletion';
     END IF;
 
     IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
@@ -304,7 +298,7 @@ CREATE TABLE IF NOT EXISTS booths (
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_booths_event_id_name_active ON booths (event_id, LOWER(name)) WHERE deleted_at IS NULL;
 
 -- odendá mezery ze začátku a konce name
--- blokuje delete a změnu event_id, booth_type, created_at, created_by a znovu nastavení deleted_at, když není null:
+-- blokuje delete a změnu event_id, booth_type, created_at, created_by:
 CREATE OR REPLACE FUNCTION booths_block_delete_limit_update_insert()
 RETURNS trigger AS $$
 BEGIN
@@ -325,9 +319,9 @@ BEGIN
     IF (NEW.booth_type IS DISTINCT FROM OLD.booth_type) THEN
       RAISE EXCEPTION 'booth_type is immutable and cannot be changed';
     END IF;
-    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
-      RAISE EXCEPTION 'can not change deleted_at after deletion';
-    END IF;
+    -- IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+    --   RAISE EXCEPTION 'can not change deleted_at after deletion';
+    -- END IF;
 
   ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
     IF OLD.deleted_at IS NULL THEN
@@ -390,7 +384,8 @@ CREATE TABLE IF NOT EXISTS products (
   name          text NOT NULL,
   price         int NOT NULL, -- může být záporná
   image_id      uuid REFERENCES product_images(id) ON DELETE SET NULL,
-  created_at    timestamptz NOT NULL DEFAULT now()
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  deleted_at    timestamptz
   -- CONSTRAINT price_is_positive_check
   --   CHECK (price >= 0)
 );
@@ -399,20 +394,33 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (event_
 
 
 -- odendá mezery na začátku a konci u name
-CREATE OR REPLACE FUNCTION products_edit_insert_update()
+-- blokuje delete
+CREATE OR REPLACE FUNCTION products_block_delete_edit_insert_update()
 RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     NEW.name := TRIM(New.name);
   END IF;
+
+  IF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE products
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_products_edit_insert_update
-  BEFORE UPDATE OR INSERT ON products
+CREATE OR REPLACE TRIGGER trg_products_block_delete_edit_insert_update
+  BEFORE UPDATE OR INSERT OR DELETE ON products
   FOR EACH ROW
-  EXECUTE FUNCTION products_edit_insert_update();
+  EXECUTE FUNCTION products_block_delete_edit_insert_update();
 
 
 
@@ -470,26 +478,40 @@ CREATE OR REPLACE TRIGGER trg_product_booth_link_limit_update_insert
 CREATE TABLE IF NOT EXISTS categories (
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name       text NOT NULL,
-  event_id   uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE
+  event_id   uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  deleted_at timestamptz
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_categories_name ON categories (event_id, LOWER(name));
 
 
 -- u insert/update odendává extra mezery ze začátku a konce
-CREATE OR REPLACE FUNCTION categories_edit_update_insert()
+-- blokuje delete
+CREATE OR REPLACE FUNCTION categories_block_delete_edit_update_insert()
 RETURNS trigger AS $$
 BEGIN
   IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
     NEW.name := trim(NEW.name);
   END IF;
+
+  IF TG_OP = 'DELETE' THEN -- Soft-delete
+    IF OLD.deleted_at IS NULL THEN
+      UPDATE categories
+      SET deleted_at = now()
+      WHERE id = OLD.id AND deleted_at IS NULL;
+      RETURN NULL; -- zastav DELETE
+    ELSE
+      RETURN NULL;
+    END IF;
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER trg_categories_edit_update_insert
-  BEFORE UPDATE OR INSERT ON categories
+CREATE OR REPLACE TRIGGER trg_categories_block_delete_edit_update_insert
+  BEFORE UPDATE OR INSERT OR DELETE ON categories
   FOR EACH ROW
-  EXECUTE FUNCTION categories_edit_update_insert();
+  EXECUTE FUNCTION categories_block_delete_edit_update_insert();
 
 
 
@@ -749,7 +771,7 @@ CREATE TABLE IF NOT EXISTS wallets (
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_event_tag_id_active ON wallets (event_id, tag_id) WHERE deleted_at IS NULL;
 -- CREATE UNIQUE INDEX IF NOT EXISTS unique_index_owner_id_active ON wallets (owner_id) WHERE deleted_at IS NULL;
 
--- blokuje delete a změnu created_at a znovu nastavení deleted_at na null
+-- blokuje delete a změnu created_at
 CREATE OR REPLACE FUNCTION wallets_block_delete_limit_update()
 RETURNS trigger AS $$
 BEGIN
@@ -757,9 +779,9 @@ BEGIN
     IF (NEW.created_at IS DISTINCT FROM OLD.created_at) THEN
       RAISE EXCEPTION 'created_at is immutable and cannot be changed';
     END IF;
-    IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
-      RAISE EXCEPTION 'can not change deleted_at after deletion';
-    END IF;
+    -- IF (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS DISTINCT FROM OLD.deleted_at) THEN
+    --   RAISE EXCEPTION 'can not change deleted_at after deletion';
+    -- END IF;
 
   ELSIF TG_OP = 'DELETE' THEN -- Soft-delete
     IF OLD.deleted_at IS NULL THEN

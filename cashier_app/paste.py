@@ -587,6 +587,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     SELECT id, event_id, name, price, image_id
                     FROM products
                     WHERE id = ANY(%s)
+                    AND deleted_at IS NULL
                     ''',
                     (data_to_copy['product_ids'],)).fetchall()
                 
@@ -597,6 +598,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     LEFT JOIN product_booth_link AS bo_link ON bo_link.product_id = p.id
                     WHERE (p.event_id = ANY(%s)
                         OR bo_link.booth_id = ANY(%s))
+                    AND p.deleted_at IS NULL
                     ''',
                     (copied_events_ids, copied_booths_ids)).fetchall()
                 
@@ -612,6 +614,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     SELECT id, name, event_id
                     FROM categories
                     WHERE id = ANY(%s)
+                    AND deleted_at IS NULL
                     ''',
                     (data_to_copy['category_ids'],)).fetchall()
                 
@@ -622,6 +625,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     LEFT JOIN category_booth_link AS bo_link ON bo_link.category_id = c.id
                     WHERE (c.event_id = ANY(%s)
                         OR bo_link.booth_id = ANY(%s))
+                    AND c.deleted_at IS NULL
                     ''',
                     (copied_events_ids, copied_booths_ids)).fetchall()
                 
@@ -806,6 +810,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             SELECT name
                             FROM products
                             WHERE event_id = %s
+                            AND deleted_at IS NULL
                             ''',
                             (target_event['id'],)).fetchall()
 
@@ -872,6 +877,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             SELECT name
                             FROM categories
                             WHERE event_id = %s
+                            AND deleted_at IS NULL
                             ''',
                             (target_event['id'],)).fetchall()
 
