@@ -1,62 +1,112 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tests</title>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compact No / Yes Toggle</title>
   <style>
-    .dropdown2 {
-      transform-origin: top;
-      transform: scaleY(0);
-      transition: transform 220ms cubic-bezier(.2, .9, .2, 1);
-      will-change: transform;
-      overflow: hidden;
-      /* hide overflow during scale */
+    :root {
+      --w: 180px;
+      --h: 72px;
+      --accent: #10b981;
+      --muted: #6b7280
     }
 
-    /* keep layout space if you want by setting height or using visibility */
-    .dropdown2.open {
-      transform: scaleY(1);
+    * {
+      box-sizing: border-box
     }
 
-    /* @media (prefers-reduced-motion: reduce) {
-      .dropdown2 {
-        transition: none;
-        transform: none;
-      }
-    } */
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #f8fafc;
+      margin: 0;
+      font-family: Inter, system-ui, system-ui, -apple-system, Segoe UI, Roboto
+    }
+
+    /* pill-like rounded rectangle (very circular) */
+    .toggle {
+      width: var(--w);
+      height: var(--h);
+      border-radius: 999px;
+      padding: 6px;
+      display: flex;
+      position: relative;
+      background: #eaf2ff;
+      cursor: pointer;
+      align-items: center
+    }
+
+    .track {
+      position: absolute;
+      left: 6px;
+      top: 6px;
+      bottom: 6px;
+      width: calc(50% - 12px);
+      background: var(--accent);
+      border-radius: 999px;
+      z-index: 1;
+      transition: transform .18s ease
+    }
+
+    .toggle[data-state="yes"] .track {
+      transform: translateX(100%)
+    }
+
+    .option {
+      flex: 1;
+      text-align: center;
+      font-weight: 700;
+      z-index: 2;
+      color: var(--muted);
+      user-select: none
+    }
+
+    /* selected label becomes white for contrast */
+    .toggle[data-state="no"] .option.no,
+    .toggle[data-state="yes"] .option.yes {
+      color: #fff
+    }
   </style>
 </head>
 
 <body>
-  <button id="btn2" aria-expanded="false" aria-controls="menu2">Toggle</button>
-  <div id="menu2" class="dropdown2" hidden>
-    <div class="inner">
-      <!-- content -->
-      <p>Some content...</p>
-      <p>More content...</p>
-    </div>
+
+  <div id="toggle" class="toggle" role="switch" tabindex="0" aria-checked="false" aria-label="No or Yes"
+    data-state="no">
+    <div class="track" aria-hidden="true"></div>
+    <div class="option no">No</div>
+    <div class="option yes">Yes</div>
   </div>
 
-
   <script>
-    const btn2 = document.getElementById('btn2');
-    const menu2 = document.getElementById('menu2');
+    (() => {
+      const t = document.getElementById('toggle');
+      let state = t.dataset.state || 'no';
+      const set = s => { state = s; t.dataset.state = s; t.setAttribute('aria-checked', s === 'yes'); };
 
-    btn2.addEventListener('click', () => {
-      const open = btn2.getAttribute('aria-expanded') === 'true';
-      btn2.setAttribute('aria-expanded', String(!open));
-      if (!open) {
-        menu2.hidden = false;
-        requestAnimationFrame(() => menu2.classList.add('open'));
-      } else {
-        menu2.classList.remove('open');
-        menu2.addEventListener('transitionend', () => (menu2.hidden = true), { once: true });
-      }
-    });
+      // click either label to select it, or click the empty area to toggle
+      t.addEventListener('click', e => {
+        const opt = e.target.closest('.option');
+        if (opt) return set(opt.classList.contains('yes') ? 'yes' : 'no');
+        set(state === 'yes' ? 'no' : 'yes');
+      });
+
+      // keyboard: Space/Enter toggle, arrows set direction
+      t.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); set(state === 'yes' ? 'no' : 'yes'); }
+        if (e.key === 'ArrowLeft') set('no');
+        if (e.key === 'ArrowRight') set('yes');
+      });
+
+      set(state);
+      window.myTwoWayToggle = { get value() { return state }, set value(v) { if (v === 'yes' || v === 'no') set(v) } };
+    })();
   </script>
+
 </body>
 
 </html>

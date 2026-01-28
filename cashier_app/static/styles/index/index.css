@@ -81,8 +81,16 @@ body {
   justify-content: center;
 }
 
-#user-inputs-search-table-toggle:active {
+#user-inputs-search-table-toggle[search-users] {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+#user-inputs-search-table-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+#user-inputs-search-table-toggle:active {
+  background-color: rgba(0, 0, 0, 0.09);
 }
 
 /* #search-button:hover {

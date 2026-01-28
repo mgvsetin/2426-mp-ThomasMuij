@@ -226,7 +226,7 @@ document.addEventListener('click', async (event) => {
 
 
   const panelHeader = event.target.closest('.panel-header');
-  if (panelHeader) {
+  if (panelHeader && event.target.matches('h2, h3')) {
     if (event.target.closest('button, input, .search-icon-container')) return;
 
     const panel = panelHeader.closest('.panel');
@@ -1930,7 +1930,7 @@ function userIsSearchedFor(user, searchQuery) {
         if (!phone.includes(search)) return false;
       } else if (['other_identifier', 'identifier', 'identifikátor', 'identifikator'].includes(searchKeyWord)) {
         if (!otherIdentifier.includes(search)) return false;
-      } else if (['connected', 'připojeno', 'pripojeno', 'event_connected'].includes(searchKeyWord)) {
+      } else if (['součástí', 'soucasti', 'connected', 'connected_to_event', 'soucastiakce', 'součástíakce', 'soucasti_akce', 'součástí_akce'].includes(searchKeyWord)) {
         if (!eventConnected.includes(search)) return false;
       } else {
         if (!searchable.includes(query)) return false;

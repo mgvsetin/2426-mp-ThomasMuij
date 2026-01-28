@@ -385,8 +385,9 @@ document.addEventListener('click', async (event) => {
 
   const toggleUserSearch = event.target.closest('#user-inputs-search-table-toggle');
   if (toggleUserSearch) {
-    const toggleUserSearch = document.createElement('div')
-    toggleUserSearch.toggleAttribute('search-users')
+    toggleUserSearch.toggleAttribute('search-users');
+    renderUsers();
+    return;
   }
 
   // smazat uživatele

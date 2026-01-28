@@ -44,9 +44,9 @@ input[type=submit] {
   flex: 0 0;
   flex-basis: content;
   padding: 8px;
-  background-color: rgb(245, 246, 247);
+  background-color: rgb(255, 255, 255);
   border-radius: 5px;
-  box-shadow: 2px 2px 8px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 2px 2px 8px 3px rgba(16, 24, 40, 0.12);
   max-height: 250px;
   overflow: auto;
   text-align: center;

@@ -197,12 +197,17 @@ body.no-scroll {
   font-size: 1rem
 }
 
+.panel-header h3,
+.panel-header h2 {
+  cursor: pointer;
+}
+
 .table-wrap {
   overflow: auto;
   border-radius: 8px;
   border: 1px solid #e6eef6;
   max-height: var(--max-height);
-  transition: max-height 300ms ease;
+  transition: max-height 200ms ease;
 }
 
 .table-wrap.closed {
@@ -577,18 +582,22 @@ input[type=checkbox] {
   margin-top: 30px;
 }
 
+#statistics-container .panel-header {
+  border-bottom: 2px solid rgb(230, 230, 230);
+  margin: 10px 0 15px 0;
+  padding-bottom: 5px;
+}
+
 #statistics-container h2 {
   font-size: 24px;
   font-weight: 700;
-  margin-bottom: 20px;
-  border-bottom: 2px solid rgb(230, 230, 230);
-  padding-bottom: 10px;
+  margin: 0;
 }
 
 #statistics {
   overflow: auto;
   max-height: 5000px;
-  transition: max-height 300ms ease;
+  transition: max-height 200ms ease;
 }
 
 #statistics.closed {

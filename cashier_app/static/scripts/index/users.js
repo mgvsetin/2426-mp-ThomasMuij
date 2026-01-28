@@ -25,6 +25,8 @@ const setNewBalanceInput = document.querySelector('#set-new-balance-input');
 const openMoreUserOptionsModalBtn = document.querySelector('#open-more-user-options');
 const saveUserFormBtn = document.querySelector('#save-user-form');
 
+const searchUsersWithInputs = document.querySelector('#user-inputs-search-table-toggle');
+
 export let selectedUserForUpdate;
 
 const orderBy = { key: '', ascending: true };
@@ -169,13 +171,6 @@ function toggleOrder(key, headerEl) {
 function userIsSearchedFor(user) {
   const searchQuery = usersSearchBar.value.toLowerCase().trim();
 
-  const firstNameSearch = firstNameInput.value.toLowerCase().trim().replace(/\s/g, '');
-  const lastNameSearch = lastNameInput.value.toLowerCase().trim().replace(/\s/g, '');
-  const emailSearch = emailInput.value.toLowerCase().trim().replace(/\s/g, '');
-  // country code je vynechaný schválně
-  const phoneNumberSearch = phoneNumberInput.value.toLowerCase().trim().replace(/\s/g, '');
-  const otherIdentifierSearch = otherIdentifierInput.value.toLowerCase().trim().replace(/\s/g, '');
-
   const queries = searchQuery.split(/\s+/);
 
   const addSearch = (search, searchKey) => {
@@ -183,11 +178,22 @@ function userIsSearchedFor(user) {
     queries.push(`${searchKey}=${search}`)
   }
 
-  addSearch(firstNameSearch, 'first_name');
-  addSearch(lastNameSearch, 'last_name');
-  addSearch(emailSearch, 'email');
-  addSearch(phoneNumberSearch, 'phone_number');
-  addSearch(otherIdentifierSearch, 'other_identifier');
+  const doInputSearch = searchUsersWithInputs.hasAttribute('search-users');
+  if (doInputSearch) {
+    const firstNameSearch = firstNameInput.value.toLowerCase().trim().replace(/\s/g, '');
+    const lastNameSearch = lastNameInput.value.toLowerCase().trim().replace(/\s/g, '');
+    const emailSearch = emailInput.value.toLowerCase().trim().replace(/\s/g, '');
+    // country code je vynechaný schválně
+    const phoneNumberSearch = phoneNumberInput.value.toLowerCase().trim().replace(/\s/g, '');
+    const otherIdentifierSearch = otherIdentifierInput.value.toLowerCase().trim().replace(/\s/g, '');
+
+    addSearch(firstNameSearch, 'first_name');
+    addSearch(lastNameSearch, 'last_name');
+    addSearch(emailSearch, 'email');
+    addSearch(phoneNumberSearch, 'phone_number');
+    addSearch(otherIdentifierSearch, 'other_identifier');
+  }
+
 
   const firstName = String(user.first_name || '').toLowerCase();
   const lastName = String(user.last_name || '').toLowerCase();
@@ -294,7 +300,13 @@ export async function renderUsers() {
   let rows = '';
 
   sortedUsers.forEach((user, idx) => {
-    if ((!selectedUserForUpdate || selectedUserForUpdate.id !== user.id) && !userIsSearchedFor(user)) return;
+    const doInputSearch = searchUsersWithInputs.hasAttribute('search-users');
+    if (doInputSearch) {
+      if ((!selectedUserForUpdate || selectedUserForUpdate.id !== user.id) && !userIsSearchedFor(user)) return;
+    } else {
+      if (!userIsSearchedFor(user)) return;
+    }
+
     rows += `
       <tr id="${user.id}">
         <td>${idx + 1}</td>
@@ -326,7 +338,7 @@ export async function renderUsers() {
 
   if (selectedUserForUpdate) {
     const rowSelectedForUpdate = document.getElementById(selectedUserForUpdate.id);
-    rowSelectedForUpdate.classList.add('selected-for-update');
+    rowSelectedForUpdate?.classList.add('selected-for-update');
   }
 }
 

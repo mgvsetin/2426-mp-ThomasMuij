@@ -9,6 +9,8 @@ from cashier_app.utils.employees_users import is_manager, validate_username, val
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
+class CanNotDeleteLastAdminError(Exception):
+    pass
 
 @bp.route('/manager')
 def get_employees_manager_page():
@@ -63,6 +65,12 @@ def add_employee():
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip().lower()
     password_raw = request.form.get('password', '')
+    is_admin = request.form.get('is-admin', False)
+
+    if is_admin in ['true', 'on', 'yes']:
+        is_admin = True
+    else:
+        is_admin = False
 
     if not username:
         return jsonify(error='missing_username'), 400
@@ -95,9 +103,9 @@ def add_employee():
                 cur.execute(
                     '''
                     INSERT INTO employees
-                    (username, email, password_hash, created_by)
-                    VALUES (%s, %s, %s, %s)''',
-                    (username, email, password_hash, logged_employee['id']))
+                    (username, email, password_hash, is_admin, created_by)
+                    VALUES (%s, %s, %s, %s, %s)''',
+                    (username, email, password_hash, is_admin, logged_employee['id']))                    
 
     except IntegrityError as e:
         # username už existuje: detail obsahuje unique_index_employees_username_active
@@ -128,8 +136,14 @@ def edit_employee():
     new_username = request.form.get('username', '').strip()
     new_email = request.form.get('email', '').strip().lower()
     new_password_raw = request.form.get('password', '')
+    is_admin = request.form.get('is-admin', False)
 
-    params = {}
+    if is_admin in ['true', 'on', 'yes']:
+        is_admin = True
+    else:
+        is_admin = False
+
+    params = {'is_admin': is_admin}
 
     if not new_username:
         return jsonify(error='missing_username'), 400
@@ -164,6 +178,14 @@ def edit_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                if is_admin:
+                    cur.execute(
+                        '''
+                        DELETE FROM employee_event_booth_roles
+                        WHERE employee_id = %s
+                        ''',
+                        (edit_employee_id,))
+
                 cur.execute(
                     f'''
                     UPDATE employees
@@ -175,6 +197,17 @@ def edit_employee():
 
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {edit_employee_id}')
+                
+                an_admin_exists = cur.execute(
+                        '''
+                        SELECT 1
+                        FROM employees
+                        WHERE is_admin IS TRUE
+                        AND deleted_at IS NULL''').fetchone()
+                    
+                if not an_admin_exists:
+                    raise CanNotDeleteLastAdminError()
+    
     except IntegrityError as e:
         # username už existuje: detail obsahuje unique_index_employees_username_active
         # email už existuje: detail obsahuje unique_index_employees_email_active
@@ -182,6 +215,8 @@ def edit_employee():
     except RuntimeError:
         current_app.logger.exception('multiple rows updated for employee id %s', edit_employee_id)
         return jsonify(error='internal_server_error'), 500
+    except CanNotDeleteLastAdminError:
+        return jsonify(error='can_not_delete_last_admin'), 400
 
 
     if rows_affected == 0:
@@ -223,9 +258,23 @@ def delete_employee():
 
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows deleted for id {delete_employee_id}')
+                
+                an_admin_exists = cur.execute(
+                    '''
+                    SELECT 1
+                    FROM employees
+                    WHERE is_admin IS TRUE
+                    AND deleted_at IS NULL''').fetchone()
+                
+                if not an_admin_exists:
+                    raise CanNotDeleteLastAdminError()
+                
+
     except RuntimeError:
         current_app.logger.exception('multiple rows deleted for employee id %s', delete_employee_id)
         return jsonify(error='internal_server_error'), 500
+    except CanNotDeleteLastAdminError:
+        return jsonify(error='can_not_delete_last_admin'), 400
 
 
     if rows_affected == 0:

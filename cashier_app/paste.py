@@ -341,7 +341,6 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         SELECT id, username, email, password_hash, is_admin
                         FROM employees
                         WHERE id = ANY(%s)
-                        AND is_admin IS FALSE
                         AND deleted_at IS NULL
                         ''',
                         (data_to_copy['employee_ids'],)).fetchall()
@@ -1007,9 +1006,11 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     employee_event_booth_roles_rows = []
                     employee_booth_roles_to_copy = cur.execute(
                         '''
-                        SELECT booth_id, employee_id, event_id
-                        FROM employee_event_booth_roles
+                        SELECT link.booth_id, link.employee_id, link.event_id
+                        FROM employee_event_booth_roles AS link
+                        JOIN employees em ON em.id = link.employee_id
                         WHERE booth_id = ANY(%s)
+                        AND em.deleted_at IS NULL
                         ''',
                         (all_copied_ids,)).fetchall()
                     
