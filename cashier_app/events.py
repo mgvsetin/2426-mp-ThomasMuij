@@ -204,7 +204,7 @@ def get_event(event_id):
                     ) AS booths,
                     COALESCE(jsonb_agg(
                         DISTINCT jsonb_build_object('id', cat_link.category_id, 'name', cat.name)
-                        ) FILTER (WHERE cat_link.category_id IS NOT NULL),
+                        ) FILTER (WHERE cat_link.category_id IS NOT NULL AND cat.deleted_at IS NULL),
                         '[]'
                     ) AS categories
                 FROM products as p
@@ -214,6 +214,7 @@ def get_event(event_id):
                 LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
                 LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
                 WHERE p.event_id = %s
+                AND p.deleted_at IS NULL
                 GROUP BY p.id, img.id
                 ORDER BY p.created_at''',
                 (event_id,)).fetchall()
@@ -254,6 +255,7 @@ def get_event(event_id):
                 LEFT JOIN category_booth_link AS bo_link ON bo_link.category_id = cat.id
                 LEFT JOIN booths ON booths.id = bo_link.booth_id
                 WHERE cat.event_id = %s
+                AND cat.deleted_at IS NULL
                 GROUP BY cat.id''',
                 (event_id,)).fetchall()
             
@@ -914,7 +916,7 @@ def get_products_and_categories():
                 SELECT p.id, p.name, p.price, img.image_path,
                   COALESCE(jsonb_agg(
                       DISTINCT jsonb_build_object('name', cat.name)
-                      ) FILTER (WHERE cat_link.category_id IS NOT NULL),
+                      ) FILTER (WHERE cat_link.category_id IS NOT NULL AND cat.deleted_at IS NULL),
                       '[]'
                   ) AS categories
                 FROM products AS p
@@ -923,6 +925,7 @@ def get_products_and_categories():
                 LEFT JOIN category_product_link AS cat_link ON cat_link.product_id = p.id
                 LEFT JOIN categories AS cat ON cat.id = cat_link.category_id
                 WHERE bo_link.booth_id = %s
+                AND p.deleted_at IS NULL
                 GROUP BY p.id, img.id''',
                 (booth['id'],)).fetchall()
             
@@ -931,7 +934,8 @@ def get_products_and_categories():
                 SELECT cat.name
                 FROM categories AS cat
                 JOIN category_booth_link AS link ON link.category_id = cat.id
-                WHERE link.booth_id = %s''',
+                WHERE link.booth_id = %s
+                AND cat.deleted_at IS NULL''',
                 (booth['id'],)).fetchall()
             
     convert_image_paths_from_relative(products)
@@ -1233,7 +1237,8 @@ def add_product():
                     SELECT 1
                     FROM categories
                     WHERE id = %s
-                    AND event_id = %s''',
+                    AND event_id = %s
+                    AND deleted_at IS NULL''',
                     (category_id, event_id)).fetchone()
                 
                 if not category:
@@ -1389,10 +1394,11 @@ def edit_product():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             product = cur.execute(
-                f'''
+                '''
                 SELECT event_id
                 FROM products
-                WHERE id = %s''',
+                WHERE id = %s
+                AND deleted_at IS NULL''',
                 (product_id,)).fetchone()
 
     if not product:
@@ -1446,7 +1452,8 @@ def edit_product():
                     SELECT 1
                     FROM categories
                     WHERE id = %s
-                    AND event_id = %s''',
+                    AND event_id = %s
+                    AND deleted_at IS NULL''',
                     (category_id, event_id)).fetchone()
                 
                 if not category:
@@ -1531,7 +1538,8 @@ def edit_product():
                     f'''
                     UPDATE products
                     SET {col_updates_str}
-                    WHERE id = %(id)s''',
+                    WHERE id = %(id)s
+                    AND deleted_at IS NULL''',
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -1594,7 +1602,7 @@ def edit_product():
     
     if rows_affected == 0:
         return jsonify(error='product_not_found'), 404
-    
+
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
     if remove_current_image or image_file:
         delete_unused_images()
@@ -1623,7 +1631,8 @@ def delete_product():
                 f'''
                 SELECT event_id
                 FROM products
-                WHERE id = %s''',
+                WHERE id = %s
+                AND deleted_at IS NULL''',
                 (product_id,)).fetchone()
 
     if not product:
@@ -1639,8 +1648,10 @@ def delete_product():
             with conn.cursor() as cur:
                 cur.execute(
                     '''
-                    DELETE FROM products
-                    WHERE id = %s''',
+                    UPDATE products
+                    SET deleted_at = now()
+                    WHERE id = %s
+                    AND deleted_at IS NULL''',
                     (product_id,))
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -1739,7 +1750,8 @@ def add_category():
                     SELECT 1
                     FROM products
                     WHERE id = %s
-                    AND event_id = %s''',
+                    AND event_id = %s
+                    AND deleted_at IS NULL''',
                     (product_id, event_id)).fetchone()
                 
                 if not product:
@@ -1827,7 +1839,8 @@ def edit_category():
                 f'''
                 SELECT event_id
                 FROM categories
-                WHERE id = %s''',
+                WHERE id = %s
+                WHERE deleted_at IS NULL''',
                 (category_id,)).fetchone()
 
     if not category:
@@ -1889,7 +1902,8 @@ def edit_category():
                     SELECT 1
                     FROM products
                     WHERE id = %s
-                    AND event_id = %s''',
+                    AND event_id = %s
+                    AND deleted_at IS NULL''',
                     (product_id, event_id)).fetchone()
                 
                 if not product:
@@ -1916,20 +1930,21 @@ def edit_category():
                     f'''
                     UPDATE categories
                     SET {col_updates_str}
-                    WHERE id = %(id)s''',
+                    WHERE id = %(id)s
+                    AND deleted_at IS NULL''',
                     params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise RuntimeError(f'multiple rows updated for id {category_id}')
                 
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM category_booth_link
                     WHERE category_id = %s''',
                     (category_id,))
                 
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM category_product_link
                     WHERE category_id = %s''',
                     (category_id,))
@@ -1990,10 +2005,11 @@ def delete_category():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             category = cur.execute(
-                f'''
+                '''
                 SELECT event_id
                 FROM categories
-                WHERE id = %s''',
+                WHERE id = %s
+                AND deleted_at IS NULL''',
                 (cateogry_id,)).fetchone()
 
     if not category:
@@ -2009,8 +2025,10 @@ def delete_category():
             with conn.cursor() as cur:
                 cur.execute(
                     '''
-                    DELETE FROM categories
-                    WHERE id = %s''',
+                    UPDATE categories
+                    SET deleted_at = now()
+                    WHERE id = %s
+                    AND deleted_at IS NULL''',
                     (cateogry_id,))
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -2018,12 +2036,12 @@ def delete_category():
                 
                 # měly by se dít sami:
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM category_booth_link
                     WHERE category_id = %s''',
                     (cateogry_id,))
                 cur.execute(
-                    f'''
+                    '''
                     DELETE FROM category_product_link
                     WHERE category_id = %s''',
                     (cateogry_id,))
