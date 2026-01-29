@@ -6,7 +6,8 @@ const cache_time_ms = 60 * 1000; // 1 minuta
 
 const _employeesCache = {
   employees: null,
-  expiry: 0
+  expiry: 0,
+  refetchTime: 0
 };
 
 let _getEmployeesPromise = null;

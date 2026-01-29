@@ -559,7 +559,8 @@ tbody tr[selected] {
 #edit-cancel,
 #edit-save,
 #delete-confirm,
-#delete-cancel {
+#delete-cancel,
+#edit-open-delete-modal {
   padding: 9px 14px;
   border-radius: 8px;
   font-weight: 600;
@@ -568,13 +569,15 @@ tbody tr[selected] {
   font-size: 0.95rem;
 }
 
-#delete-confirm {
+#delete-confirm,
+#edit-open-delete-modal {
   background: #c53737;
   color: #fff;
   box-shadow: 0 6px 10px rgba(197, 55, 55, 0.12);
 }
 
-#delete-confirm:hover {
+#delete-confirm:hover,
+#edit-open-delete-modal:hover {
   box-shadow: 3px 3px 8px rgba(185, 47, 47, 0.3);
   background-color: #b92f2f;
 }

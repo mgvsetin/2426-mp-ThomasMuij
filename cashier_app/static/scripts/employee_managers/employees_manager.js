@@ -120,8 +120,8 @@ document.addEventListener('click', (event) => {
   // úprava zaměstnance
   const editButton = event.target.closest('.edit.icon-btn');
   if (editButton) {
-    const row = editButton.closest('tr[data-employee]');
-    openEditOverlay(row);
+    const row = editButton.closest('tr[id]');
+    openEditOverlay(row.id);
     return;
   }
 
@@ -137,8 +137,17 @@ document.addEventListener('click', (event) => {
   // otevři potvrzení odstranění zaměstnance
   const deleteButton = event.target.closest('.delete.icon-btn');
   if (deleteButton) {
-    const row = deleteButton.closest('tr[data-employee]');
-    openDeleteOverlay(row);
+    const row = deleteButton.closest('tr[id]');
+    openDeleteOverlay(row.id);
+    return;
+  }
+
+  const openDeleteModalBtn = event.target.closest('#edit-open-delete-modal');
+  if (openDeleteModalBtn) {
+    const overlayEl = document.querySelector('#edit-overlay');
+    if (overlayEl) overlayEl.remove();
+    const empId = openDeleteModalBtn.getAttribute('data-employee-id');
+    openDeleteOverlay(empId);
     return;
   }
 
@@ -197,9 +206,9 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('dblclick', (event) => {
-  const row = event.target.closest('tr[data-employee]');
+  const row = event.target.closest('tr[id]');
   if (row) {
-    openEditOverlay(row);
+    openEditOverlay(row.id);
   }
 })
 
@@ -343,9 +352,9 @@ document.addEventListener('keydown', (event) => {
   });
 
   if (event.key === 'Enter') {
-    const selectedRows = document.querySelectorAll('tr[data-employee][selected]');
+    const selectedRows = document.querySelectorAll('tr[id][selected]');
     if (selectedRows.length === 1) {
-      openEditOverlay(selectedRows[0]);
+      openEditOverlay(selectedRows[0].id);
     }
   }
 
@@ -518,7 +527,7 @@ async function renderTableRows() {
     }
 
     rowsHTML += `
-      <tr id="${employee.id}" data-employee='${escapeHTML(JSON.stringify(employee))}'>
+      <tr id="${employee.id}">
         <td>${rowNumber}</td>
         <td class="username">${employee.username} <span class="id muted">(${employee.id})</span></td>
         <td class="email">${employee.email}</td>
@@ -637,14 +646,12 @@ function openAddEmployeeOverlay() {
 }
 
 
-function openEditOverlay(row) {
-  if (!row) return;
-
-  const employee = safeParse(row.getAttribute('data-employee'));
-  if (!employee) {
-    console.error('Failed to parse employee data');
-    return;
-  }
+async function openEditOverlay(employeeId) {
+  if (!employeeId) return;
+  const employees = await getEmployees();
+  if (!employees) return;
+  const employee = employees.find(emp => emp.id === employeeId);
+  if (!employee) return;
 
   const overlayHTML = `
     <div id="edit-overlay" class="overlay">
@@ -730,6 +737,7 @@ function openEditOverlay(row) {
 
           <div id="edit-form-actions">
             <button type="button" id="edit-cancel">Zrušit</button>
+            <button type="button" id="edit-open-delete-modal" data-employee-id="${employee.id}">Smazat</button>
             <button type="submit" id="edit-save">Uložit</button>
           </div>
         </form>
@@ -741,13 +749,12 @@ function openEditOverlay(row) {
 }
 
 
-function openDeleteOverlay(row) {
-  if (!row) return;
-  const employee = safeParse(row.getAttribute('data-employee'));
-  if (!employee) {
-    console.error('Failed to parse employee data');
-    return;
-  }
+async function openDeleteOverlay(employeeId) {
+  if (!employeeId) return;
+  const employees = await getEmployees();
+  if (!employees) return;
+  const employee = employees.find(emp => emp.id === employeeId);
+  if (!employee) return;
 
   const overlayHTML = `
     <div id="delete-overlay" class="overlay">
