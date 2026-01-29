@@ -1,5 +1,6 @@
 import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 
 const transactionsTableBody = document.querySelector('#transactions-table-body');
 const cardsTableBody = document.querySelector('#cards-table-body');
@@ -45,11 +46,7 @@ async function loadPage() {
   try {
     const response = await fetch(`/api/events/${eventId}/users/${userId}/transaction-history`);
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 

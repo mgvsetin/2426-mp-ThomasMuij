@@ -3,6 +3,7 @@
 //     const response = await fetch('/api/session/booth-is-registered');
 //     const boothIsRegistered = await response.json();
 
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { UnexpectedError } from "../general/errors.js";
 import { removeReadCard } from "./cards.js";
 import { order } from "./order.js";
@@ -61,11 +62,7 @@ export async function renderEventPicker() {
   try {
     const response = await fetch('/api/employees/me/events/active');
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     if (!response.ok) {
       throw new Error('unexpected_error');
@@ -125,11 +122,7 @@ export async function pickEvent(formData) {
       body: formData
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return false;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 
@@ -164,12 +157,8 @@ export async function renderBoothPicker() {
   try {
     const response = await fetch('/api/employees/me/events/booths/active');
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
-
+    await handleUnauthorizedRedirect(response);
+  
     data = await response.json();
 
     if (response.status === 400 && data.error === 'no_selected_event') {
@@ -240,11 +229,7 @@ export async function pickBooth(formData) {
       body: formData
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return null;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 

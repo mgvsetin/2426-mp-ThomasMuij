@@ -1379,26 +1379,6 @@ label {
   color: #991b1b;
 }
 
-.cross-close {
-  background: transparent;
-  border: none;
-  height: 24px;
-  width: 24px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  position: absolute;
-  top: 15px;
-  right: 12px;
-}
-
-.cross-close:hover {
-  background-color: rgb(245, 245, 245);
-}
-
 .modal-actions {
   display: flex;
   gap: 8px;

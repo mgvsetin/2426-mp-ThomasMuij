@@ -1,16 +1,18 @@
 import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent } from "./event_booth.js";
-import { renderProducts, renderCategories, saveSelectedCategory, findProduct, getProductsAndCategories } from "./products.js";
+import { renderProducts, renderCategories, saveSelectedCategory, findProduct, fetchProductsAndCategories } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
+import { closeModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { getSessionInfo } from "../general/session.js";
 import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise } from "./cards.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
-import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, getUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
-import { getWalletByTag, getWallets, resetWalletsCache } from "./wallets.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, fetchUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { getWalletByTag, fetchWallets, resetWalletsCache } from "./wallets.js";
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
@@ -245,7 +247,7 @@ document.addEventListener('click', async (event) => {
       }
     }
 
-    const result = await getProductsAndCategories().catch(() => {
+    const result = await fetchProductsAndCategories().catch(() => {
       showPayError('unexpected_error');
     });
     if (!result) {
@@ -283,11 +285,7 @@ document.addEventListener('click', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -401,8 +399,7 @@ document.addEventListener('click', async (event) => {
 
   const closeModalBtn = event.target.closest('.close-modal');
   if (closeModalBtn) {
-    const overlay = closeModalBtn.closest('.overlay');
-    if (overlay) overlay.remove();
+    closeModal();
     return;
   }
 
@@ -421,7 +418,7 @@ document.addEventListener('click', async (event) => {
   }
 
   if (event.target.matches('#open-user-cards-modal')) {
-    event.target.closest('.overlay')?.remove();
+    closeModal();
     const userId = userIdInput.value.trim();
     if (userId) {
       openUserCardsModal(userId);
@@ -466,11 +463,7 @@ document.addEventListener('click', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -508,7 +501,7 @@ document.addEventListener('click', async (event) => {
       return;
     }
 
-    editWalletForm.closest('.overlay')?.remove();
+    closeModal();
     resetWalletsCache();
     if (lastReadCardId === formData.get('tag-id').trim()) {
       editUserFormOnChange();
@@ -704,11 +697,7 @@ document.addEventListener('submit', async (event) => {
           body: formData
         });
 
-        if (response.status === 401) {
-          const json = await response.json();
-          window.location.href = json.redirect_url;
-          return;
-        }
+        await handleUnauthorizedRedirect(response);
 
         const data = await response.json();
 
@@ -738,11 +727,7 @@ document.addEventListener('submit', async (event) => {
           body: formData
         });
 
-        if (response.status === 401) {
-          const json = await response.json();
-          window.location.href = json.redirect_url;
-          return;
-        }
+        await handleUnauthorizedRedirect(response);
 
         const data = await response.json();
 
@@ -789,11 +774,7 @@ document.addEventListener('submit', async (event) => {
           body: formData
         });
 
-        if (response.status === 401) {
-          const json = await response.json();
-          window.location.href = json.redirect_url;
-          return;
-        }
+        await handleUnauthorizedRedirect(response);
 
         const data = await response.json();
 
@@ -835,11 +816,7 @@ document.addEventListener('submit', async (event) => {
           body: formData
         });
 
-        if (response.status === 401) {
-          const json = await response.json();
-          window.location.href = json.redirect_url;
-          return;
-        }
+        await handleUnauthorizedRedirect(response);
 
         const data = await response.json();
 
@@ -881,11 +858,7 @@ document.addEventListener('submit', async (event) => {
           body: formData
         });
 
-        if (response.status === 401) {
-          const json = await response.json();
-          window.location.href = json.redirect_url;
-          return;
-        }
+        await handleUnauthorizedRedirect(response);
 
         const data = await response.json();
 
@@ -953,11 +926,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -985,7 +954,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    deleteUserForm.closest('.overlay')?.remove();
+    closeModal();
     resetUsersCache();
     resetWalletsCache();
 
@@ -1022,11 +991,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1058,7 +1023,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    editWalletForm.closest('.overlay')?.remove();
+    closeModal();
     resetWalletsCache();
     if (lastReadCardId === formData.get('tag-id').trim()) {
       editUserFormOnChange();

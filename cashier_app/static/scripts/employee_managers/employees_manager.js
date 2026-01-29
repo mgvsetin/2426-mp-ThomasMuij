@@ -1,7 +1,9 @@
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
-import { getEmployees, resetEmployeesCache } from "../general/employees.js";
+import { fetchEmployees, resetEmployeesCache } from "../general/employees.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
+import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
@@ -50,22 +52,20 @@ document.addEventListener('click', (event) => {
   }
 
   if (event.target.matches('#add-employee-button')) {
-    openAddEmployeeOverlay();
+    openAddEmployeeModal();
     return;
   }
 
   // zavřít přidávání zaměstnance
-  const cancelAddButton = event.target.closest('#add-cancel');
-  const AddModalClose = event.target.closest('#add-modal-close')
-  if (cancelAddButton || AddModalClose) {
-    const overlayEl = document.querySelector('#add-overlay');
-    if (overlayEl) overlayEl.remove();
+  const closeModalBtn = event.target.closest('.close-modal');
+  if (closeModalBtn) {
+    closeModal();
     return;
   }
 
 
   const isAdminToggle = event.target.closest('.is-admin-toggle');
-  if (isAdminToggle) {
+  if (isAdminToggle && !isAdminToggle.classList.contains('disabled')) {
     const state = isAdminToggle.dataset.state || 'no';
     const option = event.target.closest('.option');
 
@@ -121,44 +121,27 @@ document.addEventListener('click', (event) => {
   const editButton = event.target.closest('.edit.icon-btn');
   if (editButton) {
     const row = editButton.closest('tr[id]');
-    openEditOverlay(row.id);
+    openEditModal(row.id);
     return;
   }
 
-  // zrušit úpravu zaměstnance
-  const cancelEditButton = event.target.closest('#edit-cancel');
-  const editModalClose = event.target.closest('#edit-modal-close')
-  if (cancelEditButton || editModalClose) {
-    const overlayEl = document.querySelector('#edit-overlay');
-    if (overlayEl) overlayEl.remove();
-    return;
-  }
 
   // otevři potvrzení odstranění zaměstnance
   const deleteButton = event.target.closest('.delete.icon-btn');
   if (deleteButton) {
     const row = deleteButton.closest('tr[id]');
-    openDeleteOverlay(row.id);
+    openDeleteModal(row.id);
     return;
   }
 
-  const openDeleteModalBtn = event.target.closest('#edit-open-delete-modal');
+  const openDeleteModalBtn = event.target.closest('.open-delete-modal');
   if (openDeleteModalBtn) {
-    const overlayEl = document.querySelector('#edit-overlay');
-    if (overlayEl) overlayEl.remove();
+    closeModal();
     const empId = openDeleteModalBtn.getAttribute('data-employee-id');
-    openDeleteOverlay(empId);
+    openDeleteModal(empId);
     return;
   }
 
-  // zruš odstranění zaměstnance
-  const cancelDeleteButton = event.target.closest('#delete-cancel');
-  const deleteModalClose = event.target.closest('#delete-modal-close')
-  if (cancelDeleteButton || deleteModalClose) {
-    const overlayEl = document.querySelector('#delete-overlay');
-    if (overlayEl) overlayEl.remove();
-    return;
-  }
 
   // ukaž nebo skryj heslo a změň oko
   const showPassword = event.target.closest('.pw-eye');
@@ -208,7 +191,7 @@ document.addEventListener('click', (event) => {
 document.addEventListener('dblclick', (event) => {
   const row = event.target.closest('tr[id]');
   if (row) {
-    openEditOverlay(row.id);
+    openEditModal(row.id);
   }
 })
 
@@ -218,10 +201,10 @@ document.addEventListener('submit', async (event) => {
   const addForm = event.target.closest('#add-form');
   if (addForm) {
     event.preventDefault();
-    const saveButton = addForm.querySelector('#add-save');
+    const saveButton = addForm.querySelector('.save-form');
     saveButton.disabled = true;
 
-    clearAddErrors();
+    clearModalErrors();
 
     const formData = new FormData(addForm);
 
@@ -243,8 +226,7 @@ document.addEventListener('submit', async (event) => {
     saveButton.disabled = false;
 
     if (response === true) {
-      const overlayEl = document.querySelector('#add-overlay');
-      if (overlayEl) overlayEl.remove();
+      closeModal();
       resetEmployeesCache();
       loadPage({
         table: true
@@ -261,10 +243,10 @@ document.addEventListener('submit', async (event) => {
   const editFrom = event.target.closest('#edit-form');
   if (editFrom) {
     event.preventDefault();
-    const saveButton = editFrom.querySelector('#edit-save');
+    const saveButton = editFrom.querySelector('.save-form');
     saveButton.disabled = true;
 
-    clearEditErrors();
+    clearModalErrors();
 
     const formData = new FormData(editFrom);
 
@@ -286,8 +268,7 @@ document.addEventListener('submit', async (event) => {
     saveButton.disabled = false;
 
     if (response === true) {
-      const overlayEl = document.querySelector('#edit-overlay');
-      if (overlayEl) overlayEl.remove();
+      closeModal();
       resetEmployeesCache();
       loadPage({
         table: true,
@@ -304,10 +285,10 @@ document.addEventListener('submit', async (event) => {
   const deleteForm = event.target.closest('#delete-form');
   if (deleteForm) {
     event.preventDefault();
-    const deleteButton = deleteForm.querySelector('#delete-confirm');
+    const deleteButton = deleteForm.querySelector('.delete-confirm');
     deleteButton.disabled = true;
 
-    clearDeleteErrors();
+    clearModalErrors();
 
     const formData = new FormData(deleteForm);
 
@@ -316,8 +297,7 @@ document.addEventListener('submit', async (event) => {
     deleteButton.disabled = false;
 
     if (response === true) {
-      const overlayEl = document.querySelector('#delete-overlay');
-      if (overlayEl) overlayEl.remove();
+      closeModal();
       resetEmployeesCache();
       loadPage({
         table: true
@@ -354,7 +334,7 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     const selectedRows = document.querySelectorAll('tr[id][selected]');
     if (selectedRows.length === 1) {
-      openEditOverlay(selectedRows[0].id);
+      openEditModal(selectedRows[0].id);
     }
   }
 
@@ -467,7 +447,7 @@ function isSearchedFor(employee, searchQuery) {
 
 
 async function renderTableRows() {
-  const employees = await getEmployees().catch(() => {
+  const employees = await fetchEmployees().catch((er) => {
     employeeTableBody.innerHTML = `
       <th class="error-message" colspan="10">
         Nepovedlo se načíst zaměstnance.
@@ -557,276 +537,229 @@ async function renderTableRows() {
 }
 
 
-function openAddEmployeeOverlay() {
-  const overlayHTML = `
-    <div id="add-overlay" class="overlay">
-      <div id="add-modal" class="modal">
-        <header id="add-modal-header">
-          <h2 id="add-overlay-title">Přidat zaměstnance</h2>
-          <button id="add-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
+function openAddEmployeeModal() {
+  const html = `
+    <header>
+      <h2>Přidat zaměstnance</h2>
+    </header>
 
-        <form id="add-form">
-          <div class="form-row">
-            <label for="add-username">Uživatelské jméno</label>
-            <input id="add-username" name="username" type="text" placeholder="Uživatelské jméno" required/>
-            <div id="username-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-email">Email</label>
-            <input id="add-email" name="email" type="email" placeholder="Email" required />
-            <div id="email-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-password">Heslo</label>
-            <input id="add-password" name="password" type="password" placeholder="Heslo" required/>
-
-            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
-              Přepíná se změnou třídy mezi "state-show" a "state-hide".
-              Výchozí: state-hide -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
-              role="img" aria-hidden="true" focusable="false">
-              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
-              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
-
-              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
-              <g class="g-show" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-              </g>
-
-              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
-              <g class="g-hide" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník (s kruhem) -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-
-                <!-- diagonální čára -->
-                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
-              </g>
-            </svg>
-
-            <div id="password-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label>Admin</label>
-            <div id="add-is-admin-toggle" class="is-admin-toggle" data-state="no">
-              <div class="track"></div>
-              <div class="option no">Ne</div>
-              <div class="option yes">Ano</div>
-            </div>
-            <div id="is-admin-add-error" class="add-error"></div>
-          </div>
-
-          <div id="add-form-actions">
-            <button type="button" id="add-cancel">Zrušit</button>
-            <button type="submit" id="add-save">Vytvořit</button>
-          </div>
-        </form>
+    <form id="add-employee-form">
+      <div class="form-row">
+        <label for="add-username">Uživatelské jméno</label>
+        <input id="add-username" name="username" type="text" placeholder="Uživatelské jméno" required/>
+        <div id="add-employee-username-error" class="form-error"></div>
       </div>
-    </div>
+
+      <div class="form-row">
+        <label for="add-email">Email</label>
+        <input id="add-email" name="email" type="email" placeholder="Email" required />
+        <div id="add-employee-email-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row password-form-row">
+        <label for="add-password">Heslo</label>
+        <input id="add-password" name="password" type="password" placeholder="Heslo" required/>
+
+        <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
+          Přepíná se změnou třídy mezi "state-show" a "state-hide".
+          Výchozí: state-hide -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
+          role="img" aria-hidden="true" focusable="false">
+          <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
+          <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
+
+          <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
+          <g class="g-show" aria-hidden="true">
+            <!-- bílý kruh duhovky -->
+            <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+            <!-- tmavý zorník -->
+            <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+          </g>
+
+          <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
+          <g class="g-hide" aria-hidden="true">
+            <!-- bílý kruh duhovky -->
+            <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+            <!-- tmavý zorník (s kruhem) -->
+            <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+
+            <!-- diagonální čára -->
+            <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
+            <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
+          </g>
+        </svg>
+
+        <div id="add-employee-password-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label>Admin</label>
+        <div id="add-is-admin-toggle" class="is-admin-toggle" data-state="no">
+          <div class="track"></div>
+          <div class="option no">Ne</div>
+          <div class="option yes">Ano</div>
+        </div>
+        <div id="add-employee-is-admin-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <div id="add-employee-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
   `;
 
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+  openModal(html);
 }
 
 
-async function openEditOverlay(employeeId) {
+async function openEditModal(employeeId) {
   if (!employeeId) return;
-  const employees = await getEmployees();
+  const employees = await fetchEmployees();
   if (!employees) return;
   const employee = employees.find(emp => emp.id === employeeId);
   if (!employee) return;
 
-  const overlayHTML = `
-    <div id="edit-overlay" class="overlay">
-      <div id="edit-modal" class="modal">
-        <header id="edit-modal-header">
-          <h2 id="edit-overlay-title">Upravit zaměstnance</h2>
-          <button id="edit-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
+  const html = `
+    <header>
+      <h2>Upravit zaměstnance</h2>
+    </header>
 
-        <form id="edit-form">
-          <div class="form-row">
-            <label for="edit-id">Id:</label>
-            <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
-            <div id="id-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="edit-username">Uživatelské jméno</label>
-            <input id="edit-username" name="username" type="text" placeholder="Uživatelské jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
-            <div id="username-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="edit-email">Email</label>
-            <input id="edit-email" name="email" type="email" placeholder="Email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
-            <div id="email-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="edit-password">Heslo</label>
-            <input id="edit-password" name="password" type="password" placeholder="Nechte prázdné, pokud neměníte heslo" />
-
-            <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
-              Přepíná se změnou třídy mezi "state-show" a "state-hide".
-              Výchozí: state-hide -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
-              role="img" aria-hidden="true" focusable="false">
-              <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
-              <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
-
-              <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
-              <g class="g-show" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-              </g>
-
-              <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
-              <g class="g-hide" aria-hidden="true">
-                <!-- bílý kruh duhovky -->
-                <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
-                <!-- tmavý zorník (s kruhem) -->
-                <circle cx="12" cy="12" r="2" fill="var(--fg)" />
-
-                <!-- diagonální čára -->
-                <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
-                <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
-              </g>
-            </svg>
-
-            <div id="password-edit-error" class="edit-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label>Admin</label>
-            <div id="edit-is-admin-toggle" class="is-admin-toggle" data-state="${employee.is_admin ? 'yes' : 'no'}">
-              <div class="track"></div>
-              <div class="option no">Ne</div>
-              <div class="option yes">Ano</div>
-            </div>
-            <div id="is-admin-edit-error" class="edit-error"></div>
-          </div>
-          
-
-          <div class="form-row">
-            <div id="general-edit-error" class="edit-error"></div>
-          </div>
-
-          <div id="edit-form-actions">
-            <button type="button" id="edit-cancel">Zrušit</button>
-            <button type="button" id="edit-open-delete-modal" data-employee-id="${employee.id}">Smazat</button>
-            <button type="submit" id="edit-save">Uložit</button>
-          </div>
-        </form>
+    <form id="edit-form">
+      <div class="form-row">
+        <label for="edit-id">Id:</label>
+        <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
+        <div id="id-edit-error" class="form-error"></div>
       </div>
-    </div>
+
+      <div class="form-row">
+        <label for="edit-username">Uživatelské jméno</label>
+        <input id="edit-username" name="username" type="text" placeholder="Uživatelské jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
+        <div id="username-edit-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="edit-email">Email</label>
+        <input id="edit-email" name="email" type="email" placeholder="Email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
+        <div id="email-edit-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row password-form-row">
+        <label for="edit-password">Heslo</label>
+        <input id="edit-password" name="password" type="password" placeholder="Nechte prázdné, pokud neměníte heslo" />
+
+        <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
+          Přepíná se změnou třídy mezi "state-show" a "state-hide".
+          Výchozí: state-hide -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
+          role="img" aria-hidden="true" focusable="false">
+          <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
+          <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
+
+          <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
+          <g class="g-show" aria-hidden="true">
+            <!-- bílý kruh duhovky -->
+            <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+            <!-- tmavý zorník -->
+            <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+          </g>
+
+          <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
+          <g class="g-hide" aria-hidden="true">
+            <!-- bílý kruh duhovky -->
+            <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+            <!-- tmavý zorník (s kruhem) -->
+            <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+
+            <!-- diagonální čára -->
+            <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
+            <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
+          </g>
+        </svg>
+
+        <div id="password-edit-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label>Admin</label>
+        <div id="edit-is-admin-toggle" class="is-admin-toggle" data-state="${employee.is_admin ? 'yes' : 'no'}">
+          <div class="track"></div>
+          <div class="option no">Ne</div>
+          <div class="option yes">Ano</div>
+        </div>
+        <div id="is-admin-edit-error" class="form-error"></div>
+      </div>
+
+
+      <div class="form-row">
+        <div id="general-edit-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-employee-id="${employee.id}">Smazat</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
   `;
 
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+  openModal(html);
 }
 
 
-async function openDeleteOverlay(employeeId) {
+async function openDeleteModal(employeeId) {
   if (!employeeId) return;
-  const employees = await getEmployees();
+  const employees = await fetchEmployees();
   if (!employees) return;
   const employee = employees.find(emp => emp.id === employeeId);
   if (!employee) return;
 
-  const overlayHTML = `
-    <div id="delete-overlay" class="overlay">
-      <div id="delete-modal" class="modal">
-        <header id="delete-modal-header">
-          <h2 id="delete-overlay-title">Smazat zaměstnance</h2>
-          <button id="delete-modal-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
+  const html = `
+    <header>
+      <h2 class="delete-form-text">Smazat zaměstnance</h2>
+    </header>
 
-        <form id="delete-form">
-          <div class="form-row">
-            <div id="delete-id-label">Id:</div>
-            <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" readonly required/>
-          </div>
-          <div class="form-row">
-            <div id="delete-username-label">Uživatelské jméno:</div>
-            <div id="delete-username">${escapeHTML(employee.username || '-')}</div>
-          </div>
-          <div class="form-row">
-            <div id="delete-email-label">Email:</div>
-            <div id="delete-email">${escapeHTML(employee.email || '-')}</div>
-          </div>
-          <div class="form-row">
-            <div id="delete-is-admin-label">Admin:</div>
-            <div id="delete-is-admin">${employee.is_admin ? 'Ano' : 'Ne'}</div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-delete-error" class="delete-error"></div>
-          </div>
-
-          <div id="delete-form-actions" style="display:flex; gap:8px; justify-content:flex-end; padding-top:12px;">
-            <button type="button" id="delete-cancel">Zrušit</button>
-            <button type="submit" id="delete-confirm">Smazat</button>
-          </div>
-        </form>
+    <form id="delete-form">
+      <div class="form-row">
+        <div id="delete-id-label">Id:</div>
+        <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" required readonly/>
       </div>
-    </div>
+      
+      <div class="form-row">
+        <div id="delete-username-label">Uživatelské jméno:</div>
+        <input id="delete-username" value="${escapeHTML(employee.username || '-')}" disabled>
+      </div>
+      
+      <div class="form-row">
+        <div id="delete-email-label">Email:</div>
+        <input id="delete-email" value="${escapeHTML(employee.email || '-')}" disabled>
+      </div>
+
+      <div class="form-row">
+        <label>Admin</label>
+        <div class="is-admin-toggle disabled" data-state="${employee.is_admin ? 'yes' : 'no'}">
+          <div class="track"></div>
+          <div class="option no">Ne</div>
+          <div class="option yes">Ano</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div id="general-delete-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="delete-confirm btn btn-delete">Smazat</button>
+      </div>
+    </form>
   `;
 
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
-}
-
-
-function clearAddErrors() {
-  const errorMessages = document.querySelectorAll('.add-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-edit-error');
-  });
-}
-
-
-function clearEditErrors() {
-  const errorMessages = document.querySelectorAll('.edit-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-edit-error');
-  });
-}
-
-
-function clearDeleteErrors() {
-  const errorMessages = document.querySelectorAll('.delete-error');
-  errorMessages.forEach((error) => {
-    error.innerHTML = '';
-    error.classList.remove('show-delete-error');
-  });
+  openModal(html);
 }
 
 
@@ -840,7 +773,7 @@ function showAddErrors(error, detail) {
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-add-error');
+    el.classList.add('show-form-error');
   };
 
   if (!error) {
@@ -980,7 +913,7 @@ function showEditErrors(error, detail) {
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-edit-error');
+    el.classList.add('show-form-error');
   };
 
   if (!error) {
@@ -1123,7 +1056,7 @@ function showDeleteErrors(error, detail) {
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-delete-error');
+    el.classList.add('show-form-error');
   };
 
   if (!error) {
@@ -1169,11 +1102,7 @@ async function addEmployee(formData) {
       body: formData
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 
@@ -1204,11 +1133,7 @@ async function editEmployee(formData) {
       body: formData
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 
@@ -1243,11 +1168,7 @@ async function deleteEmployee(formData) {
       body: formData
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     const data = await response.json();
 

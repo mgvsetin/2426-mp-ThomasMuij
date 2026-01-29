@@ -1,63 +1,26 @@
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { cloneData } from "../general/cache.js";
-import { EventNotSelectedError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
-
-const cache_time_ms = 30 * 1000; // 30 sekund
-// maybe figure out cache max time so that the slow doenst have to happen
-
-const _walletsCache = {
-  wallets: null,
-  expiry: 0
-};
-
-let _getWalletsPromise = null;
+import { cacheFunctionFactory } from "../general/cache_factory.js";
+import { EventNotSelectedError, UnexpectedError } from "../general/errors.js";
 
 
-export function getWallets() {
-  if (_walletsCache.wallets && _walletsCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_walletsCache.wallets));
+export const [fetchWallets, resetWalletsCache] = cacheFunctionFactory(async () => {
+  const response = await fetch('/api/events/wallets');
+
+  await handleUnauthorizedRedirect(response);
+
+  const resData = await response.json();
+
+  if (response.status === 400 && resData.error === 'no_selected_event') {
+    throw new EventNotSelectedError();
   }
 
-  if (_getWalletsPromise) return _getWalletsPromise;
+  if (!response.ok) {
+    throw new UnexpectedError();
+  }
 
-  _getWalletsPromise = (async () => {
-    try {
-      const response = await fetch('/api/events/wallets');
-
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        throw new UnauthorizedRedirectError(json.redirect_url);
-      }
-
-      const resData = await response.json();
-
-      if (response.status === 400 && resData.error === 'no_selected_event') {
-        throw new EventNotSelectedError();
-      }
-
-      if (!response.ok) {
-        throw new UnexpectedError();
-      }
-
-      _walletsCache.wallets = resData.wallets;
-      _walletsCache.expiry = Date.now() + cache_time_ms;
-
-      return cloneData(_walletsCache.wallets);
-
-    } finally {
-      _getWalletsPromise = null;
-    }
-  })();
-
-  return _getWalletsPromise;
-}
-
-
-export function resetWalletsCache() {
-  _walletsCache.wallets = null;
-  _walletsCache.expiry = 0;
-  getWallets()
-}
+  return resData.wallets;
+}, 1000 * 60 /*1 min*/, 1000 * 60 / 2 /*30 s*/);
 
 
 export function getWalletByTag(wallets, tagId) {

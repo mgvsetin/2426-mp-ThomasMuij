@@ -1,5 +1,5 @@
 import { order } from "./order.js";
-import { getProductsAndCategories, findProduct } from "./products.js";
+import { fetchProductsAndCategories, findProduct } from "./products.js";
 
 
 const orderSummary = document.querySelector('#order-summary');
@@ -10,7 +10,7 @@ export async function renderSummary() {
 
   // add the zustatek stuff, add zustatek po platbe nebo neco takoveho
 
-  const result = await getProductsAndCategories().catch(() => { });
+  const result = await fetchProductsAndCategories().catch(() => { });
   if (!result) return;
 
   const products = result.products;

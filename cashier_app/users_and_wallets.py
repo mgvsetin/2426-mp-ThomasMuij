@@ -18,7 +18,9 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager, validate_email, validate_first_or_last_name, validate_phone_number, format_valid_phone_number, add_more_phone_number_info, validate_other_identifier
 from cashier_app.utils.products import convert_image_paths_from_relative
-from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError
+from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, InsufficientBalanceError, UnexpectedError, IdempotencyKeyDataConflict
+from cashier_app.utils.transactions import make_transaction
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
 
 
 api_bp = Blueprint('users_api', __name__, url_prefix='/api/users')
@@ -139,19 +141,12 @@ def add_user():
     if not (params.get('email') or params.get('phone_number') or params.get('other_identifier')):
         return jsonify(error='at_least_one_of_email_phone_number_other_identifier_is_required'), 400
     
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    sql, query_params = build_insert_statement('users', params, returning='id')
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                user_id = cur.execute(
-                    f'''
-                    INSERT INTO users
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    RETURNING id''',
-                    params).fetchone()['id']
+                user_id = cur.execute(sql, query_params).fetchone()['id']
     except IntegrityError as e:
         # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
         # email už existuje: unique_index_users_email_active
@@ -181,7 +176,7 @@ def edit_user():
         
     try:
         user_id = UUID(request.form.get('user-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_user_id'), 400
     
     if not user_id:
@@ -240,20 +235,12 @@ def edit_user():
     if not (params.get('email') or params.get('phone_number') or params.get('other_identifier')):
         return jsonify(error='at_least_one_of_email_phone_number_other_identifier_is_required'), 400
     
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-    params['id'] = user_id
+    sql, query_params = build_update_statement('users', params, user_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    UPDATE users
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -297,7 +284,7 @@ def delete_user():
         
     try:
         user_id = UUID(request.form.get('user-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_user_id'), 400
     
     if not user_id:
@@ -355,7 +342,7 @@ def add_wallet():
 
     try:
         owner_id = UUID(request.form.get('user-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_user_id'), 400
     
     if not owner_id:
@@ -426,39 +413,14 @@ def add_wallet():
     if change_balance_by != new_balance:
         return jsonify(error=f"change_balance_by_and_new_balance_do_not_match"), 400
 
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    sql, query_params = build_insert_statement('wallets', params, returning='id, owner_id')
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                wallet = cur.execute(
-                    f'''
-                    INSERT INTO wallets
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    RETURNING id, owner_id''',
-                    params).fetchone()
+                wallet = cur.execute(sql, query_params).fetchone()
 
-
-                fingerprint_cols = {
-                    'tag_id': tag_id,
-                    'wallet_id': wallet['id'],
-                    'user_id': wallet['owner_id'],
-                    'event_id': selected_event['id'],
-                    'booth_id': selected_booth['id'],
-                    'transaction_type': 'balance-change',
-                    'amount_czk': change_balance_by,
-                    'performed_by': logged_employee['id'],
-                    'products_info': '[]'
-                }
-                
-                fingerprint_source = json.dumps(
-                    {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
-                    separators=(',', ':'), sort_keys=True)
-                request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
-
-                params = {
+                transaction_params = {
                 'tag_id': tag_id,
                 'wallet_id': wallet['id'],
                 'user_id': wallet['owner_id'],
@@ -467,49 +429,19 @@ def add_wallet():
                 'transaction_type': 'balance-change',
                 'amount_czk': change_balance_by,
                 'performed_by': logged_employee['id'],
+                'products_info': [],
                 'idempotency_key': idemp_key,
-                'request_fingerprint': request_fingerprint
                 }
                 
-                cols_str = ', '.join(params.keys())
-                col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+                make_transaction(transaction_params, cur)
+                
 
-                cur.execute(
-                    f'''
-                    INSERT INTO transactions
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    ON CONFLICT (idempotency_key) DO NOTHING
-                    RETURNING id
-                    ''',
-                    params)
-                # wallet se updatuje pomocí trigger v db
-                inserted = cur.fetchone()
-
-                if not inserted:                
-                    cur.execute(
-                        '''
-                        SELECT id, request_fingerprint
-                        FROM transactions
-                        WHERE idempotency_key = %s
-                        ''', (idemp_key,))
-                    existing = cur.fetchone()
-
-                    if not existing:
-                        return jsonify(error='unexpected_error'), 500
-                    
-                    existing_fingerprint = existing['request_fingerprint']
-
-                    if existing_fingerprint != request_fingerprint:
-                        # stejný idempotency key s jinými daty
-                        return jsonify(error='idempotency_key_data_conflict'), 409
-    except RaiseException as e:
-        text = str(e)
-
-        if "insufficient balance" in text:
-            return jsonify(error='wallet_balance_czk_is_not_enough'), 400
-        else:
-            return jsonify(error='unexpected_error'), 500
+    except InsufficientBalanceError:
+        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+    except IdempotencyKeyDataConflict:
+        return jsonify(error='idempotency_key_data_conflict'), 409
+    except UnexpectedError:
+        return jsonify(error='unexpected_error'), 500
     except IntegrityError as e: #
         # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -559,24 +491,7 @@ def return_wallet():
                 
                 change_balance_by = -wallet['balance_czk']
 
-                fingerprint_cols = {
-                    'tag_id': tag_id,
-                    'wallet_id': wallet['id'],
-                    'user_id': wallet['owner_id'],
-                    'event_id': selected_event['id'],
-                    'booth_id': selected_booth['id'],
-                    'transaction_type': 'balance-change',
-                    'amount_czk': change_balance_by,
-                    'performed_by': logged_employee['id'],
-                    'products_info': '[]'
-                }
-                
-                fingerprint_source = json.dumps(
-                    {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
-                    separators=(',', ':'), sort_keys=True)
-                request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
-
-                params = {
+                transaction_params = {
                 'tag_id': tag_id,
                 'wallet_id': wallet['id'],
                 'user_id': wallet['owner_id'],
@@ -585,43 +500,11 @@ def return_wallet():
                 'transaction_type': 'balance-change',
                 'amount_czk': change_balance_by,
                 'performed_by': logged_employee['id'],
-                'idempotency_key': idemp_key,
-                'request_fingerprint': request_fingerprint
+                'products_info': [],
+                'idempotency_key': idemp_key
                 }
                 
-                cols_str = ', '.join(params.keys())
-                col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
-
-                cur.execute(
-                    f'''
-                    INSERT INTO transactions
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    ON CONFLICT (idempotency_key) DO NOTHING
-                    RETURNING id
-                    ''',
-                    params)
-                # wallet se updatuje pomocí trigger v db
-                inserted = cur.fetchone()
-
-                if not inserted:                
-                    cur.execute(
-                        '''
-                        SELECT id, request_fingerprint
-                        FROM transactions
-                        WHERE idempotency_key = %s
-                        ''', (idemp_key,))
-                    existing = cur.fetchone()
-
-                    if not existing:
-                        return jsonify(error='unexpected_error'), 500
-                    
-                    existing_fingerprint = existing['request_fingerprint']
-
-                    if existing_fingerprint != request_fingerprint:
-                        # stejný idempotency key s jinými daty
-                        return jsonify(error='idempotency_key_data_conflict'), 409 ###### add to frontend errors
-        
+                make_transaction(transaction_params, cur)
 
                 cur.execute(
                     '''
@@ -638,13 +521,12 @@ def return_wallet():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-    except RaiseException as e:
-        text = str(e)
-
-        if "insufficient balance" in text:
-            return jsonify(error='wallet_balance_czk_is_not_enough'), 400
-        else:
-            return jsonify(error='unexpected_error'), 500
+    except InsufficientBalanceError:
+        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+    except IdempotencyKeyDataConflict:
+        return jsonify(error='idempotency_key_data_conflict'), 409
+    except UnexpectedError:
+        return jsonify(error='unexpected_error'), 500
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for wallet tag id %s', tag_id)
         return jsonify(error='internal_server_error'), 500

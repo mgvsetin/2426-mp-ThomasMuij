@@ -24,6 +24,79 @@ input[type=submit] {
 }
 
 
+.btn {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer
+}
+
+.btn-primary {
+  background: #0f766e;
+  color: white;
+  box-shadow: 0 6px 18px rgba(15, 118, 110, 0.1)
+}
+
+.btn-primary:hover {
+  background: #0f7068;
+  box-shadow: 3px 3px 8px rgba(15, 118, 110, 0.3);
+}
+
+.btn-primary:active {
+  background: #0f6d66;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.06)
+}
+
+.btn-ghost:hover {
+  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.btn-delete {
+  background: #c14040;
+  color: #fff;
+  box-shadow: 0 6px 10px rgba(197, 55, 55, 0.12);
+}
+
+.btn-delete:hover {
+  box-shadow: 3px 3px 8px rgba(185, 47, 47, 0.2);
+  background-color: #bb3434;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.icon-btn.edit {
+  background: #f7fbff;
+  border-color: rgba(31, 111, 235, 0.06);
+  color: #1f6feb;
+}
+
+.icon-btn.delete {
+  background: #fff7f7;
+  border-color: rgba(239, 68, 68, 0.06);
+  color: #ef4444;
+}
+
+
 .copy-paste-message-container {
   position: fixed;
   right: 20px;
@@ -78,23 +151,6 @@ input[type=submit] {
   padding: 16px;
   max-height: 90vh;
   overflow: auto;
-}
-
-.cross-close {
-  background: transparent;
-  border: none;
-  height: 22px;
-  width: 22px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.cross-close:hover {
-  background-color: rgb(245, 245, 245);
 }
 
 .unpaste-confirmation-modal header {

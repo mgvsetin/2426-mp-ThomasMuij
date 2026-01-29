@@ -13,8 +13,11 @@
 //   }
 // }
 
+
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { cloneData } from "../general/cache.js";
-import { BoothNotSelectedError, EventNotSelectedError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
+import { cacheFunctionFactory } from "../general/cache_factory.js";
+import { BoothNotSelectedError, EventNotSelectedError, UnexpectedError } from "../general/errors.js";
 import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
@@ -23,77 +26,38 @@ const categoriesEl = document.querySelector('#categories');
 const productsSearchBar = document.querySelector('#products-search-bar');
 
 
-const cache_time_ms = 60 * 1000; // 1 minuta
-// maybe figure out cache max time so that the slow doenst have to happen
+export const [fetchProductsAndCategories, resetProductsCache] = cacheFunctionFactory(async () => {
+  const response = await fetch('/api/events/booths/products-categories');
 
-const _productsCache = {
-  data: null,
-  expiry: 0
-};
+  await handleUnauthorizedRedirect(response);
 
-let _getProductsPromise = null;
+  const resData = await response.json();
 
-export function getProductsAndCategories() { // make sure that if this changes it also changes order
-  if (_productsCache.data && _productsCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_productsCache.data));
+  if (response.status === 400 && resData.error === 'no_selected_event') {
+    throw new EventNotSelectedError();
   }
 
-  if (_getProductsPromise) return _getProductsPromise;
+  if (response.status === 400 && resData.error === 'no_selected_booth') {
+    throw new BoothNotSelectedError();
+  }
 
-  _getProductsPromise = (async () => {
-    try {
-      const response = await fetch('/api/events/booths/products-categories');
+  if (!response.ok) {
+    throw new UnexpectedError();
+  }
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        throw new UnauthorizedRedirectError(json.redirect_url);
-      }
+  const data = {
+    products: resData.products,
+    categories: resData.categories.map(category => category.name),
+  }
 
-      const resData = await response.json();
+  data.products.forEach(product => {
+    product.categories = product.categories.map(category => category.name);
+  })
 
-      if (response.status === 400 && resData.error === 'no_selected_event') {
-        throw new EventNotSelectedError();
-      }
+  order.removeItemsWithNoMatchingProduct(data.products);
 
-      if (response.status === 400 && resData.error === 'no_selected_booth') {
-        throw new BoothNotSelectedError();
-      }
-
-      if (!response.ok) {
-        throw new UnexpectedError();
-      }
-
-      const data = {
-        products: resData.products,
-        categories: resData.categories.map(category => category.name),
-      }
-
-      data.products.forEach(product => {
-        product.categories = product.categories.map(category => category.name);
-      })
-
-      _productsCache.data = data;
-      _productsCache.expiry = Date.now() + cache_time_ms;
-
-      order.removeItemsWithNoMatchingProduct(_productsCache.data.products);
-
-      return cloneData(_productsCache.data);
-
-    } finally {
-      _getProductsPromise = null;
-    }
-  })();
-
-  return _getProductsPromise;
-}
-
-
-export function resetProductsCache() {
-  _productsCache.data = null;
-  _productsCache.expiry = 0;
-  getProductsAndCategories()
-}
+  return data;
+});
 
 
 export function findProduct(products, productId) {
@@ -106,7 +70,7 @@ export function findProduct(products, productId) {
 
 
 export async function renderProducts() {
-  const result = await getProductsAndCategories().catch((error) => { // combine awaits here and everywhere else
+  const result = await fetchProductsAndCategories().catch((error) => { // combine awaits here and everywhere else
     if ([EventNotSelectedError, BoothNotSelectedError].some((c) => error instanceof c)) {
       productGridContainer.innerHTML = `
       <div id="no-products-message">
@@ -236,7 +200,7 @@ export function saveSelectedCategory(category) {
 
 
 export async function renderCategories() {
-  const result = await getProductsAndCategories().catch(() => {
+  const result = await fetchProductsAndCategories().catch(() => {
     categoriesEl.innerHTML = '';
   }); // combine awaits here and everywhere else
   if (!result) return;

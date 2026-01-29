@@ -1,11 +1,14 @@
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { cloneData } from "../general/cache.js";
-import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
+import { cacheFunctionFactory } from "../general/cache_factory.js";
+import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
+import { clearModalErrors, openModal } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { markSelectedRows } from "../general/table_utils.js";
 import { lastReadCardId, removeReadCard, renderCard } from "./cards.js";
 import { changeSelectedCode } from "./phone_number_input.js";
-import { getWallets } from "./wallets.js";
+import { fetchWallets } from "./wallets.js";
 
 
 const usersPanel = document.querySelector('#users-panel');
@@ -31,88 +34,34 @@ export let selectedUserForUpdate;
 
 const orderBy = { key: '', ascending: true };
 
-const cache_time_ms = 60 * 1000; // 1 minuta
-// maybe figure out cache max time so that the slow doenst have to happen
-
-const _usersCache = {
-  users: null,
-  expiry: 0
-};
-
-let _getUsersPromise = null;
-
 // editUserFormOnChange(); volá se v index (chooseAndLoadPage, po pickBooth)
 
 
-export function getUsers() {
-  if (_usersCache.users && _usersCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_usersCache.users));
+export const [fetchUsers, resetUsersCache] = cacheFunctionFactory(async () => {
+  const response = await fetch('/api/users');
+
+  await handleUnauthorizedRedirect(response);
+
+  const resData = await response.json();
+
+  if (response.status === 400 && resData.error === 'no_selected_event') {
+    throw new EventNotSelectedError();
   }
 
-  if (_getUsersPromise) return _getUsersPromise;
+  if (response.status === 400 && resData.error === 'no_selected_booth') {
+    throw new BoothNotSelectedError();
+  }
 
-  _getUsersPromise = (async () => {
-    try {
-      const response = await fetch('/api/users');
+  if (response.status === 400 && resData.error === 'invalid_booth_type') {
+    throw new InvalidBoothTypeError();
+  }
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        throw new UnauthorizedRedirectError(json.redirect_url);
-      }
+  if (!response.ok) {
+    throw new UnexpectedError();
+  }
 
-      const resData = await response.json();
-
-      console.log(resData);
-
-      if (response.status === 400 && resData.error === 'no_selected_event') {
-        throw new EventNotSelectedError();
-      }
-
-      if (response.status === 400 && resData.error === 'no_selected_booth') {
-        throw new BoothNotSelectedError();
-      }
-
-      if (response.status === 400 && resData.error === 'invalid_booth_type') {
-        throw new InvalidBoothTypeError();
-      }
-
-      if (!response.ok) {
-        throw new UnexpectedError();
-      }
-
-      _usersCache.users = resData.users;
-      _usersCache.expiry = Date.now() + cache_time_ms;
-
-      // {
-      //   "email": "pavel.struhař@gmail.com",
-      //   "first_name": "Pavel_Ev1",
-      //   "id": "01000000-0000-0000-0000-000000000001",
-      //   "last_name": "Struhař",
-      //   "other_identifier": null,
-      //   "phone_number": "+420123456789",
-      //   "phone_number_country_code": "+420",
-      //   "phone_number_international": "+420 123456789",
-      //   "phone_number_national": "123456789",
-      //   "phone_number_national_significant_number": "123456789"
-      // }
-
-      return cloneData(_usersCache.users);
-
-    } finally {
-      _getUsersPromise = null;
-    }
-  })();
-
-  return _getUsersPromise;
-}
-
-
-export function resetUsersCache() {
-  _usersCache.users = null;
-  _usersCache.expiry = 0;
-  getUsers();
-}
+  return resData.users;
+})
 
 
 // export function findProduct(products, productId) {
@@ -277,7 +226,7 @@ function userIsSearchedFor(user) {
 
 
 export async function renderUsers() {
-  const users = await getUsers().catch((error) => {
+  const users = await fetchUsers().catch((error) => {
     usersTableBody.innerHTML = '<tr><td colspan="7">Nepovedlo se načíst uživatele.</td></tr>';
   });
   if (!users) return;
@@ -346,7 +295,7 @@ export async function renderUsers() {
 
 export async function selectUserForUpdate(userId) {
   userId = userId.trim();
-  const users = await getUsers().catch(() => { });
+  const users = await fetchUsers().catch(() => { });
   if (!users) return;
 
   const user = users.find(user => user.id === userId);
@@ -401,7 +350,7 @@ export async function unselectUserForUpdate() {
 
 export async function editUserFormOnChange(inputEvent = null) {
   const result = await Promise.all([
-    getUsers().catch(() => { }),
+    fetchUsers().catch(() => { }),
     renderCard().catch(() => { })
   ]);
 
@@ -515,7 +464,7 @@ export async function editUserFormOnChange(inputEvent = null) {
 
 export async function openDeleteUserModal(row) {
   const id = row.id;
-  const users = await getUsers().catch(() => { });
+  const users = await fetchUsers().catch(() => { });
   if (!users) return;
 
   const user = users.find(user => user.id === id);
@@ -559,7 +508,7 @@ export async function openDeleteUserModal(row) {
 
 export async function openMoreUserOptionsModal(userId) {
   userId = userId.trim();
-  const users = await getUsers().catch(() => { });
+  const users = await fetchUsers().catch(() => { });
   if (!users) return;
   const user = users.find(user => user.id === userId);
   if (!user) return;
@@ -592,12 +541,12 @@ export async function openMoreUserOptionsModal(userId) {
 
 export async function openUserCardsModal(userId, modal = null) {
   userId = userId.trim();
-  const users = await getUsers().catch(() => { });
+  const users = await fetchUsers().catch(() => { });
   if (!users) return;
   const user = users.find(user => user.id === userId);
   if (!user) return;
 
-  const wallets = await getWallets().catch((error) => {
+  const wallets = await fetchWallets().catch((error) => {
     // maybe display some error
   });
   if (!wallets) return;
@@ -650,8 +599,8 @@ export async function openUserCardModal(userWalletLi) {
   if (!modal) return;
 
   const [wallets, users] = await Promise.all([
-    getWallets().catch(() => { }),
-    getUsers().catch(() => { })
+    fetchWallets().catch(() => { }),
+    fetchUsers().catch(() => { })
   ]);
 
   if (!wallets || !users) return;
@@ -710,7 +659,7 @@ export async function editWalletInputListeners(event) {
     const editWalletSetNewBalanceInput = document.querySelector('#edit-wallet-set-new-balance-input');
 
     if (event.target === editWalletChangeBalanceByInput) {
-      const wallets = await getWallets().catch(() => { });
+      const wallets = await fetchWallets().catch(() => { });
       if (!wallets) return;
       const wallet = wallets.find((wallet) => { return wallet.tag_id === tagId });
       if (!wallet) return;
@@ -724,7 +673,7 @@ export async function editWalletInputListeners(event) {
     }
 
     if (event.target === editWalletSetNewBalanceInput) {
-      const wallets = await getWallets().catch(() => { });
+      const wallets = await fetchWallets().catch(() => { });
       if (!wallets) return;
       const wallet = wallets.find((wallet) => { return wallet.tag_id === tagId });
       if (!wallet) return;
@@ -742,11 +691,7 @@ export async function editWalletInputListeners(event) {
 
 
 export function clearFormErrors() {
-  const errorElements = document.querySelectorAll('.form-error');
-  errorElements.forEach(el => {
-    el.innerHTML = '';
-    el.classList.remove('show-form-error');
-  });
+  clearModalErrors();
 }
 
 

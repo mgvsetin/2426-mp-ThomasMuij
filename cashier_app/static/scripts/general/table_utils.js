@@ -1,3 +1,4 @@
+import { handleUnauthorizedRedirect } from "./api_utils.js";
 import { ForbiddenError, UnauthorizedRedirectError, UnexpectedError } from "./errors.js";
 import { isPlainObject, isTypingInEditable, isUUID, mod } from "./utils.js";
 
@@ -269,11 +270,7 @@ async function pasteCopied(calledWithin) {
       body: JSON.stringify(data)
     });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      throw new UnauthorizedRedirectError(json.redirect_url);
-    }
+    await handleUnauthorizedRedirect(response);
 
     const resData = await response.json();
 
@@ -384,11 +381,7 @@ async function undoPaste() {
   try {
     const response = await fetch('/api/paste/undo', { method: 'POST' });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      throw new UnauthorizedRedirectError(json.redirect_url);
-    }
+    await handleUnauthorizedRedirect(response);
 
     const resData = await response.json();
 
@@ -411,11 +404,7 @@ async function redoPaste() {
   try {
     const response = await fetch('/api/paste/redo', { method: 'POST' });
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      throw new UnauthorizedRedirectError(json.redirect_url);
-    }
+    await handleUnauthorizedRedirect(response);
 
     const resData = await response.json();
 

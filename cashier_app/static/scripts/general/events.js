@@ -1,57 +1,76 @@
+import { handleUnauthorizedRedirect } from "./api_utils.js";
 import { cloneData } from "./cache.js";
-
-const cache_time_ms = 60 * 1000; // 1 minuta
-// maybe figure out cache max time so that the slow doenst have to happen
-
-const _eventsCache = {
-  events: null,
-  expiry: 0
-};
-
-let _getEventsPromise = null;
+import { cacheFunctionFactory } from "./cache_factory.js";
+import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnexpectedError } from "./errors.js";
 
 
-export function resetEventsCache() {
-  _eventsCache.events = null;
-  _eventsCache.expiry = 0;
-  getEvents()
-}
+export const [fetchEvents, resetEventsCache] = cacheFunctionFactory(async () => {
+  const response = await fetch('/api/events');
 
+  await handleUnauthorizedRedirect(response);
 
-export function getEvents() {
-  if (_eventsCache.events && _eventsCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_eventsCache.events));
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw UnexpectedError();
   }
 
-  if (_getEventsPromise) return _getEventsPromise;
+  return data.events;
 
-  _getEventsPromise = (async () => {
-    try {
-      const response = await fetch('/api/events');
+});
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error('unexpected_error');
-      }
-
-      _eventsCache.events = data.events;
-      _eventsCache.expiry = Date.now() + cache_time_ms;
-
-      return cloneData(data.events);
-
-    } catch (error) {
-      return 'unexpected_error';
-    } finally {
-      _getEventsPromise = null;
-    }
-  })();
-
-  return _getEventsPromise;
+export function getEventIdFromPath() {
+  // filter(Boolean) odstraňuje falsy hodnoty jako ""
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  // mělo by být ['events','<id>','manager']
+  if (parts[0] === 'events' && parts.length >= 2) {
+    return parts[1];
+  }
+  return null;
 }
+
+
+const eventId = getEventIdFromPath();
+
+
+export const [fetchEventData, resetEventDataCache] = cacheFunctionFactory(async () => {
+  if (!eventId) {
+    throw new MissingEventIdError();
+  }
+
+  const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
+
+  await handleUnauthorizedRedirect(res);
+
+  if (res.status === 403) {
+    throw new ForbiddenError();
+  }
+
+  const resData = await res.json();
+
+  if (res.status === 404 && resData.error === 'event_not_found') {
+    window.location.href = resData.redirect_url;
+    throw new EventNotFoundError();
+  }
+
+  if (!res.ok) {
+    throw new UnexpectedError();
+  }
+
+  const data = {
+    event: resData.event,
+    booths: resData.booths,
+    employees: resData.employees,
+    products: resData.products,
+    categories: resData.categories,
+    users: resData.users,
+    wallets: resData.wallets
+  };
+
+  data.employees.forEach((emp) => {
+    emp.isManager = !emp.booths.length;
+  });
+
+  return data;
+});

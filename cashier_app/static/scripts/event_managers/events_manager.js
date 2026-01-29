@@ -1,7 +1,9 @@
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { formatDateTimeISOToDisplay, isValidDate } from "../general/date_utils.js";
-import { getEvents, resetEventsCache } from "../general/events.js";
+import { fetchEvents, resetEventsCache } from "../general/events.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
+import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
@@ -118,9 +120,8 @@ document.addEventListener('click', (event) => {
   }
 
   // zrušit vytváření akce
-  if (event.target.closest('#add-event-cancel') || event.target.closest('#add-event-modal-close')) {
-    const overlay = document.querySelector('#add-event-overlay');
-    if (overlay) overlay.remove();
+  if (event.target.closest('.close-modal')) {
+    closeModal();
     return;
   }
 
@@ -152,7 +153,7 @@ document.addEventListener('submit', async (event) => {
     const saveButton = addForm.querySelector('#add-event-save');
     saveButton.disabled = true;
 
-    clearAddEventErrors();
+    clearModalErrors();
 
     const formData = new FormData(addForm);
 
@@ -191,11 +192,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -217,8 +214,7 @@ document.addEventListener('submit', async (event) => {
         return;
       }
 
-      const overlay = document.querySelector('#add-event-overlay');
-      if (overlay) overlay.remove();
+      closeModal();
 
       resetEventsCache();
       loadPage({
@@ -370,7 +366,7 @@ function renderRowsFromList(list, tbody) {
 
 
 async function renderTableRows() {
-  const events = await getEvents().catch(() => {
+  const events = await fetchEvents().catch(() => {
     const errHTML = `<tr><td class="error-message" colspan="6">Nepovedlo se načíst akce.</td></tr>`;
     activeBody.innerHTML = errHTML;
     futureBody.innerHTML = errHTML;
@@ -431,70 +427,48 @@ async function renderTableRows() {
 
 
 function openAddEventOverlay() {
-  if (document.querySelector('#add-event-overlay')) {
-    const el = document.querySelector('#add-event-name');
-    if (el) el.focus();
-    return;
-  }
+  const html = `
+    <header>
+      <h2>Přidat akci</h2>
+    </header>
 
-  const overlayHTML = `
-    <div id="add-event-overlay" class="overlay">
-      <div id="add-event-modal" class="modal">
-        <header id="add-event-modal-header">
-          <h2 id="add-event-overlay-title">Přidat akci</h2>
-          <button id="add-event-modal-close" type="button" aria-label="Zavřít">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-
-        <form id="add-event-form">
-          <div class="form-row">
-            <label for="add-event-name">Název akce</label>
-            <input id="add-event-name" name="name" type="text" placeholder="Název akce" required />
-            <div id="name-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-event-start-at">Začátek</label>
-            <input id="add-event-start-at" name="start-at" type="datetime-local" />
-            <div id="start-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <label for="add-event-end-at">Konec</label>
-            <input id="add-event-end-at" name="end-at" type="datetime-local" />
-            <div id="end-add-error" class="add-error"></div>
-          </div>
-
-          <div class="form-row">
-            <div id="general-add-event-error" class="add-error"></div>
-          </div>
-
-          <div id="add-event-form-actions">
-            <button type="button" id="add-event-cancel">Zrušit</button>
-            <button type="submit" id="add-event-save">Vytvořit</button>
-          </div>
-        </form>
+    <form id="add-event-form">
+      <div class="form-row">
+        <label for="add-event-name">Název akce</label>
+        <input id="add-event-name" name="name" type="text" placeholder="Název akce" required />
+        <div id="name-add-error" class="form-error"></div>
       </div>
-    </div>
+
+      <div class="form-row">
+        <label for="add-event-start-at">Začátek</label>
+        <input id="add-event-start-at" name="start-at" type="datetime-local" />
+        <div id="start-add-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="add-event-end-at">Konec</label>
+        <input id="add-event-end-at" name="end-at" type="datetime-local" />
+        <div id="end-add-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <div id="general-add-event-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" id="add-event-save" class="btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
   `;
 
-  document.body.insertAdjacentHTML('beforeend', overlayHTML);
+  openModal(html);
 
   const focusEl = document.querySelector('#add-event-name');
   if (focusEl) focusEl.focus();
 }
 
 
-function clearAddEventErrors() {
-  const els = document.querySelectorAll('#add-event-form .add-error, #add-event-form .general-add-error');
-  els.forEach(e => {
-    e.innerHTML = '';
-    e.classList.remove('show-add-error');
-  });
-}
 
 
 function showAddEventErrors(error, detail) {
@@ -506,7 +480,7 @@ function showAddEventErrors(error, detail) {
   const setErr = (el, text) => {
     if (!el) return;
     el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-add-error');
+    el.classList.add('show-form-error');
   };
 
   if (!error) {

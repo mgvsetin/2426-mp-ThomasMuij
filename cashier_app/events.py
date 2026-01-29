@@ -16,6 +16,7 @@ from cashier_app.utils.products import validate_product_or_category_name, valida
 from cashier_app.utils.employees_users import is_manager, format_valid_phone_number, add_more_phone_number_info
 from cashier_app.utils.products import convert_image_paths_from_relative
 from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
 
 bp = Blueprint('events', __name__, url_prefix='/events')
 
@@ -349,18 +350,12 @@ def add_event():
     #     if start_at_utc > end_at_utc:
     #         return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    sql, query_params = build_insert_statement('events', params)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    INSERT INTO events
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})''',
-                    params)
+                cur.execute(sql, query_params)
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_events_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -377,7 +372,7 @@ def edit_event():
 
     try:
         event_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
     if not event_id:
@@ -431,22 +426,14 @@ def edit_event():
         if start_at_utc > end_at_utc:
             return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-    params['id'] = event_id
+    sql, query_params = build_update_statement('events', params, event_id)
     # validate start_at end_at from db?
 
     # add editing event info from other tables
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    UPDATE events
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                cur.execute(sql, query_params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -476,7 +463,7 @@ def delete_event():
 
     try:
         event_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
     if not event_id:
@@ -551,7 +538,7 @@ def add_booth():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -587,14 +574,14 @@ def add_booth():
     try:
         for product_id in request.form.getlist('products'):
             product_ids.append(UUID(product_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_product_id'), 400
 
     category_ids = []
     try:
         for category_id in request.form.getlist('categories'):
             category_ids.append(UUID(category_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_category_id'), 400
 
     if booth_type == 'cashier' and (product_ids or category_ids):
@@ -626,19 +613,12 @@ def add_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    sql, query_params = build_insert_statement('booths', params, returning='id')
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                booth_id = cur.execute(
-                    f'''
-                    INSERT INTO booths
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    RETURNING id''',
-                    params).fetchone()['id']
+                booth_id = cur.execute(sql, query_params).fetchone()['id']
                 
 
                 if product_ids:
@@ -681,7 +661,7 @@ def edit_booth():
     
     try:
         booth_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not booth_id:
@@ -722,14 +702,14 @@ def edit_booth():
     try:
         for product_id in request.form.getlist('products'):
             product_ids.append(UUID(product_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_product_id'), 400
 
     category_ids = []
     try:
         for category_id in request.form.getlist('categories'):
             category_ids.append(UUID(category_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_category_id'), 400
 
     if booth_type == 'cashier' and (product_ids or category_ids):
@@ -761,20 +741,12 @@ def edit_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-    params['id'] = booth_id
+    sql, query_params = build_update_statement('booths', params, booth_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    UPDATE booths
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                cur.execute(sql, query_params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -842,7 +814,7 @@ def delete_booth():
     
     try:
         booth_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not booth_id:
@@ -960,7 +932,7 @@ def assign_manager():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -1029,7 +1001,7 @@ def assign_employee():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -1044,7 +1016,7 @@ def assign_employee():
     try:
         for booth_id in request.form.getlist('booths'):
             booth_ids.append(UUID(booth_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
     
     with get_pool().connection() as conn:
@@ -1141,7 +1113,7 @@ def unassign_employee_or_manager():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -1152,7 +1124,7 @@ def unassign_employee_or_manager():
     
     try:
         id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
     if not id:
@@ -1183,7 +1155,7 @@ def add_product():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -1196,13 +1168,13 @@ def add_product():
     try:
         for booth_id in request.form.getlist('booths'):
             booth_ids.append(UUID(booth_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
     category_ids = []
     try:
         for category_id in request.form.getlist('categories'):
             category_ids.append(UUID(category_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_category_id'), 400
 
     
@@ -1307,29 +1279,12 @@ def add_product():
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 if image_file:
-                    product_images_cols_str = ', '.join(product_images_params.keys())
-                    product_images_col_values_placeholders = ', '.join([f'%({col})s' for col in product_images_params.keys()])
-
-                    image_id = cur.execute(
-                        f'''
-                        INSERT INTO product_images
-                        ({product_images_cols_str})
-                        VALUES ({product_images_col_values_placeholders})
-                        RETURNING id''',
-                        product_images_params).fetchone()['id']
-                    
+                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning='id')
+                    image_id = cur.execute(img_sql, img_query_params).fetchone()['id']
                     params['image_id'] = image_id
 
-                cols_str = ', '.join(params.keys())
-                col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
-
-                product_id = cur.execute(
-                    f'''
-                    INSERT INTO products
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    RETURNING id''',
-                    params).fetchone()['id']
+                sql, query_params = build_insert_statement('products', params, returning='id')
+                product_id = cur.execute(sql, query_params).fetchone()['id']
                 
                 if booth_ids:
                     rows = [(product_id, booth_id) for booth_id in booth_ids]
@@ -1381,7 +1336,7 @@ def edit_product():
 
     # try:
     #     event_id = UUID(request.form.get('event-id'))
-    # except ValueError:
+    # except (ValueError, TypeError):
     #     return jsonify(error='invalid_event_id'), 400
 
     # if not event_id:
@@ -1389,7 +1344,7 @@ def edit_product():
 
     try:
         product_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not product_id:
@@ -1422,13 +1377,13 @@ def edit_product():
     try:
         for booth_id in request.form.getlist('booths'):
             booth_ids.append(UUID(booth_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
     category_ids = []
     try:
         for category_id in request.form.getlist('categories'):
             category_ids.append(UUID(category_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_category_id'), 400
 
     
@@ -1517,34 +1472,16 @@ def edit_product():
 
     created_image_path = product_images_params.get('image_path')
 
-    params['id'] = product_id
-
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 if image_file:
-                    product_images_cols_str = ', '.join(product_images_params.keys())
-                    product_images_col_values_placeholders = ', '.join([f'%({col})s' for col in product_images_params.keys()])
-
-                    image_id = cur.execute(
-                        f'''
-                        INSERT INTO product_images
-                        ({product_images_cols_str})
-                        VALUES ({product_images_col_values_placeholders})
-                        RETURNING id''',
-                        product_images_params).fetchone()['id']
-
+                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning='id')
+                    image_id = cur.execute(img_sql, img_query_params).fetchone()['id']
                     params['image_id'] = image_id
 
-                col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-                cur.execute(
-                    f'''
-                    UPDATE products
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                sql, query_params = build_update_statement('products', params, product_id)
+                cur.execute(sql, query_params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -1627,7 +1564,7 @@ def delete_product():
 
     try:
         product_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not product_id:
@@ -1703,7 +1640,7 @@ def add_category():
 
     try:
         event_id = UUID(request.form.get('event-id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
     if not event_id:
@@ -1714,14 +1651,14 @@ def add_category():
     try:
         for booth_id in request.form.getlist('booths'):
             booth_ids.append(UUID(booth_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
     
     product_ids = []
     try:
         for product_id in request.form.getlist('products'):
             product_ids.append(UUID(product_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_product_id'), 400
     
     with get_pool().connection() as conn:
@@ -1781,19 +1718,12 @@ def add_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    cols_str = ', '.join(params.keys())
-    col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
+    sql, query_params = build_insert_statement('categories', params, returning='id')
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                category_id = cur.execute(
-                    f'''
-                    INSERT INTO categories
-                    ({cols_str})
-                    VALUES ({col_values_placeholders})
-                    RETURNING id''',
-                    params).fetchone()['id']
+                category_id = cur.execute(sql, query_params).fetchone()['id']
                 
                 if booth_ids:
                     rows = [(category_id, booth_id) for booth_id in booth_ids]
@@ -1836,7 +1766,7 @@ def edit_category():
 
     try:
         category_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not category_id:
@@ -1845,11 +1775,11 @@ def edit_category():
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             category = cur.execute(
-                f'''
+                '''
                 SELECT event_id
                 FROM categories
                 WHERE id = %s
-                WHERE deleted_at IS NULL''',
+                AND deleted_at IS NULL''',
                 (category_id,)).fetchone()
 
     if not category:
@@ -1866,14 +1796,14 @@ def edit_category():
     try:
         for booth_id in request.form.getlist('booths'):
             booth_ids.append(UUID(booth_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
     
     product_ids = []
     try:
         for product_id in request.form.getlist('products'):
             product_ids.append(UUID(product_id))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_product_id'), 400
     
     with get_pool().connection() as conn:
@@ -1928,20 +1858,12 @@ def edit_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-    params['id'] = category_id
+    sql, query_params = build_update_statement('categories', params, category_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    UPDATE categories
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                cur.execute(sql, query_params)
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -2006,7 +1928,7 @@ def delete_category():
 
     try:
         cateogry_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
     if not cateogry_id:

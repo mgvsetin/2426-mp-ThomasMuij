@@ -4,9 +4,13 @@ import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } from "../general/date_utils.js";
 import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 import { cloneData } from "../general/cache.js";
-import { getEmployees } from "../general/employees.js";
+import { fetchEmployees } from "../general/employees.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
 import { changeSelectedCode, initValues, phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners, renderDropdown } from "../index/phone_number_input.js";
+import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
+import { cacheFunctionFactory } from "../general/cache_factory.js";
+import { fetchEventData as getEventDataOriginal, getEventIdFromPath, resetEventDataCache } from "../general/events.js";
+import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 
 
 const card = document.querySelector('#card');
@@ -40,14 +44,34 @@ const orderBy = {
   wallets: { key: '', ascending: true }
 };
 
-let _getEventDataPromise = null;
-const cache_time_ms = 60 * 1000; // 1 minuta
 const eventId = getEventIdFromPath();
-// cache of fetched data
-const _eventDataCache = {
-  data: null,
-  expiry: 0
-};
+
+
+async function getEventData() {
+  try {
+    return await getEventDataOriginal();
+  } catch (err) {
+    let errorMessage = '';
+    if (err instanceof MissingEventIdError) {
+      errorMessage = 'Nelze určit ID akce z URL.';
+    } else if (err instanceof UnauthorizedRedirectError) {
+      errorMessage = 'Nejste admin nebo manažer akce.';
+    } else {
+      errorMessage = 'Nepovedlo se načíst akci';
+    }
+    const loadErrorMessage = card.querySelector('#load-error-message');
+    if (loadErrorMessage) loadErrorMessage.remove();
+    card.insertAdjacentHTML('afterbegin', `
+      <div id="load-error-message" class="panel">
+        ${escapeHTML(errorMessage)}
+      </div>`);
+
+    resetEventDataCache();
+    console.log(resetEventDataCache);
+    throw new err;
+  }
+}
+
 
 
 loadPage({
@@ -283,11 +307,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -349,11 +369,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -413,11 +429,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -469,11 +481,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -530,11 +538,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -596,11 +600,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -653,11 +653,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -709,11 +705,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -766,11 +758,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -828,11 +816,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -895,11 +879,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -958,11 +938,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1014,11 +990,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1075,11 +1047,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1141,11 +1109,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1201,11 +1165,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1262,11 +1222,7 @@ document.addEventListener('submit', async (event) => {
         body: formData
       });
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        return;
-      }
+      await handleUnauthorizedRedirect(response);
 
       const data = await response.json();
 
@@ -1418,105 +1374,6 @@ async function loadPage({
   if (walletsTable) toLoad.push(renderWallets(eventData));
   if (statistics) toLoad.push(loadStatistics());
   await Promise.all(toLoad);
-}
-
-
-function getEventIdFromPath() {
-  // filter(Boolean) odstraňuje falsy hodnoty jako ""
-  const parts = window.location.pathname.split('/').filter(Boolean);
-  // mělo by být ['events','<id>','manager']
-  if (parts[0] === 'events' && parts.length >= 2) {
-    return parts[1];
-  }
-  return null;
-}
-
-
-function resetEventDataCache() {
-  _eventDataCache.data = null;
-  _eventDataCache.expiry = 0;
-  getEventData();
-}
-
-function getEventData() {
-  if (_eventDataCache.data && _eventDataCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_eventDataCache.data));
-  }
-
-  if (_getEventDataPromise) return _getEventDataPromise;
-
-  _getEventDataPromise = (async () => {
-    try {
-      if (!eventId) {
-        throw new MissingEventIdError();
-      }
-
-      const res = await fetch(`/api/events/${encodeURIComponent(eventId)}`);
-
-      if (res.status === 401) {
-        const json = await res.json();
-        window.location.href = json.redirect_url;
-        throw new UnauthorizedRedirectError(json.redirect_url);
-      }
-
-      if (res.status === 403) {
-        throw new ForbiddenError();
-      }
-
-      const resData = await res.json();
-
-      if (res.status === 404 && resData.error === 'event_not_found') {
-        window.location.href = resData.redirect_url;
-        throw new EventNotFoundError();
-      }
-
-      if (!res.ok) {
-        throw new UnexpectedError();
-      }
-
-      const data = {
-        event: resData.event,
-        booths: resData.booths,
-        employees: resData.employees,
-        products: resData.products,
-        categories: resData.categories,
-        users: resData.users,
-        wallets: resData.wallets
-      };
-
-      data.employees.forEach((emp) => {
-        emp.isManager = !emp.booths.length;
-      });
-
-      _eventDataCache.data = data;
-      _eventDataCache.expiry = Date.now() + cache_time_ms;
-
-      return cloneData(_eventDataCache.data);
-
-    } catch (err) {
-      let errorMessage = '';
-      if (err instanceof MissingEventIdError) {
-        errorMessage = 'Nelze určit ID akce z URL.';
-      } else if (err instanceof UnauthorizedRedirectError) {
-        errorMessage = 'Nejste admin nebo manažer akce.';
-      } else {
-        errorMessage = 'Nepovedlo se načíst akci';
-      }
-      const loadErrorMessage = card.querySelector('#load-error-message');
-      if (loadErrorMessage) loadErrorMessage.remove();
-      card.insertAdjacentHTML('afterbegin', `
-      <div id="load-error-message" class="panel">
-        ${escapeHTML(errorMessage)}
-      </div>`);
-
-      resetEventDataCache();
-      throw new err;
-    } finally {
-      _getEventDataPromise = null;
-    }
-  })();
-
-  return _getEventDataPromise;
 }
 
 
@@ -1886,12 +1743,12 @@ function walletIsSearchedFor(wallet, searchQuery) {
 
 
 function belongingBoothsToDisplay(booths) {
-  return booths.map(booth => `<span data-direct-to="${booth.id}">${escapeHTML(booth.name)}</span>`).join(', ') || '-';
+  return booths.map(booth => `<span data-direct-to="${booth.id}">${escapeHTML(booth.name)}</span>`).join('<br>') || '-';
 }
 
 
 function belongingCategoriesToDisplay(categories) {
-  return categories.map(category => `<span data-direct-to="${category.id}">${escapeHTML(category.name)}</span>`).join(', ') || '-';
+  return categories.map(category => `<span data-direct-to="${category.id}">${escapeHTML(category.name)}</span>`).join('<br>') || '-';
 }
 
 
@@ -2290,23 +2147,6 @@ function makeProductsPicker(products, checkProducts = []) {
 }
 
 
-function openModal(html) {
-  if (document.querySelector('.overlay')) return; // max 1
-  const overlay = document.createElement('div');
-  overlay.className = 'overlay';
-  overlay.innerHTML = `<div class="modal">${html}</div>`;
-  document.body.appendChild(overlay);
-  document.body.classList.add('no-scroll');
-  return overlay;
-}
-
-function closeModal() {
-  const overlay = document.querySelector('.overlay');
-  if (overlay) overlay.remove();
-  document.body.classList.remove('no-scroll');
-}
-
-
 async function openRowModal(row, type) {
   const parentTable = row.closest('table');
   const id = row.id;
@@ -2366,44 +2206,40 @@ async function openEditEventModal() {
   const event = eventData.event;
   if (!event) return;
   const html = `
-        <header>
-          <h2>Upravit akci</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="edit-event-form">
-          <div class="form-row">
-            <label for="event-name-input">Název</label>
-            <input id="event-name-input" name="name" type="text" value="${escapeHTML(event.name || '')}"/>
-            <div id="edit-event-name-error" class="form-error"></div>
-          </div>
+    <header>
+      <h2>Upravit akci</h2>
+    </header>
 
-          <div class="form-row">
-            <label for="event-start-input">Začátek</label>
-            <input id="event-start-input" name="start-at" type="datetime-local" value="${event.start_at ? formatForDatetimeLocalInput(event.start_at) : ''}"/>
-            <div id="edit-event-start-at-error" class="form-error"></div>
-          </div>
+    <form id="edit-event-form">
+      <div class="form-row">
+        <label for="event-name-input">Název</label>
+        <input id="event-name-input" name="name" type="text" value="${escapeHTML(event.name || '')}"/>
+        <div id="edit-event-name-error" class="form-error"></div>
+      </div>
 
-          <div class="form-row">
-            <label for="event-end-input">Konec</label>
-            <input id="event-end-input" name="end-at" type="datetime-local" value="${event.end_at ? formatForDatetimeLocalInput(event.end_at) : ''}"/>
-            <div id="edit-event-end-at-error" class="form-error"></div>
-          </div>
+      <div class="form-row">
+        <label for="event-start-input">Začátek</label>
+        <input id="event-start-input" name="start-at" type="datetime-local" value="${event.start_at ? formatForDatetimeLocalInput(event.start_at) : ''}"/>
+        <div id="edit-event-start-at-error" class="form-error"></div>
+      </div>
 
-          <div class="form-row">
-            <div id="edit-event-general-error" class="form-error"></div>
-          </div>
+      <div class="form-row">
+        <label for="event-end-input">Konec</label>
+        <input id="event-end-input" name="end-at" type="datetime-local" value="${event.end_at ? formatForDatetimeLocalInput(event.end_at) : ''}"/>
+        <div id="edit-event-end-at-error" class="form-error"></div>
+      </div>
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="event">Smazat</button>
-            <button type="submit" class="save-form btn btn-primary">Uložit</button>
-          </div>
-        </form>
-      `;
+      <div class="form-row">
+        <div id="edit-event-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="event">Smazat</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
+  `;
 
   openModal(html);
 }
@@ -2415,29 +2251,25 @@ async function openDeleteEventModal() {
   const event = eventData.event;
   if (!event) return;
   const html = `
-        <header>
-          <h2 class="delete-form-text">Smazat akci</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="delete-event-form">
-          <div class="form-row">
-            <div>Opravdu chcete smazat akci?</div>
-          </div>
+    <header>
+      <h2 class="delete-form-text">Smazat akci</h2>
+    </header>
 
-          <div class="form-row">
-            <div id="delete-event-general-error" class="form-error"></div>
-          </div>
+    <form id="delete-event-form">
+      <div class="form-row">
+        <div>Opravdu chcete smazat akci?</div>
+      </div>
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="submit" class="save-form btn btn-delete">Smazat</button>
-          </div>
-        </form>
-      `;
+      <div class="form-row">
+        <div id="delete-event-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-delete">Smazat</button>
+      </div>
+    </form>
+  `;
 
   openModal(html);
 }
@@ -2453,47 +2285,46 @@ async function openAddBoothModal() {
   const categoriesPickerStr = makeCategoriesPicker(categories, []);
 
   const html = `
-        <header>
-          <h2>Přidat stánek</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="add-booth-form">
-          <div class="form-row">
-            <label for="booth-name-input">Název</label>
-            <input id="booth-name-input" name="name" type="text"/>
-            <div id="add-booth-name-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            <label for="booth-type-input">Typ</label>
-            <select id="booth-type-input" name="type">
-              <option value="seller">${boothTypeToDisplay('seller')}</option>
-              <option value="cashier">${boothTypeToDisplay('cashier')}</option>
-            </select>
-            <div id="add-booth-type-error" class="form-error"></div>
-          </div>
-          <div class="form-row" id="booth-products-row">
-            ${productsPickerStr}
-            <div id="add-booth-products-error" class="form-error"></div>
-          </div>
-          <div class="form-row" id="booth-categories-row">
-            ${categoriesPickerStr}
-            <div id="add-booth-categories-error" class="form-error"></div>
-          </div>
-          
-          <div class="form-row">
-            <div id="add-booth-general-error" class="form-error"></div>
-          </div>
+    <header>
+      <h2>Přidat stánek</h2>
+    </header>
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
-          </div>
-        </form>
-      `;
+    <form id="add-booth-form">
+      <div class="form-row">
+        <label for="booth-name-input">Název</label>
+        <input id="booth-name-input" name="name" type="text"/>
+        <div id="add-booth-name-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="booth-type-input">Typ</label>
+        <select id="booth-type-input" name="type">
+          <option value="seller">${boothTypeToDisplay('seller')}</option>
+          <option value="cashier">${boothTypeToDisplay('cashier')}</option>
+        </select>
+        <div id="add-booth-type-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row" id="booth-products-row">
+        ${productsPickerStr}
+        <div id="add-booth-products-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row" id="booth-categories-row">
+        ${categoriesPickerStr}
+        <div id="add-booth-categories-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        <div id="add-booth-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 
 
@@ -2532,28 +2363,27 @@ async function openEditBoothModal(boothId) {
   const html = `
     <header>
       <h2>Upravit stánek</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
     <form id="edit-booth-form">
       <input type="hidden" name="id" value="${boothId}"/>
+      
       <div class="form-row">
         <label for="booth-name-input">Název</label>
         <input id="booth-name-input" name="name" type="text" value="${escapeHTML(booth.name)}"/>
         <div id="edit-booth-name-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <label for="booth-type-display">Typ</label>
         <input id="booth-type-display" type="text" value="${escapeHTML(boothTypeToDisplay(booth.booth_type))}" disabled/>
         <div class="muted" style="font-size: 12px; margin-top: -2px;">Typ stánku nelze změnit po vytvoření</div>
       </div>
+      
       <div class="form-row" id="booth-products-row">
         ${productsPickerStr}
         <div id="edit-booth-products-error" class="form-error"></div>
       </div>
+      
       <div class="form-row" id="booth-categories-row">
         ${categoriesPickerStr}
         <div id="edit-booth-categories-error" class="form-error"></div>
@@ -2590,12 +2420,8 @@ async function openDeleteBoothModal(boothId) {
   const html = `
     <header>
       <h2 class="delete-form-text">Smazat stánek</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="delete-booth-form">
       <input type="hidden" name="id" value="${boothId}"/>
       <div class="form-row">
@@ -2619,7 +2445,7 @@ async function openDeleteBoothModal(boothId) {
 async function openAssignEmployeeModal(assignManager) {
   const [eventData, allEmployees] = await Promise.all([
     getEventData().catch(() => { }),
-    getEmployees().catch(() => { })
+    fetchEmployees().catch(() => { })
   ]);
   if (!eventData || !allEmployees) return;
 
@@ -2628,41 +2454,39 @@ async function openAssignEmployeeModal(assignManager) {
   const boothsPickerStr = assignManager ? '' : makeBoothsPicker(booths);
 
   const html = `
-        <header>
-          <h2>${assignManager ? 'Přiřadit manažera' : 'Přiřadit zaměstnance'}</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="assign-employee-form">
-          <input type="hidden" name="is-manager" value="${assignManager}"/>
-          <div class="form-row">
-            <label for="emp-username-or-email-input">Uživatelské jméno nebo email</label>
-            <input id="emp-username-or-email-input" name="username-or-email" type="text" list="employee-options" placeholder="Uživatelské jméno nebo email"/>
-            <datalist id="employee-options">
-              ${allEmployees.map(employee => `<option value="${employee.username}"></option><option value="${employee.email}"></option>`).join('')}
-            </datalist>
-            <div id="assign-employee-username-or-email-error" class="form-error"></div>
-          </div>
-          ${assignManager ? '' : `
-          <div class="form-row">
-            ${boothsPickerStr}
-            <div id="assign-employee-booths-error" class="form-error"></div>
-          </div>
-          `}
+    <header>
+      <h2>${assignManager ? 'Přiřadit manažera' : 'Přiřadit zaměstnance'}</h2>
+    </header>
 
-          <div class="form-row">
-            <div id="assign-employee-general-error" class="form-error"></div>
-          </div>
+    <form id="assign-employee-form">
+      <input type="hidden" name="is-manager" value="${assignManager}"/>
+      
+      <div class="form-row">
+        <label for="emp-username-or-email-input">Uživatelské jméno nebo email</label>
+        <input id="emp-username-or-email-input" name="username-or-email" type="text" list="employee-options" placeholder="Uživatelské jméno nebo email"/>
+        <datalist id="employee-options">
+          ${allEmployees.map(employee => `<option value="${employee.username}"></option><option value="${employee.email}"></option>`).join('')}
+        </datalist>
+        <div id="assign-employee-username-or-email-error" class="form-error"></div>
+      </div>
+      
+      ${assignManager ? '' : `
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="assign-employee-booths-error" class="form-error"></div>
+      </div>
+      `}
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="submit" class="save-form btn btn-primary">Přiřadit</button>
-          </div>
-        </form>
-      `;
+      <div class="form-row">
+        <div id="assign-employee-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Přiřadit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -2675,36 +2499,32 @@ async function openEditEmployeeModal(employeeId) {
   const boothsPickerStr = makeBoothsPicker(eventData.booths, emp.booths);
 
   const html = `
-          <header>
-            <h2>Upravit zaměstnance</h2>
-            <button class="close-modal cross-close">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-          </header>
-          <form id="edit-employee-form">
-            <input type="hidden" name="username-or-email" value="${escapeHTML(emp.username)}"/>
-            <div class="form-row">
-              <label for="emp-username-input">Uživatel</label>
-              <input id="emp-username-input" type="text" value="${escapeHTML(emp.username)}" disabled/>
-            </div>
-            <div class="form-row">
-              ${boothsPickerStr}
-              <div id="edit-employee-booths-error" class="form-error"></div>
-            </div>
+    <header>
+      <h2>Upravit zaměstnance</h2>
+    </header>
+    
+    <form id="edit-employee-form">
+      <input type="hidden" name="username-or-email" value="${escapeHTML(emp.username)}"/>
+      <div class="form-row">
+        <label for="emp-username-input">Uživatel</label>
+        <input id="emp-username-input" type="text" value="${escapeHTML(emp.username)}" disabled/>
+      </div>
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="edit-employee-booths-error" class="form-error"></div>
+      </div>
 
-            <div class="form-row">
-              <div id="edit-employee-general-error" class="form-error"></div>
-            </div>
+      <div class="form-row">
+        <div id="edit-employee-general-error" class="form-error"></div>
+      </div>
 
-            <div class="modal-actions">
-              <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="employee" data-target-id="${emp.id}">Odebrat</button>
-              <button type="submit" class="save-form btn btn-primary">Uložit</button>
-            </div>
-          </form>
-        `;
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="employee" data-target-id="${emp.id}">Odebrat</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -2718,12 +2538,8 @@ async function openRemoveEmployeeModal(employeeId) {
   const html = `
     <header>
       <h2 class="delete-form-text">Odebrat ${emp.isManager ? 'manažera' : 'zaměstnance'}</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+
     <form id="remove-employee-form">
       <input type="hidden" name="id" value="${employeeId}"/>
       <div class="form-row">
@@ -2753,53 +2569,53 @@ async function openAddProductModal() {
   const categoriesPickerStr = makeCategoriesPicker(categories, []);
 
   const html = `
-        <header>
-          <h2>Přidat produkt</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="add-product-form">
-          <div class="form-row">
-            <label for="product-name-input">Název</label>
-            <input id="product-name-input" name="name" type="text"/>
-            <div id="add-product-name-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            <label for="product-price-input">Cena (Kč)</label>
-            <input id="product-price-input" name="price" type="number" step="1"/>
-            <div id="add-product-price-error" class="form-error"></div>
-          </div>
-          <div class="form-row image-form-row">
-            <label for="product-image-input" class="image-upload-label">Obrázek</label>
-            <input
-              id="product-image-input"
-              type="file"
-              name="image"
-              accept="image/jpeg,image/png,image/webp"/>
-            <div id="add-product-image-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            ${boothsPickerStr}
-            <div id="add-product-booths-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            ${categoriesPickerStr}
-            <div id="add-product-categories-error" class="form-error"></div>
-          </div>
+    <header>
+      <h2>Přidat produkt</h2>
+    </header>
 
-          <div class="form-row">
-            <div id="add-product-general-error" class="form-error"></div>
-          </div>
+    <form id="add-product-form">
+      <div class="form-row">
+        <label for="product-name-input">Název</label>
+        <input id="product-name-input" name="name" type="text"/>
+        <div id="add-product-name-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        <label for="product-price-input">Cena (Kč)</label>
+        <input id="product-price-input" name="price" type="number" step="1"/>
+        <div id="add-product-price-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row image-form-row">
+        <label for="product-image-input" class="image-upload-label">Obrázek</label>
+        <input
+          id="product-image-input"
+          type="file"
+          name="image"
+          accept="image/jpeg,image/png,image/webp"/>
+        <div id="add-product-image-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="add-product-booths-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${categoriesPickerStr}
+        <div id="add-product-categories-error" class="form-error"></div>
+      </div>
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
-          </div>
-        </form>
-      `;
+      <div class="form-row">
+        <div id="add-product-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -2824,64 +2640,66 @@ async function openEditProductModal(productId) {
   }
 
   const html = `
-          <header>
-            <h2>Upravit produkt</h2>
-            <button class="close-modal cross-close">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-          </header>
-          <form id="edit-product-form">
-            <input type="hidden" name="id" value="${productId}"/>
-            <div class="form-row">
-              <label for="product-name-input">Název</label>
-              <input id="product-name-input" name="name" type="text" value="${escapeHTML(product.name)}"/>
-              <div id="edit-product-name-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              <label for="product-price-input">Cena (Kč)</label>
-              <input id="product-price-input" name="price" type="number" step="1" value="${escapeHTML(String(product.price))}"/>
-              <div id="edit-product-price-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              <label for="product-image-input" class="image-upload-label">Změnit obrázek</label>
-              <input
-                id="product-image-input"
-                type="file"
-                name="image"
-                accept="image/jpeg,image/png,image/webp"/>
-              <div id="edit-product-image-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              <label class="remove-product-image-label">
-                <input id="remove-product-image-input" type="checkbox" name="remove-curent-image"/>
-                Odstranit aktuální obrázek
-              </label>
-              <div>
-                ${imageHTML}
-              </div>
-            </div>
-            <div class="form-row">
-              ${boothsPickerStr}
-              <div id="edit-product-booths-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              ${categoriesPickerStr}
-              <div id="edit-product-categories-error" class="form-error"></div>
-            </div>
+    <header>
+      <h2>Upravit produkt</h2>
+    </header>
 
-            <div class="form-row">
-              <div id="edit-product-general-error" class="form-error"></div>
-            </div>
+    <form id="edit-product-form">
+      <input type="hidden" name="id" value="${productId}"/>
 
-            <div class="modal-actions">
-              <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="product" data-target-id="${product.id}">Smazat</button>
-              <button type="submit" class="save-form btn btn-primary">Uložit</button>
-            </div>
-          </form>
-        `;
+      <div class="form-row">
+        <label for="product-name-input">Název</label>
+        <input id="product-name-input" name="name" type="text" value="${escapeHTML(product.name)}"/>
+        <div id="edit-product-name-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="product-price-input">Cena (Kč)</label>
+        <input id="product-price-input" name="price" type="number" step="1" value="${escapeHTML(String(product.price))}"/>
+        <div id="edit-product-price-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label for="product-image-input" class="image-upload-label">Změnit obrázek</label>
+        <input
+          id="product-image-input"
+          type="file"
+          name="image"
+          accept="image/jpeg,image/png,image/webp"/>
+        <div id="edit-product-image-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <label class="remove-product-image-label">
+          <input id="remove-product-image-input" type="checkbox" name="remove-curent-image"/>
+          Odstranit aktuální obrázek
+        </label>
+        <div>
+          ${imageHTML}
+        </div>
+      </div>
+
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="edit-product-booths-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${categoriesPickerStr}
+        <div id="edit-product-categories-error" class="form-error"></div>
+      </div>
+
+      <div class="form-row">
+        <div id="edit-product-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="product" data-target-id="${product.id}">Smazat</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -2895,12 +2713,8 @@ async function openDeleteProductModal(productId) {
   const html = `
     <header>
       <h2 class="delete-form-text">Smazat produkt</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="delete-product-form">
       <input type="hidden" name="id" value="${productId}"/>
       <div class="form-row">
@@ -2930,39 +2744,37 @@ async function openAddCategoryModal() {
   const productsPickerStr = makeProductsPicker(products);
 
   const html = `
-        <header>
-          <h2>Přidat kategorii</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <form id="add-category-form">
-          <div class="form-row">
-            <label for="category-name-input">Název</label>
-            <input id="category-name-input" name="name" type="text"/>
-            <div id="add-category-name-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            ${boothsPickerStr}
-            <div id="add-category-booths-error" class="form-error"></div>
-          </div>
-          <div class="form-row">
-            ${productsPickerStr}
-            <div id="add-category-products-error" class="form-error"></div>
-          </div>
+    <header>
+      <h2>Přidat kategorii</h2>
+    </header>
+    
+    <form id="add-category-form">
+      <div class="form-row">
+        <label for="category-name-input">Název</label>
+        <input id="category-name-input" name="name" type="text"/>
+        <div id="add-category-name-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="add-category-booths-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${productsPickerStr}
+        <div id="add-category-products-error" class="form-error"></div>
+      </div>
 
-          <div class="form-row">
-            <div id="add-category-general-error" class="form-error"></div>
-          </div>
+      <div class="form-row">
+        <div id="add-category-general-error" class="form-error"></div>
+      </div>
 
-          <div class="modal-actions">
-            <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-            <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
-          </div>
-        </form>
-      `;
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="submit" class="save-form btn btn-primary">Vytvořit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -2982,41 +2794,40 @@ async function openEditCategoryModal(categoryId) {
   const productsPickerStr = makeProductsPicker(eventData.products, categoryProducts);
 
   const html = `
-          <header>
-            <h2>Upravit kategorii</h2>
-            <button class="close-modal cross-close">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-          </header>
-          <form id="edit-category-form">
-            <input type="hidden" name="id" value="${categoryId}"/>
-            <div class="form-row">
-              <label for="category-name-input">Název</label>
-              <input id="category-name-input" name="name" type="text" value="${escapeHTML(category.name)}"/>
-              <div id="edit-category-name-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              ${boothsPickerStr}
-              <div id="edit-category-booths-error" class="form-error"></div>
-            </div>
-            <div class="form-row">
-              ${productsPickerStr}
-              <div id="edit-category-products-error" class="form-error"></div>
-            </div>
+    <header>
+      <h2>Upravit kategorii</h2>
+    </header>
+    
+    <form id="edit-category-form">
+      <input type="hidden" name="id" value="${categoryId}"/>
+      
+      <div class="form-row">
+        <label for="category-name-input">Název</label>
+        <input id="category-name-input" name="name" type="text" value="${escapeHTML(category.name)}"/>
+        <div id="edit-category-name-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${boothsPickerStr}
+        <div id="edit-category-booths-error" class="form-error"></div>
+      </div>
+      
+      <div class="form-row">
+        ${productsPickerStr}
+        <div id="edit-category-products-error" class="form-error"></div>
+      </div>
 
-            <div class="form-row">
-              <div id="edit-category-general-error" class="form-error"></div>
-            </div>
+      <div class="form-row">
+        <div id="edit-category-general-error" class="form-error"></div>
+      </div>
 
-            <div class="modal-actions">
-              <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-              <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="category" data-target-id="${category.id}">Smazat</button>
-              <button type="submit" class="save-form btn btn-primary">Uložit</button>
-            </div>
-          </form>
-        `;
+      <div class="modal-actions">
+        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-delete open-delete-modal" data-modal-to-open="category" data-target-id="${category.id}">Smazat</button>
+        <button type="submit" class="save-form btn btn-primary">Uložit</button>
+      </div>
+    </form>
+  `;
   openModal(html);
 }
 
@@ -3030,12 +2841,8 @@ async function openDeleteCategoryModal(categoryId) {
   const html = `
     <header>
       <h2 class="delete-form-text">Smazat kategorii</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="delete-category-form">
       <input type="hidden" name="id" value="${categoryId}"/>
       <div class="form-row">
@@ -3060,23 +2867,21 @@ async function openAddUserModal() {
   const html = `
     <header>
       <h2>Přidat uživatele</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="add-user-form" autocomplete="off">
       <div class="form-row">
         <label for="user-first-name-input">Jméno</label>
         <input id="user-first-name-input" name="first-name" type="text"/>
         <div id="add-user-first-name-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <label for="user-last-name-input">Příjmení</label>
         <input id="user-last-name-input" name="last-name" type="text"/>
         <div id="add-user-last-name-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <label for="user-email-input">Email</label>
         <input id="user-email-input" name="email" type="email"/>
@@ -3100,7 +2905,7 @@ async function openAddUserModal() {
           </div>
           <input id="user-phone-input" class="user-phone-input" name="phone-number" type="tel" />
         </div>
-        <div id="phone-number-error" class="form-error"></div>
+        <div id="add-user-phone-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
@@ -3137,24 +2942,23 @@ async function openEditUserModal(userId) {
   const html = `
     <header>
       <h2>Upravit uživatele</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="edit-user-form" autocomplete="off">
       <input type="hidden" name="user-id" value="${userId}"/>
+      
       <div class="form-row">
         <label for="user-first-name-input">Jméno</label>
         <input id="user-first-name-input" name="first-name" type="text" value="${escapeHTML(user.first_name)}"/>
         <div id="edit-user-first-name-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <label for="user-last-name-input">Příjmení</label>
         <input id="user-last-name-input" name="last-name" type="text" value="${escapeHTML(user.last_name)}"/>
         <div id="edit-user-last-name-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <label for="user-email-input">Email</label>
         <input id="user-email-input" name="email" type="email" value="${escapeHTML(user.email || '')}"/>
@@ -3178,7 +2982,7 @@ async function openEditUserModal(userId) {
           </div>
           <input id="user-phone-input" class="user-phone-input" name="phone-number" type="tel" value="${escapeHTML(user.phone_number_national_significant_number || '')}"/>
         </div>
-        <div id="phone-number-error" class="form-error"></div>
+        <div id="edit-user-phone-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
@@ -3186,6 +2990,7 @@ async function openEditUserModal(userId) {
         <input id="user-other-identifier-input" name="other-identifier" type="text" value="${escapeHTML(user.other_identifier || '')}"/>
         <div id="edit-user-other-identifier-error" class="form-error"></div>
       </div>
+      
       <div class="form-row">
         <div class="muted">Vyplňte alespoň jeden z: email, telefon, jiný identifikátor</div>
       </div>
@@ -3217,14 +3022,10 @@ async function openDeleteUserModal(userId) {
   const html = `
     <header>
       <h2 class="delete-form-text">Smazat uživatele</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
+    
     <form id="delete-user-form">
-      <input type="hidden" name="id" value="${userId}"/>
+      <input type="hidden" name="user-id" value="${userId}"/>
       <div class="form-row">
         <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
       </div>
@@ -3244,14 +3045,6 @@ async function openDeleteUserModal(userId) {
 
 
 // ERROR HANDLING FUNCTIONS
-
-function clearModalErrors() {
-  const els = document.querySelectorAll('.form-error');
-  els.forEach(e => {
-    e.innerHTML = '';
-    e.classList.remove('show-form-error');
-  });
-}
 
 
 function showEditEventErrors(error, detail) {
@@ -4416,11 +4209,7 @@ async function loadStatistics() {
   try {
     const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/statistics`);
 
-    if (response.status === 401) {
-      const json = await response.json();
-      window.location.href = json.redirect_url;
-      return;
-    }
+    await handleUnauthorizedRedirect(response);
 
     if (!response.ok) {
       console.error('Failed to load statistics');

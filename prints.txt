@@ -4,7 +4,7 @@ with open('prints.txt', 'a', encoding='utf-8') as f:
     pprint('here', stream=f)
 
 
-ImmutableMultiDict([('username-email', 'development_admin1'), ('password', 'development')])
-<class 'NoneType'>
-ImmutableMultiDict([('username-email', 'development_admin1'), ('password', 'development'), ('remember-me', 'on')])
-<class 'str'>
+ImmutableMultiDict([])
+ImmutableMultiDict([])
+ImmutableMultiDict([('id', '10000000-0000-0000-0000-000000000017')])
+ImmutableMultiDict([('id', '10000000-0000-0000-0000-000000000018')])

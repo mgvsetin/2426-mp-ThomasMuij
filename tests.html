@@ -6,65 +6,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Compact No / Yes Toggle</title>
   <style>
-    .my-table {
-      width: 100%;
-      table-layout: auto;
-    }
-
-    /* Important: ensure the td can shrink/overflow children if needed */
-    td {
-      min-width: 0;
-    }
-
-    /* allow contents to be smaller than intrinsic sizes */
-
-    /* The wrapper must fill the cell so @container measures cell width */
     
-
-    .td-container {
-      display: flow-root;
-      /* establishes a new block formatting context */
-      inline-size: 100%;
-      min-width: 0;
-    }
-
-    /* content gets a soft cap */
-    .content {
-      inline-size: 100%;
-      /* fill wrapper by default */
-      max-inline-size: 400px;
-      /* soft max when the cell is narrow */
-      overflow-wrap: anywhere;
-      box-sizing: border-box;
-    }
-
-    /* when the wrapper (i.e. the cell) is wider than 400px, remove the cap */
-    @container (min-width: 401px) {
-      .content {
-        max-inline-size: none;
-      }
-    }
   </style>
 </head>
 
 <body>
 
-  <table class="my-table" style="width:100%;">
-    <tr>
-      <td>
-        <div class="td-container">
-          <div class="content">
-            Very long text that should be capped when narrow but fill the cell when there's extra room.
-          </div>
-        </div>
-      </td>
-      <td>Other column</td>
-    </tr>
-  </table>
-
 
   <script>
+    const myMap = new Map()
 
+    myMap.set('key1', 'val1');
+    myMap.set('key2', 'val1');
+    myMap.set('key3', 'val1');
+
+    console.log(myMap)
+
+    for (const key of myMap.keys()) {
+      console.log(key)
+      console.log(myMap.get(key))
+    }
+
+    console.log(myMap);
   </script>
 
 </body>

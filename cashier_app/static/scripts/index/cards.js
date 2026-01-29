@@ -1,9 +1,9 @@
 import { UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { order } from "./order.js";
-import { getProductsAndCategories } from "./products.js";
+import { fetchProductsAndCategories } from "./products.js";
 import { editUserFormOnChange } from "./users.js";
-import { getWalletByTag, getWallets } from "./wallets.js";
+import { getWalletByTag, fetchWallets } from "./wallets.js";
 
 const tagIdDisplay = document.querySelector('#tag-id');
 const balanceDisplay = document.querySelector('#balance');
@@ -167,11 +167,11 @@ async function handleCardRead(cardId) {
 
 export async function renderCard(wallet = null) {
   if (!wallet) {
-    const wallets = await getWallets().catch(() => { });
+    const wallets = await fetchWallets().catch(() => { });
     wallet = wallets ? getWalletByTag(wallets, lastReadCardId) : null;
   }
 
-  const result = await getProductsAndCategories().catch(() => { });
+  const result = await fetchProductsAndCategories().catch(() => { });
   let orderPrice;
   if (result) {
     orderPrice = order.getTotalPrice(result.products);

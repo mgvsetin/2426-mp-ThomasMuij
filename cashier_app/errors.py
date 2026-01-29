@@ -21,3 +21,12 @@ class NoPasteToRedoError(Exception):
 
 class CanNotDeleteLastAdminError(Exception):
     pass
+
+class InsufficientBalanceError(Exception):
+    pass
+
+class IdempotencyKeyDataConflict(Exception):
+    pass
+
+class UnexpectedError(Exception):
+    pass

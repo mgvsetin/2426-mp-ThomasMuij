@@ -7,6 +7,7 @@ from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_password
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, CanNotDeleteLastAdminError
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
@@ -95,17 +96,22 @@ def add_employee():
         return jsonify(error=errors[0]), 400
     
     password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
-    password_hash = password_hasher.hash(password_raw)        
+    password_hash = password_hasher.hash(password_raw)
+
+    params = {
+        'username': username,
+        'email': email,
+        'password_hash': password_hash,
+        'is_admin': is_admin,
+        'created_by': logged_employee['id']
+    }
+
+    sql, query_params = build_insert_statement('employees', params)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    INSERT INTO employees
-                    (username, email, password_hash, is_admin, created_by)
-                    VALUES (%s, %s, %s, %s, %s)''',
-                    (username, email, password_hash, is_admin, logged_employee['id']))                    
+                cur.execute(sql, query_params)                    
 
     except IntegrityError as e:
         # username už existuje: detail obsahuje unique_index_employees_username_active
@@ -124,7 +130,7 @@ def edit_employee():
 
     try:
         edit_employee_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
     if not edit_employee_id:
@@ -171,9 +177,7 @@ def edit_employee():
 
         params['password_hash'] = new_password_hash
 
-    col_updates_str = ', '.join([f'{k} = %({k})s' for k in params.keys()])
-
-    params['id'] = edit_employee_id
+    sql, query_params = build_update_statement('employees', params, edit_employee_id)
 
     try:
         with get_pool().connection() as conn:
@@ -186,13 +190,8 @@ def edit_employee():
                 #         ''',
                 #         (edit_employee_id,))
 
-                cur.execute(
-                    f'''
-                    UPDATE employees
-                    SET {col_updates_str}
-                    WHERE id = %(id)s
-                    AND deleted_at IS NULL''',
-                    params)
+                cur.execute(sql, query_params)
+
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
@@ -231,10 +230,13 @@ def delete_employee():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+    
+    with open('prints.txt', 'a', encoding='utf-8') as f:
+        print(request.form, file=f)
 
     try:
         delete_employee_id = UUID(request.form.get('id'))
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
     if not delete_employee_id:

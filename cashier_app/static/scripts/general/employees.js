@@ -1,66 +1,27 @@
-import { cloneData } from "./cache.js";
-import { ForbiddenError, UnauthorizedRedirectError, UnexpectedError } from "./errors.js";
-
-const cache_time_ms = 60 * 1000; // 1 minuta
-// maybe figure out cache max time so that the slow doenst have to happen
-
-const _employeesCache = {
-  employees: null,
-  expiry: 0,
-  refetchTime: 0
-};
-
-let _getEmployeesPromise = null;
+import { handleUnauthorizedRedirect } from "./api_utils.js";
+import { cacheFunctionFactory } from "./cache_factory.js";
+import { ForbiddenError, UnexpectedError } from "./errors.js";
 
 
-export function resetEmployeesCache() {
-  _employeesCache.employees = null;
-  _employeesCache.expiry = 0;
-  getEmployees();
-}
+export const [fetchEmployees, resetEmployeesCache] = cacheFunctionFactory(async () => {
+  const response = await fetch('/api/employees');
 
+  await handleUnauthorizedRedirect(response);
 
-export function getEmployees() {
-  if (_employeesCache.employees && _employeesCache.expiry > Date.now()) {
-    return Promise.resolve(cloneData(_employeesCache.employees));
+  const data = await response.json();
+
+  if (response.status === 403 && data.error === 'admin_or_manager_required') {
+    throw new ForbiddenError();
   }
 
-  if (_getEmployeesPromise) return _getEmployeesPromise;
+  if (data.error === 'no_data_to_copy') {
+    // display
+    return;
+  }
 
-  _getEmployeesPromise = (async () => {
-    try {
-      const response = await fetch('/api/employees');
+  if (!response.ok) {
+    throw new UnexpectedError();
+  }
 
-      if (response.status === 401) {
-        const json = await response.json();
-        window.location.href = json.redirect_url;
-        throw new UnauthorizedRedirectError(json.redirect_url);
-      }
-
-      const data = await response.json();
-
-      if (response.status === 403 && data.error === 'admin_or_manager_required') {
-        throw new ForbiddenError();
-      }
-
-      if (data.error === 'no_data_to_copy') {
-        // display
-        return;
-      }
-
-      if (!response.ok) {
-        throw new UnexpectedError();
-      }
-
-      _employeesCache.employees = data.employees;
-      _employeesCache.expiry = Date.now() + cache_time_ms;
-
-      return cloneData(data.employees);
-
-    } finally {
-      _getEmployeesPromise = null;
-    }
-  })();
-
-  return _getEmployeesPromise;
-}
+  return data.employees;
+});

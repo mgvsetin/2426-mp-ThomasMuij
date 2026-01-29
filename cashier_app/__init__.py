@@ -92,7 +92,7 @@ def create_app(test_config=None):
     # @app.before_request
     # def simulate_slow_connection():
     #     import time
-    #     time.sleep(1)
+    #     time.sleep(2)
 
 
 
