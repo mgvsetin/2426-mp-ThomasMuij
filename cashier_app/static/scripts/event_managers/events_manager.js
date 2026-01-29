@@ -8,7 +8,7 @@ import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
-const searchBar = document.querySelector('#search-bar');
+const searchBar = document.querySelector('.search-bar');
 const addEventButton = document.querySelector('#add-event-button');
 
 const card = document.querySelector('#card');
@@ -125,7 +125,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  if (event.target.matches('#search-bar')) {
+  if (event.target.matches('.search-bar')) {
     return;
   }
   // kliknutí na "nic" odvybere řádek

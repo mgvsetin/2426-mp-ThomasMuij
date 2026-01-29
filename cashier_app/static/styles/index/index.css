@@ -2,6 +2,13 @@ body {
   padding-top: 60px;
 }
 
+.search-div {
+  background-color: white;
+  margin: 5px 5px 4px 10px;
+  padding: 13px 20px;
+  border-radius: 5px;
+}
+
 #page-container[show="seller"] #seller-page {
   display: flex;
 }
@@ -22,50 +29,6 @@ body {
   flex-direction: column;
 }
 
-.search-div {
-  background-color: white;
-  margin: 5px 5px 4px 10px;
-  padding: 13px 20px;
-  border-radius: 5px;
-}
-
-.search-bar-container {
-  /* margin: 10px 20px; */
-  position: relative;
-  flex: 0;
-  max-width: 700px;
-  display: flex;
-  min-width: 91px;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-}
-
-.search-bar {
-  flex: 1;
-  min-width: 0;
-  outline: none;
-  border: 1px solid rgb(205, 205, 205);
-  border-radius: 100px;
-  padding: 8px 35px 8px 9px;
-}
-
-.search-icon-container {
-  position: absolute;
-  right: 8px;
-  top: auto;
-  width: 24px;
-  height: 24px;
-  background-color: rgba(0, 0, 0, 0);
-  border: none;
-  outline: none;
-  padding: 0;
-  border-radius: 20px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 #user-inputs-search-table-toggle {
   width: 24px;
@@ -100,13 +63,6 @@ body {
 #search-button:active {
   background-color: rgba(0, 0, 0, 0.15);
 } */
-
-.search-icon {
-  width: 18px;
-  height: 18px;
-  object-fit: cover;
-  display: block;
-}
 
 #categories {
   display: none;

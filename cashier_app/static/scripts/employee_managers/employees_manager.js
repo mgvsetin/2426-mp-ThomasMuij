@@ -9,7 +9,7 @@ import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRow
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableHeader = document.querySelector('table thead');
-const searchBar = document.querySelector('#search-bar');
+const searchBar = document.querySelector('.search-bar');
 const orderBy = { key: '', ascending: true };
 
 resetEmployeesCache();
@@ -180,7 +180,7 @@ document.addEventListener('click', (event) => {
   // maybe add arrows moving the selected attr
   // ??
 
-  if (event.target.matches('#search-bar')) {
+  if (event.target.matches('.search-bar')) {
     return;
   }
 
@@ -312,7 +312,7 @@ document.addEventListener('submit', async (event) => {
 
 
 searchBar.addEventListener('input', (event) => {
-  // if (event.target.matches('#search-bar')) {
+  // if (event.target.matches('.search-bar')) {
   loadPage({
     table: true
   })
