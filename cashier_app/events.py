@@ -16,7 +16,7 @@ from cashier_app.utils.products import validate_product_or_category_name, valida
 from cashier_app.utils.employees_users import is_manager, format_valid_phone_number, add_more_phone_number_info
 from cashier_app.utils.products import convert_image_paths_from_relative
 from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
-from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 
 bp = Blueprint('events', __name__, url_prefix='/events')
 
@@ -471,17 +471,13 @@ def delete_event():
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
+    
+    sql, query_params = build_delete_statement('events', event_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE events
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (event_id,))
+                cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
 
@@ -838,16 +834,12 @@ def delete_booth():
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
+    sql, query_params = build_delete_statement('booths', booth_id)
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE booths
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (booth_id,))
+                cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -1588,16 +1580,13 @@ def delete_product():
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
+    sql, query_params = build_delete_statement('products', product_id)
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE products
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (product_id,))
+                cur.execute(sql, query_params)
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -1864,6 +1853,7 @@ def edit_category():
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, query_params)
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
@@ -1952,16 +1942,13 @@ def delete_category():
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
+    sql, query_params = build_delete_statement('categories', cateogry_id)
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE categories
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (cateogry_id,))
+                cur.execute(sql, query_params)
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()

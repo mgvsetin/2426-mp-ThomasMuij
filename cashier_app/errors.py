@@ -30,3 +30,6 @@ class IdempotencyKeyDataConflict(Exception):
 
 class UnexpectedError(Exception):
     pass
+
+class PgTryAdvisoryLockError(Exception):
+    pass

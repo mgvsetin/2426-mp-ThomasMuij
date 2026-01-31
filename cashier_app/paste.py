@@ -6,9 +6,10 @@ from dataclasses import dataclass, field, asdict, fields
 from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 import uuid
+import hashlib
 from collections.abc import Mapping, Iterable
 from datetime import datetime
-from psycopg import IntegrityError
+from psycopg import IntegrityError, Cursor
 from psycopg.errors import ForeignKeyViolation
 from psycopg.types.json import Jsonb
 from werkzeug.utils import secure_filename
@@ -20,7 +21,7 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.utils.products import convert_image_paths_from_relative
-from cashier_app.errors import ForbiddenError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError, NoPasteToUndoError, NoPasteToRedoError
+from cashier_app.errors import ForbiddenError, PgTryAdvisoryLockError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError, NoPasteToUndoError, NoPasteToRedoError
 
 
 
@@ -29,6 +30,16 @@ def change_keys_make_values_UUID(from_dict: dict[str, list[str]], old_to_new_key
     for old_key, new_key in old_to_new_keys_dict.items():
         new_dict[new_key] = [UUID(id) for id in from_dict[old_key]]
     return new_dict
+
+
+
+def get_employee_paste_lock_key(employee_id: UUID) -> int:
+    """Convert employee UUID to a consistent bigint for advisory lock."""
+    namespace = 1001  # předejdi bránění jiným operacím než pasting
+    hash_bytes = hashlib.md5(str(employee_id).encode()).digest()
+    # vezmi prvních 8 bytes jako signed 64-bit int
+    key = int.from_bytes(hash_bytes[:8], 'big', signed=True)
+    return key
 
 
 def make_unique_name(original_name: str, other_names_lower: set[str]) -> str:
@@ -95,6 +106,26 @@ def convert_uuids_to_str(obj: Any) -> Any:
     if isinstance(obj, tuple):
         return tuple(convert_uuids_to_str(v) for v in obj)
     return obj
+
+
+def bulk_insert_rows(cur: Cursor, table_name: str, rows: list[dict]):
+    if not rows:
+        return
+    cols = list(rows[0].keys())
+    placeholders_per_row = '(' + ', '.join('%s' for _ in cols) + ')'
+    placeholders = ', '.join(placeholders_per_row for _ in rows)
+    params = []
+    for r in rows:
+        for c in cols:
+            params.append(r.get(c))
+    cur.execute(
+        f"""
+        INSERT INTO {table_name} ({', '.join(cols)})
+        VALUES {placeholders}
+        ON CONFLICT DO NOTHING
+        """,
+        params
+    )
 
 
 # def convert_str_to_uuids(obj: Any) -> Any:
@@ -253,55 +284,62 @@ class CopyPasteRow:
         }
 
 
-def save_copy_paste(row: CopyPasteRow):
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                '''
-                INSERT INTO copy_paste_history
-                    (performed_by,
+def save_copy_paste(cur: Cursor, row: CopyPasteRow, logged_employee_id):
+    cur.execute(
+        '''
+        DELETE FROM copy_paste_history p
+        USING undo_copy_paste u
+        WHERE u.copy_paste_history_id = p.id
+        AND p.performed_by = %s;''',
+        (logged_employee_id,))
+    # cascade smaže i undo_copy_paste
 
-                    targets_were_new_employees,
-                    targets_were_new_events,
+    cur.execute(
+        '''
+        INSERT INTO copy_paste_history
+            (performed_by,
 
-                    target_event_ids,
-                    target_booth_ids,
+            targets_were_new_employees,
+            targets_were_new_events,
 
-                    data_to_copy,
+            target_event_ids,
+            target_booth_ids,
 
-                    event_ids,
-                    booth_ids,
-                    product_ids,
-                    category_ids,
-                    employee_ids,
+            data_to_copy,
 
-                    employee_event_booth_roles_rows,
-                    product_booth_link_rows,
-                    category_booth_link_rows,
-                    category_product_link_rows)
-                VALUES (
-                    %(performed_by)s,
+            event_ids,
+            booth_ids,
+            product_ids,
+            category_ids,
+            employee_ids,
 
-                    %(targets_were_new_employees)s,
-                    %(targets_were_new_events)s,
+            employee_event_booth_roles_rows,
+            product_booth_link_rows,
+            category_booth_link_rows,
+            category_product_link_rows)
+        VALUES (
+            %(performed_by)s,
 
-                    %(target_event_ids)s,
-                    %(target_booth_ids)s,
+            %(targets_were_new_employees)s,
+            %(targets_were_new_events)s,
 
-                    %(data_to_copy)s,
+            %(target_event_ids)s,
+            %(target_booth_ids)s,
 
-                    %(event_ids)s,
-                    %(booth_ids)s,
-                    %(product_ids)s,
-                    %(category_ids)s,
-                    %(employee_ids)s,
+            %(data_to_copy)s,
 
-                    %(employee_event_booth_roles_rows)s,
-                    %(product_booth_link_rows)s,
-                    %(category_booth_link_rows)s,
-                    %(category_product_link_rows)s)
-                ''',
-                row.to_params())
+            %(event_ids)s,
+            %(booth_ids)s,
+            %(product_ids)s,
+            %(category_ids)s,
+            %(employee_ids)s,
+
+            %(employee_event_booth_roles_rows)s,
+            %(product_booth_link_rows)s,
+            %(category_booth_link_rows)s,
+            %(category_product_link_rows)s)
+        ''',
+        row.to_params())
 
 
 def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_new_events, logged_employee):
@@ -321,7 +359,15 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
         
         try:
             with get_pool().connection() as conn:
-                with conn.cursor() as cur:                
+                with conn.cursor() as cur:
+                    locked = cur.execute(
+                        "SELECT pg_try_advisory_xact_lock(%s) AS locked",
+                        (get_employee_paste_lock_key(logged_employee['id']),)
+                    ).fetchone()['locked']
+
+                    if not locked:
+                        raise PgTryAdvisoryLockError()
+
                     copied_employees = cur.execute(
                         '''
                         SELECT id, username, email, password_hash, is_admin
@@ -410,10 +456,12 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             ''',
                             params)
                         
-                    save_copy_paste(copy_paste_row)
+                    save_copy_paste(cur, copy_paste_row, logged_employee['id'])
 
         except NoValidEmployeesToCopyError:
             return jsonify(error='no_valid_employees_to_copy'), 400
+        except PgTryAdvisoryLockError:
+            return jsonify(error='paste_operation_in_progress'), 409
 
         return jsonify(), 200
 
@@ -424,6 +472,14 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                locked = cur.execute(
+                    "SELECT pg_try_advisory_xact_lock(%s) AS locked",
+                    (get_employee_paste_lock_key(logged_employee['id']),)
+                ).fetchone()['locked']
+
+                if not locked:
+                    raise PgTryAdvisoryLockError()
+
                 if logged_employee['is_admin']:
                     accessible_events_ids_for_logged_employee = cur.execute(
                     '''
@@ -1529,12 +1585,14 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             params)
 
 
-                save_copy_paste(copy_paste_row)
+                save_copy_paste(cur, copy_paste_row, logged_employee['id'])
 
     except ForbiddenError:
         return jsonify(error='insufficient_privileges'), 403
     except CanNotMakeNewEventIfNotCopyingEventError:
         return jsonify(error='can_not_make_new_event_if_not_copying_event'), 400
+    except PgTryAdvisoryLockError:
+        return jsonify(error='paste_operation_in_progress'), 409
 
     return jsonify(), 200
 
@@ -1661,6 +1719,14 @@ def undo_paste():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                locked = cur.execute(
+                    "SELECT pg_try_advisory_xact_lock(%s) AS locked",
+                    (get_employee_paste_lock_key(logged_employee['id']),)
+                ).fetchone()['locked']
+
+                if not locked:
+                    raise PgTryAdvisoryLockError()
+
                 last_valid_paste = cur.execute(
                     '''
                     SELECT paste.*
@@ -1713,16 +1779,20 @@ def undo_paste():
                 if last_valid_paste.product_ids:
                     cur.execute(
                         '''
-                        DELETE FROM products
+                        UPDATE products
+                        SET deleted_at = now()
                         WHERE id = ANY(%s)
+                        AND deleted_at IS NULL
                         ''',
                         (last_valid_paste.product_ids,))
                     
                 if last_valid_paste.category_ids:
                     cur.execute(
                         '''
-                        DELETE FROM categories
+                        UPDATE categories
+                        SET deleted_at = now()
                         WHERE id = ANY(%s)
+                        AND deleted_at IS NULL
                         ''',
                         (last_valid_paste.category_ids,))
                     
@@ -1803,6 +1873,8 @@ def undo_paste():
 
     except NoPasteToUndoError:
         return jsonify(message='no_paste_to_undo'), 200
+    except PgTryAdvisoryLockError:
+        return jsonify(error='paste_operation_in_progress'), 409
 
     return jsonify(), 200
 
@@ -1817,13 +1889,20 @@ def redo_paste():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                locked = cur.execute(
+                    "SELECT pg_try_advisory_xact_lock(%s) AS locked",
+                    (get_employee_paste_lock_key(logged_employee['id']),)
+                ).fetchone()['locked']
+
+                if not locked:
+                    raise PgTryAdvisoryLockError()
+
                 last_valid_undo_paste_dict = cur.execute(
                     '''
                     SELECT paste.*, undo.id AS undo_id
                     FROM undo_copy_paste AS undo
                     JOIN copy_paste_history AS paste ON paste.id = undo.copy_paste_history_id
                     WHERE paste.performed_by = %s
-                    AND undo.was_redone IS FALSE
                     ORDER BY undo.occurred_at DESC
                     LIMIT 1
                     ''',
@@ -1836,25 +1915,78 @@ def redo_paste():
                 
                 last_valid_undo_paste = CopyPasteRow(**last_valid_undo_paste_dict)
 
-                target_ids = {
-                    'event_ids': last_valid_undo_paste.target_event_ids,
-                    'booth_ids': last_valid_undo_paste.target_booth_ids
-                }
+                if last_valid_undo_paste.employee_ids:
+                    cur.execute(
+                        '''
+                        UPDATE employees
+                        SET deleted_at = NULL
+                        WHERE id = ANY(%s)
+                        ''',
+                        (last_valid_undo_paste.employee_ids,)
+                    )
+
+                if last_valid_undo_paste.event_ids:
+                    cur.execute(
+                        '''
+                        UPDATE events
+                        SET deleted_at = NULL
+                        WHERE id = ANY(%s)
+                        ''',
+                        (last_valid_undo_paste.event_ids,)
+                    )
+
+                if last_valid_undo_paste.booth_ids:
+                    cur.execute(
+                        '''
+                        UPDATE booths
+                        SET deleted_at = NULL
+                        WHERE id = ANY(%s)
+                        ''',
+                        (last_valid_undo_paste.booth_ids,)
+                    )
+
+                if last_valid_undo_paste.product_ids:
+                    cur.execute(
+                        '''
+                        UPDATE products
+                        SET deleted_at = NULL
+                        WHERE id = ANY(%s)
+                        ''',
+                        (last_valid_undo_paste.product_ids,)
+                    )
+
+                if last_valid_undo_paste.category_ids:
+                    cur.execute(
+                        '''
+                        UPDATE categories
+                        SET deleted_at = NULL
+                        WHERE id = ANY(%s)
+                        ''',
+                        (last_valid_undo_paste.category_ids,)
+                    )
+
+                if last_valid_undo_paste.product_booth_link_rows:
+                    bulk_insert_rows(cur, 'product_booth_link', last_valid_undo_paste.product_booth_link_rows)
+
+                if last_valid_undo_paste.category_booth_link_rows:
+                    bulk_insert_rows(cur, 'category_booth_link', last_valid_undo_paste.category_booth_link_rows)
+
+                if last_valid_undo_paste.category_product_link_rows:
+                    bulk_insert_rows(cur, 'category_product_link', last_valid_undo_paste.category_product_link_rows)
+
+                if last_valid_undo_paste.employee_event_booth_roles_rows:
+                    bulk_insert_rows(cur, 'employee_event_booth_roles', last_valid_undo_paste.employee_event_booth_roles_rows)
 
                 cur.execute(
                     '''
-                    UPDATE undo_copy_paste
-                    SET was_redone = TRUE
+                    DELETE FROM undo_copy_paste
                     WHERE id = %s
                     ''',
                     (undo_id,))
 
-                return do_paste(
-                    last_valid_undo_paste.data_to_copy,
-                    target_ids,
-                    last_valid_undo_paste.targets_were_new_employees,
-                    last_valid_undo_paste.targets_were_new_events,
-                    logged_employee)
-
     except NoPasteToRedoError:
         return jsonify(message='no_paste_to_redo'), 200
+    except PgTryAdvisoryLockError:
+        return jsonify(error='paste_operation_in_progress'), 409
+
+    return jsonify(), 200

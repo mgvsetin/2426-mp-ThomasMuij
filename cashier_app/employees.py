@@ -7,7 +7,7 @@ from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_password
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, CanNotDeleteLastAdminError
-from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
@@ -245,16 +245,12 @@ def delete_employee():
     if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
         return jsonify(error='insufficient_privileges'), 403
 
+    sql, query_params = build_delete_statement('employees', delete_employee_id)
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE employees
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (delete_employee_id,))
+                cur.execute(sql, query_params)
                 
                 rows_affected = cur.rowcount
 

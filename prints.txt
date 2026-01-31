@@ -4,7 +4,5 @@ with open('prints.txt', 'a', encoding='utf-8') as f:
     pprint('here', stream=f)
 
 
-ImmutableMultiDict([])
-ImmutableMultiDict([])
-ImmutableMultiDict([('id', '10000000-0000-0000-0000-000000000017')])
-ImmutableMultiDict([('id', '10000000-0000-0000-0000-000000000018')])
+here
+{'pg_try_advisory_xact_lock': True}

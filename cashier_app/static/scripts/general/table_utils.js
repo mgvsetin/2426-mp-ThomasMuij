@@ -280,6 +280,10 @@ async function pasteCopied(calledWithin) {
       throw new ForbiddenError();
     }
 
+    if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
+      makeCopyPasteMessage('Chvíli počkejte.');
+    }
+
     if (!response.ok) {
       throw new UnexpectedError();
     }
@@ -390,6 +394,10 @@ async function undoPaste() {
       return;
     }
 
+    if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
+      makeCopyPasteMessage('Chvíli počkejte.');
+    }
+
     if (!response.ok) {
       throw new UnexpectedError();
     }
@@ -412,6 +420,10 @@ async function redoPaste() {
 
     if (response.status === 403 && resData.error === 'insufficient_privileges') {
       throw new ForbiddenError();
+    }
+
+    if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
+      makeCopyPasteMessage('Chvíli počkejte.');
     }
 
     if (!response.ok) {
@@ -465,7 +477,10 @@ async function handleCopyPasteOnKeydownFunc(event, calledWithin) {
 }
 
 export async function handleCopyPasteOnKeydown(event, calledWithin) {
-  if (currentlyPasting) return 'currentlyPasting';
+  if (currentlyPasting) {
+    makeCopyPasteMessage('Chvíli počkejte here.');
+    return 'currentlyPasting'
+  }
   currentlyPasting = true;
   const result = await handleCopyPasteOnKeydownFunc(event, calledWithin);
   currentlyPasting = false;

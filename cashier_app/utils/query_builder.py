@@ -28,7 +28,7 @@ def build_insert_statement(table, params, returning=None):
     return sql, params
 
 
-def build_update_statement(table, params, target_id, include_deleted_at_is_null = True):
+def build_update_statement(table, params, target_id, include_deleted_at_is_null=True):
     '''Warning: Table a columns v params nesmí přijít od uživatele a musí být pouze z bezpečného kódu'''
     if not params:
         raise ValueError("no columns to update")
@@ -43,5 +43,21 @@ def build_update_statement(table, params, target_id, include_deleted_at_is_null 
     WHERE id = %(id)s
     {'AND deleted_at IS NULL' if include_deleted_at_is_null else ''}
     """
+
+    return sql, params
+
+
+def build_delete_statement(table, target_id):
+    '''Warning: Table nesmí přijít od uživatele a musí být pouze z bezpečného kódu'''
+
+    sql = f"""
+    DELETE FROM {table}
+    WHERE id = %(id)s
+    """
+    # trigger u některých tabulek udělá soft delete
+
+    params = {
+        'id': target_id
+    }
 
     return sql, params

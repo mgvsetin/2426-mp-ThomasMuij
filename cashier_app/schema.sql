@@ -1061,20 +1061,53 @@ CREATE TABLE IF NOT EXISTS copy_paste_history (
   product_booth_link_rows           jsonb DEFAULT '[]'::jsonb,
   category_booth_link_rows          jsonb DEFAULT '[]'::jsonb,
   category_product_link_rows        jsonb DEFAULT '[]'::jsonb,
+);
+
+
+
+-- -- ======================== undo_copy_paste ========================
+-- CREATE TABLE IF NOT EXISTS undo_copy_paste (
+--   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   copy_paste_history_id   uuid NOT NULL REFERENCES copy_paste_history(id) ON DELETE CASCADE,
+--   occurred_at             timestamptz NOT NULL DEFAULT now()
+-- );
+-- CREATE UNIQUE INDEX IF NOT EXISTS unique_index_undo_copy_paste_copy_paste_history_id ON undo_copy_paste (copy_paste_history_id);
+
+
+
+
+-- ======================== regular_change_history ========================
+CREATE TABLE IF NOT EXISTS regular_change_history (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  performed_by  uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+
+  target_id     uuid NOT NULL,
+  table_name    text NOT NULL,
+  old_values    jsonb DEFAULT '{}'::jsonb,
+  new_values    jsonb DEFAULT '{}'::jsonb,
+);
+
+
+
+-- ======================== change_history ========================
+CREATE TABLE IF NOT EXISTS change_history (
+  id                                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  performed_by                      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
+
+  changes           jsonb DEFAULT '[]'::jsonb,
 
   occurred_at                       timestamptz NOT NULL DEFAULT now()
 );
 
 
 
--- ======================== undo_copy_paste ========================
-CREATE TABLE IF NOT EXISTS undo_copy_paste (
+-- ======================== undo_change_history ========================
+CREATE TABLE IF NOT EXISTS undo_change_history (
   id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  copy_paste_history_id   uuid NOT NULL REFERENCES copy_paste_history(id) ON DELETE RESTRICT,
-  was_redone              boolean NOT NULL DEFAULT FALSE,
+  change_history_id   uuid NOT NULL REFERENCES change_history(id) ON DELETE CASCADE,
   occurred_at             timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_undo_copy_paste_copy_paste_history_id ON undo_copy_paste (copy_paste_history_id);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_undo_change_history_change_history_id ON undo_change_history (change_history_id);
 
 
 

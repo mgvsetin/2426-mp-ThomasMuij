@@ -20,7 +20,7 @@ from cashier_app.utils.employees_users import is_manager, validate_email, valida
 from cashier_app.utils.products import convert_image_paths_from_relative
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, InsufficientBalanceError, UnexpectedError, IdempotencyKeyDataConflict
 from cashier_app.utils.transactions import make_transaction
-from cashier_app.utils.query_builder import build_insert_statement, build_update_statement
+from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 
 
 api_bp = Blueprint('users_api', __name__, url_prefix='/api/users')
@@ -290,16 +290,12 @@ def delete_user():
     if not user_id:
         return jsonify(error='missing_user_id'), 400
 
+    sql, query_params = build_delete_statement('users', user_id)
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE users
-                    SET deleted_at = now()
-                    WHERE id = %s
-                    AND deleted_at IS NULL''',
-                    (user_id,))
+                cur.execute(sql, query_params)
                 
                 # wallets od user se smažou sami pomocí triggeru
                 
