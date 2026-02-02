@@ -6,7 +6,7 @@ import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
-import { handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
+import { handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
 const searchBar = document.querySelector('.search-bar');
 const addEventButton = document.querySelector('#add-event-button');
@@ -125,7 +125,7 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  if (event.target.matches('.search-bar')) {
+  if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
     return;
   }
   // kliknutí na "nic" odvybere řádek
@@ -233,16 +233,18 @@ document.addEventListener('submit', async (event) => {
 
 document.addEventListener('keydown', (event) => {
   handleRowSelection(event);
-  handleCopyPasteOnKeydown(event, 'events_manager').then((result) => {
-    if (['paste', 'undo-paste', 'redo-paste'].includes(result)) {
+  handleCopyPasteUndoRedoOnKeydown(event, 'events_manager').then((result) => {
+    if (['paste', 'undo', 'redo'].includes(result)) {
       resetEventsCache();
       loadPage({
-        table: true
+        table: true,
+        header: true,
+        sidebar: true
       });
     }
   });
 
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !document.querySelector('.modal')) {
     const selectedRows = document.querySelectorAll('tr[data-event][selected]');
     if (selectedRows.length === 1) {
       const row = selectedRows[0];
@@ -463,9 +465,6 @@ function openAddEventOverlay() {
   `;
 
   openModal(html);
-
-  const focusEl = document.querySelector('#add-event-name');
-  if (focusEl) focusEl.focus();
 }
 
 

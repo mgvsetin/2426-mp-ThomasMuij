@@ -3,6 +3,9 @@ with open('prints.txt', 'a', encoding='utf-8') as f:
     from pprint import pprint
     pprint('here', stream=f)
 
-
-here
-{'pg_try_advisory_xact_lock': True}
+duplicate key value violates unique constraint "unique_index_products_name"
+DETAIL:  Key (event_id, lower(name))=(bd54188a-c6e9-4cd6-80aa-11eaa8f1d7c1, event1_10000_booth2_copy4) already exists.
+duplicate key value violates unique constraint "unique_index_products_name"
+DETAIL:  Key (event_id, lower(name))=(bd54188a-c6e9-4cd6-80aa-11eaa8f1d7c1, event1_10000_booth2_copy4) already exists.
+duplicate key value violates unique constraint "unique_index_products_name"
+DETAIL:  Key (event_id, lower(name))=(bd54188a-c6e9-4cd6-80aa-11eaa8f1d7c1, event1_10000_booth2_copy4) already exists.

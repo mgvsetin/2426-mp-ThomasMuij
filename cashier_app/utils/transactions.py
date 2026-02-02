@@ -7,6 +7,7 @@ from psycopg import Cursor
 from cashier_app.errors import InsufficientBalanceError, IdempotencyKeyDataConflict, UnexpectedError
 from cashier_app.utils.general import convert_uuids_to_str
 from cashier_app.db import get_pool
+from cashier_app.utils.query_builder import build_insert_statement
 
 
 def make_transaction(params: dict, cursor: Cursor | None = None):
@@ -38,18 +39,10 @@ def make_transaction(params: dict, cursor: Cursor | None = None):
 
 
     def handle_insert(cur: Cursor):
-        cols_str = ', '.join(params.keys())
-        col_values_placeholders = ', '.join([f'%({col})s' for col in params.keys()])
 
-        cur.execute(
-            f'''
-            INSERT INTO transactions
-            ({cols_str})
-            VALUES ({col_values_placeholders})
-            ON CONFLICT (idempotency_key) DO NOTHING
-            RETURNING id
-            ''',
-            params)
+        sql, query_params = build_insert_statement('transactions', params, returning=['id'], on_conflict_do_nothing=['idempotency_key'])
+
+        cur.execute(sql, query_params)
         # wallet se updatuje pomocí trigger v db
         inserted = cur.fetchone()
 

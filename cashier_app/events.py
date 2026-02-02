@@ -17,6 +17,18 @@ from cashier_app.utils.employees_users import is_manager, format_valid_phone_num
 from cashier_app.utils.products import convert_image_paths_from_relative
 from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
 from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
+from cashier_app.undo_and_redo import save_change
+from cashier_app.utils.cascade_capture import (
+    capture_event_cascade, capture_booth_cascade,
+    capture_product_cascade, capture_category_cascade,
+    convert_dict_to_serializable
+)
+from cashier_app.utils.link_sync import (
+    sync_booth_product_links, sync_booth_category_links,
+    sync_product_booth_links, sync_product_category_links,
+    sync_category_booth_links, sync_category_product_links,
+    sync_employee_event_booth_roles
+)
 
 bp = Blueprint('events', __name__, url_prefix='/events')
 
@@ -350,12 +362,19 @@ def add_event():
     #     if start_at_utc > end_at_utc:
     #         return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    sql, query_params = build_insert_statement('events', params)
+    sql, query_params = build_insert_statement('events', params, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, query_params)
+                new_event = cur.execute(sql, query_params).fetchone()
+
+                # Save change for undo
+                save_change(cur, [{
+                    'table': 'events',
+                    'old_values': None,
+                    'new_values': convert_dict_to_serializable(dict(new_event))
+                }], logged_employee['id'])
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_events_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -426,19 +445,40 @@ def edit_event():
         if start_at_utc > end_at_utc:
             return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    sql, query_params = build_update_statement('events', params, event_id)
+    sql, query_params = build_update_statement('events', params, event_id, returning=['*'])
     # validate start_at end_at from db?
 
     # add editing event info from other tables
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, query_params)
+                # Capture old values before update
+                old_event = cur.execute(
+                    'SELECT * FROM events WHERE id = %s AND deleted_at IS NULL',
+                    (event_id,)
+                ).fetchone()
+
+                if not old_event:
+                    raise NoRowsAffectedError()
+
+                old_values = convert_dict_to_serializable(dict(old_event))
+
+                new_event = cur.execute(sql, query_params).fetchone()
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
+
+                new_values = convert_dict_to_serializable(dict(new_event))
+
+                # Save change for undo
+                save_change(cur, [{
+                    'table': 'events',
+                    'old_values': old_values,
+                    'new_values': new_values
+                }], logged_employee['id'])
     except IntegrityError as e:
         # jestli někdy půjde nastavit start_at nebo end_at, když už je jedna hodnotav db,
         # tak se musí ověření start_at <= end_at vzít z db (detail=events_start_at_before_end_at_check)
@@ -471,12 +511,18 @@ def delete_event():
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
-    
+
     sql, query_params = build_delete_statement('events', event_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # Capture all data before delete (event + all children)
+                changes = capture_event_cascade(cur, event_id)
+
+                if not changes:
+                    raise NoRowsAffectedError()
+
                 cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
@@ -484,13 +530,15 @@ def delete_event():
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
-                    raise NoRowsAffectedError
+                    raise NoRowsAffectedError()
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
     except NoRowsAffectedError:
         return jsonify(error='event_not_found'), 404
-        
 
     return jsonify(redirect_url=url_for('events.get_events_manager_page')), 200
 
@@ -609,44 +657,31 @@ def add_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    sql, query_params = build_insert_statement('booths', params, returning='id')
+    sql, query_params = build_insert_statement('booths', params, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                booth_id = cur.execute(sql, query_params).fetchone()['id']
-                
+                new_booth = cur.execute(sql, query_params).fetchone()
+                booth_id = new_booth['id']
 
-                if product_ids:
-                    rows = [(product_id, booth_id) for product_id in product_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
+                changes = [{
+                    'table': 'booths',
+                    'old_values': None,
+                    'new_values': convert_dict_to_serializable(dict(new_booth))
+                }]
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO product_booth_link
-                        (product_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
+                changes.extend(sync_booth_product_links(cur, booth_id, product_ids))
+                changes.extend(sync_booth_category_links(cur, booth_id, category_ids))
 
-                if category_ids:
-                    rows = [(category_id, booth_id) for category_id in category_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
-                    
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_booth_link
-                        (category_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
 
     return jsonify(), 200
+
 
 @api_booths_bp.route('/edit', methods=('POST',))
 def edit_booth():
@@ -737,58 +772,44 @@ def edit_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    sql, query_params = build_update_statement('booths', params, booth_id)
+    sql, query_params = build_update_statement('booths', params, booth_id, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, query_params)
+                # Capture old booth values before update
+                old_booth = cur.execute(
+                    'SELECT * FROM booths WHERE id = %s AND deleted_at IS NULL',
+                    (booth_id,)
+                ).fetchone()
+
+                if not old_booth:
+                    raise NoRowsAffectedError()
+
+                old_values = convert_dict_to_serializable(dict(old_booth))
+
+                new_booth = cur.execute(sql, query_params).fetchone()
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
-                # Delete existing product and category links
-                cur.execute(
-                    '''
-                    DELETE FROM product_booth_link
-                    WHERE booth_id = %s''',
-                    (booth_id,))
-                
-                cur.execute(
-                    '''
-                    DELETE FROM category_booth_link
-                    WHERE booth_id = %s''',
-                    (booth_id,))
-                
-                # Insert new product links
-                if product_ids:
-                    rows = [(product_id, booth_id) for product_id in product_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
-                    
-                    cur.execute(
-                        f'''
-                        INSERT INTO product_booth_link
-                        (product_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
-                
-                # Insert new category links
-                if category_ids:
-                    rows = [(category_id, booth_id) for category_id in category_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
-                    
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_booth_link
-                        (category_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
+
+                new_values = convert_dict_to_serializable(dict(new_booth))
+
+                changes = [{
+                    'table': 'booths',
+                    'old_values': old_values,
+                    'new_values': new_values
+                }]
+
+                # Use sync functions for link tables (tracks changes automatically)
+                changes.extend(sync_booth_product_links(cur, booth_id, product_ids))
+                changes.extend(sync_booth_category_links(cur, booth_id, category_ids))
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -839,6 +860,12 @@ def delete_booth():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # Capture all data before delete (booth + link tables)
+                changes = capture_booth_cascade(cur, booth_id)
+
+                if not changes:
+                    raise NoRowsAffectedError()
+
                 cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
@@ -846,6 +873,9 @@ def delete_booth():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for booth id %s', booth_id)
         return jsonify(error='internal_server_error'), 500
@@ -964,22 +994,14 @@ def assign_manager():
     
     if employee['is_admin']:
         return jsonify(error='can_not_assign_admin'), 400
-            
+
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f'''
-                DELETE FROM employee_event_booth_roles
-                WHERE employee_id = %s
-                AND event_id = %s''',
-                (employee['id'], event_id))
-            
-            cur.execute(
-                f'''
-                INSERT INTO employee_event_booth_roles
-                (employee_id, event_id, booth_id)
-                VALUES (%s, %s, NULL) -- role se doplní sama v db''',
-                (employee['id'], event_id))
+            changes = []
+
+            changes.extend(sync_employee_event_booth_roles(cur, employee['id'], event_id, [None]))
+
+            save_change(cur, changes, logged_employee['id'])
 
     return jsonify(), 200
 
@@ -1053,45 +1075,26 @@ def assign_employee():
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
-            
+
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             role_row = cur.execute(
-                f'''
+                '''
                 SELECT role
                 FROM employee_event_booth_roles
                 WHERE employee_id = %s
                 AND event_id = %s
                 AND booth_id IS NULL''',
                 (employee['id'], event_id)).fetchone()
-            
+
             if role_row:
                 return jsonify(error='can_not_assign_manager_to_booths'), 400
 
-            cur.execute(
-                f'''
-                DELETE FROM employee_event_booth_roles
-                WHERE employee_id = %s
-                AND event_id = %s''',
-                (employee['id'], event_id))
+            changes = []
 
-            if booth_ids:
-                # role se doplní sama v db
-                # [('emp_id', 'event_id', 'booth_id_1'), ('emp_id', 'event_id', 'booth_id_2'),...]
-                rows = [(employee['id'], event_id, booth_id) for booth_id in booth_ids]
+            changes.extend(sync_employee_event_booth_roles(cur, employee['id'], event_id, booth_ids))
 
-                # "(%s,%s,%s),(%s,%s,%s),..."
-                placeholders = ','.join(['(%s,%s,%s)'] * len(rows))
-                # ['emp_id', 'event_id', 'booth_id_1', 'emp_id', 'event_id', 'booth_id_2', ...]
-                params = [item for row in rows for item in row]
-
-                cur.execute(
-                    f'''
-                    INSERT INTO employee_event_booth_roles
-                    (employee_id, event_id, booth_id)
-                    VALUES {placeholders}
-                    ''',
-                    params)
+            save_change(cur, changes, logged_employee['id'])
 
     return jsonify(), 200
 
@@ -1115,21 +1118,21 @@ def unassign_employee_or_manager():
         return jsonify(error='insufficient_privileges'), 403
     
     try:
-        id = UUID(request.form.get('id'))
+        employee_id = UUID(request.form.get('id'))
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
-    if not id:
+    if not employee_id:
         return jsonify(error='missing_id'), 400
-    
+
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f'''
-                DELETE FROM employee_event_booth_roles
-                WHERE employee_id = %s
-                AND event_id = %s''',
-                (id, event_id))
+            changes = []
+            
+            changes.extend(sync_employee_event_booth_roles(cur, employee_id, event_id, []))
+
+            if changes:
+                save_change(cur, changes, logged_employee['id'])
 
     return jsonify(), 200
 
@@ -1270,42 +1273,35 @@ def add_product():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                changes = []
+
                 if image_file:
-                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning='id')
-                    image_id = cur.execute(img_sql, img_query_params).fetchone()['id']
+                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning=['*'])
+                    new_image = cur.execute(img_sql, img_query_params).fetchone()
+                    image_id = new_image['id']
                     params['image_id'] = image_id
 
-                sql, query_params = build_insert_statement('products', params, returning='id')
-                product_id = cur.execute(sql, query_params).fetchone()['id']
-                
-                if booth_ids:
-                    rows = [(product_id, booth_id) for booth_id in booth_ids]
+                    changes.append({
+                        'table': 'product_images',
+                        'old_values': None,
+                        'new_values': convert_dict_to_serializable(dict(new_image))
+                    })
 
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                sql, query_params = build_insert_statement('products', params, returning=['*'])
+                new_product = cur.execute(sql, query_params).fetchone()
+                product_id = new_product['id']
 
-                    params = [item for row in rows for item in row]
+                changes.append({
+                    'table': 'products',
+                    'old_values': None,
+                    'new_values': convert_dict_to_serializable(dict(new_product))
+                })
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO product_booth_link
-                        (product_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params)
-                if category_ids:
-                    rows = [(product_id, category_id) for category_id in category_ids]
+                changes.extend(sync_product_booth_links(cur, product_id, booth_ids))
+                changes.extend(sync_product_category_links(cur, product_id, category_ids))
 
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-
-                    params = [item for row in rows for item in row]
-
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_product_link
-                        (product_id, category_id)
-                        VALUES {placeholders}
-                        ''',
-                        params)
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
         if created_image_path:
             remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
@@ -1467,59 +1463,47 @@ def edit_product():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                changes = []
+
+                # Capture old product values before update
+                old_product = cur.execute(
+                    'SELECT * FROM products WHERE id = %s AND deleted_at IS NULL',
+                    (product_id,)
+                ).fetchone()
+                if not old_product:
+                    raise NoRowsAffectedError()
+                old_values = convert_dict_to_serializable(dict(old_product))
+
                 if image_file:
-                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning='id')
+                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning=['id'])
                     image_id = cur.execute(img_sql, img_query_params).fetchone()['id']
                     params['image_id'] = image_id
 
-                sql, query_params = build_update_statement('products', params, product_id)
-                cur.execute(sql, query_params)
+                sql, query_params = build_update_statement('products', params, product_id, returning=['*'])
+
+                new_product = cur.execute(sql, query_params).fetchone()
+
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
-                cur.execute(
-                    '''
-                    DELETE FROM product_booth_link
-                    WHERE product_id = %s''',
-                    (product_id,))
-                
-                cur.execute(
-                    '''
-                    DELETE FROM category_product_link
-                    WHERE product_id = %s''',
-                    (product_id,))
-                
-                if booth_ids:
-                    rows = [(product_id, booth_id) for booth_id in booth_ids]
 
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                new_values = convert_dict_to_serializable(dict(new_product))
 
-                    params = [item for row in rows for item in row]
+                changes.append({
+                    'table': 'products',
+                    'old_values': old_values,
+                    'new_values': new_values
+                })
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO product_booth_link
-                        (product_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params)
-                if category_ids:
-                    rows = [(product_id, category_id) for category_id in category_ids]
+                # Sync link tables and track changes
+                changes.extend(sync_product_booth_links(cur, product_id, booth_ids))
+                changes.extend(sync_product_category_links(cur, product_id, category_ids))
 
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
+                # Save all changes for undo
+                save_change(cur, changes, logged_employee['id'])
 
-                    params = [item for row in rows for item in row]
-
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_product_link
-                        (product_id, category_id)
-                        VALUES {placeholders}
-                        ''',
-                        params)
     except IntegrityError as e:
         if created_image_path:
             remove_image_if_exists(os.path.join(current_app.static_folder, created_image_path))
@@ -1585,6 +1569,12 @@ def delete_product():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # Capture all data before delete (product + link tables)
+                changes = capture_product_cascade(cur, product_id)
+
+                if not changes:
+                    raise NoRowsAffectedError()
+
                 cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
@@ -1592,7 +1582,7 @@ def delete_product():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
+
                 # měly by se dít sami:
                 cur.execute(
                     f'''
@@ -1604,12 +1594,15 @@ def delete_product():
                     DELETE FROM category_product_link
                     WHERE product_id = %s''',
                     (product_id,))
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
     except NoRowsAffectedError:
         return jsonify(error='product_not_found'), 404
-    
+
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
     delete_unused_images()
 
@@ -1707,38 +1700,25 @@ def add_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    sql, query_params = build_insert_statement('categories', params, returning='id')
+    sql, query_params = build_insert_statement('categories', params, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                category_id = cur.execute(sql, query_params).fetchone()['id']
-                
-                if booth_ids:
-                    rows = [(category_id, booth_id) for booth_id in booth_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
+                new_category = cur.execute(sql, query_params).fetchone()
+                category_id = new_category['id']
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_booth_link
-                        (category_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
-                
-                if product_ids:
-                    rows = [(category_id, product_id) for product_id in product_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
+                changes = [{
+                    'table': 'categories',
+                    'old_values': None,
+                    'new_values': convert_dict_to_serializable(dict(new_category))
+                }]
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_product_link
-                        (category_id, product_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
+                changes.extend(sync_category_booth_links(cur, category_id, booth_ids))
+                changes.extend(sync_category_product_links(cur, category_id, product_ids))
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_categories_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -1847,12 +1827,23 @@ def edit_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    sql, query_params = build_update_statement('categories', params, category_id)
+    sql, query_params = build_update_statement('categories', params, category_id, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, query_params)
+                changes = []
+
+                # Capture old category values before update
+                old_category = cur.execute(
+                    'SELECT * FROM categories WHERE id = %s AND deleted_at IS NULL',
+                    (category_id,)
+                ).fetchone()
+                if not old_category:
+                    raise NoRowsAffectedError()
+                old_values = convert_dict_to_serializable(dict(old_category))
+
+                new_category = cur.execute(sql, query_params).fetchone()
 
                 rows_affected = cur.rowcount
                 if rows_affected > 1:
@@ -1860,43 +1851,21 @@ def edit_category():
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
 
-                cur.execute(
-                    '''
-                    DELETE FROM category_booth_link
-                    WHERE category_id = %s''',
-                    (category_id,))
-                
-                cur.execute(
-                    '''
-                    DELETE FROM category_product_link
-                    WHERE category_id = %s''',
-                    (category_id,))
-                
-                if booth_ids:
-                    rows = [(category_id, booth_id) for booth_id in booth_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
+                new_values = convert_dict_to_serializable(dict(new_category))
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_booth_link
-                        (category_id, booth_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
-                
-                if product_ids:
-                    rows = [(category_id, product_id) for product_id in product_ids]
-                    placeholders = ','.join(['(%s,%s)'] * len(rows))
-                    params_list = [item for row in rows for item in row]
+                changes.append({
+                    'table': 'categories',
+                    'old_values': old_values,
+                    'new_values': new_values
+                })
 
-                    cur.execute(
-                        f'''
-                        INSERT INTO category_product_link
-                        (category_id, product_id)
-                        VALUES {placeholders}
-                        ''',
-                        params_list)
+                # Sync link tables and track changes
+                changes.extend(sync_category_booth_links(cur, category_id, booth_ids))
+                changes.extend(sync_category_product_links(cur, category_id, product_ids))
+
+                # Save all changes for undo
+                save_change(cur, changes, logged_employee['id'])
+
     except IntegrityError as e:
         # jméno už existuje: detail obsahuje unique_index_categories_name
         return jsonify(error='db_integrity_error', detail=str(e)), 400
@@ -1947,6 +1916,12 @@ def delete_category():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # Capture all data before delete (category + link tables)
+                changes = capture_category_cascade(cur, cateogry_id)
+
+                if not changes:
+                    raise NoRowsAffectedError()
+
                 cur.execute(sql, query_params)
 
                 rows_affected = cur.rowcount
@@ -1954,7 +1929,7 @@ def delete_category():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
+
                 # měly by se dít sami:
                 cur.execute(
                     '''
@@ -1966,6 +1941,9 @@ def delete_category():
                     DELETE FROM category_product_link
                     WHERE category_id = %s''',
                     (cateogry_id,))
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for category id %s', cateogry_id)
         return jsonify(error='internal_server_error'), 500

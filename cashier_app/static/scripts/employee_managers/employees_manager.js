@@ -5,7 +5,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML, safeParse } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
-import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
+import { directTo, handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableHeader = document.querySelector('table thead');
@@ -180,7 +180,7 @@ document.addEventListener('click', (event) => {
   // maybe add arrows moving the selected attr
   // ??
 
-  if (event.target.matches('.search-bar')) {
+  if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
     return;
   }
 
@@ -198,7 +198,7 @@ document.addEventListener('dblclick', (event) => {
 
 document.addEventListener('submit', async (event) => {
   // přidej zaměstnance
-  const addForm = event.target.closest('#add-form');
+  const addForm = event.target.closest('#add-employee-form');
   if (addForm) {
     event.preventDefault();
     const saveButton = addForm.querySelector('.save-form');
@@ -222,7 +222,7 @@ document.addEventListener('submit', async (event) => {
     }
 
     const response = await addEmployee(formData);
-
+  
     saveButton.disabled = false;
 
     if (response === true) {
@@ -240,7 +240,7 @@ document.addEventListener('submit', async (event) => {
 
 
   // uprav zaměstnance
-  const editFrom = event.target.closest('#edit-form');
+  const editFrom = event.target.closest('#edit-employee-form');
   if (editFrom) {
     event.preventDefault();
     const saveButton = editFrom.querySelector('.save-form');
@@ -282,7 +282,7 @@ document.addEventListener('submit', async (event) => {
   }
 
   // odstraň zaměstnance
-  const deleteForm = event.target.closest('#delete-form');
+  const deleteForm = event.target.closest('#delete-employee-form');
   if (deleteForm) {
     event.preventDefault();
     const deleteButton = deleteForm.querySelector('.delete-confirm');
@@ -322,16 +322,18 @@ searchBar.addEventListener('input', (event) => {
 
 document.addEventListener('keydown', (event) => {
   handleRowSelection(event);
-  handleCopyPasteOnKeydown(event, 'employees_manager').then((result) => {
-    if (['paste-employees', 'undo-paste', 'redo-paste'].includes(result)) {
+  handleCopyPasteUndoRedoOnKeydown(event, 'employees_manager').then((result) => {
+    if (['paste-employees', 'undo', 'redo'].includes(result)) {
       resetEmployeesCache();
       loadPage({
+        header: true,
+        sidebar: true,
         table: true
       });
     }
   });
 
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !document.querySelector('.modal')) {
     const selectedRows = document.querySelectorAll('tr[id][selected]');
     if (selectedRows.length === 1) {
       openEditModal(selectedRows[0].id);
@@ -629,23 +631,23 @@ async function openEditModal(employeeId) {
       <h2>Upravit zaměstnance</h2>
     </header>
 
-    <form id="edit-form">
+    <form id="edit-employee-form">
       <div class="form-row">
         <label for="edit-id">Id:</label>
         <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
-        <div id="id-edit-error" class="form-error"></div>
+        <div id="edit-employee-id-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
         <label for="edit-username">Uživatelské jméno</label>
         <input id="edit-username" name="username" type="text" placeholder="Uživatelské jméno" autocomplete="username" value="${escapeHTML(employee.username || '')}" required/>
-        <div id="username-edit-error" class="form-error"></div>
+        <div id="edit-employee-username-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
         <label for="edit-email">Email</label>
         <input id="edit-email" name="email" type="email" placeholder="Email" autocomplete="email" value="${escapeHTML(employee.email || '')}" required />
-        <div id="email-edit-error" class="form-error"></div>
+        <div id="edit-employee-email-error" class="form-error"></div>
       </div>
 
       <div class="form-row password-form-row">
@@ -681,7 +683,7 @@ async function openEditModal(employeeId) {
           </g>
         </svg>
 
-        <div id="password-edit-error" class="form-error"></div>
+        <div id="edit-employee-password-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
@@ -691,12 +693,12 @@ async function openEditModal(employeeId) {
           <div class="option no">Ne</div>
           <div class="option yes">Ano</div>
         </div>
-        <div id="is-admin-edit-error" class="form-error"></div>
+        <div id="edit-employee-is-admin-error" class="form-error"></div>
       </div>
 
 
       <div class="form-row">
-        <div id="general-edit-error" class="form-error"></div>
+        <div id="edit-employee-general-error" class="form-error"></div>
       </div>
 
       <div class="modal-actions">
@@ -723,7 +725,7 @@ async function openDeleteModal(employeeId) {
       <h2 class="delete-form-text">Smazat zaměstnance</h2>
     </header>
 
-    <form id="delete-form">
+    <form id="delete-employee-form">
       <div class="form-row">
         <div id="delete-id-label">Id:</div>
         <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" required readonly/>
@@ -749,7 +751,7 @@ async function openDeleteModal(employeeId) {
       </div>
 
       <div class="form-row">
-        <div id="general-delete-error" class="form-error"></div>
+        <div id="delete-employee-general-error" class="form-error"></div>
       </div>
 
       <div class="modal-actions">
@@ -764,11 +766,10 @@ async function openDeleteModal(employeeId) {
 
 
 function showAddErrors(error, detail) {
-  const idError = document.querySelector('#id-add-error');
-  const usernameError = document.querySelector('#username-add-error');
-  const emailError = document.querySelector('#email-add-error');
-  const passwordError = document.querySelector('#password-add-error');
-  const generalError = document.querySelector('#general-add-error');
+  const usernameError = document.querySelector('#add-employee-username-error');
+  const emailError = document.querySelector('#add-employee-email-error');
+  const passwordError = document.querySelector('#add-employee-password-error');
+  const generalError = document.querySelector('#add-employee-general-error');
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -904,11 +905,11 @@ function showAddErrors(error, detail) {
 
 
 function showEditErrors(error, detail) {
-  const idError = document.querySelector('#id-edit-error');
-  const usernameError = document.querySelector('#username-edit-error');
-  const emailError = document.querySelector('#email-edit-error');
-  const passwordError = document.querySelector('#password-edit-error');
-  const generalError = document.querySelector('#general-edit-error');
+  const idError = document.querySelector('#edit-employee-id-error');
+  const usernameError = document.querySelector('#edit-employee-username-error');
+  const emailError = document.querySelector('#edit-employee-email-error');
+  const passwordError = document.querySelector('#edit-employee-password-error');
+  const generalError = document.querySelector('#edit-employee-general-error');
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -1051,7 +1052,7 @@ function showEditErrors(error, detail) {
 
 
 function showDeleteErrors(error, detail) {
-  const generalError = document.querySelector('#general-delete-error');
+  const generalError = document.querySelector('#delete-employee-general-error');
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -1111,12 +1112,13 @@ async function addEmployee(formData) {
     }
 
     if (response.status === 400) {
-      return data
+      return data;
     }
 
     if (!response.ok) {
       throw new Error('unexpected_error');
     }
+
 
     return true;
 

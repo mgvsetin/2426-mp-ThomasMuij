@@ -2,7 +2,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } from "../general/date_utils.js";
-import { directTo, handleCopyPasteOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
+import { directTo, handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
 import { cloneData } from "../general/cache.js";
 import { fetchEmployees } from "../general/employees.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
@@ -243,7 +243,7 @@ document.addEventListener('click', async (event) => {
     toggleBoothProducts(boothStatHeader.getAttribute('data-booth-id'));
   }
 
-  if (event.target.matches('.search-bar')) {
+  if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
     return;
   }
   // kliknutí na "nic" odvybere řádek
@@ -1292,20 +1292,25 @@ document.addEventListener('keydown', (event) => {
   if (phoneInputKeydownListeners(event)) return;
   handleRowSelection(event);
 
-  handleCopyPasteOnKeydown(event, eventId).then((result) => {
-    if (['paste', 'undo-paste', 'redo-paste'].includes(result)) {
+  handleCopyPasteUndoRedoOnKeydown(event, eventId).then((result) => {
+    if (['paste', 'undo', 'redo'].includes(result)) {
       resetEventDataCache();
       loadPage({
+        eventInfo: true,
+        header: true,
+        sidebar: true,
         boothsTable: true,
         managersTable: true,
         employeesTable: true,
         productsTable: true,
         categoriesTable: true,
+        usersTable: true,
+        walletsTable: true
       });
     }
   });
 
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && !document.querySelector('.modal')) {
     const selectedRows = document.querySelectorAll('tr[selected]');
     if (selectedRows.length === 1) {
       const row = selectedRows[0];

@@ -8,6 +8,8 @@ from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_password
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, CanNotDeleteLastAdminError
 from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
+from cashier_app.undo_and_redo import save_change
+from cashier_app.utils.cascade_capture import capture_employee_cascade, convert_dict_to_serializable
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
@@ -106,12 +108,19 @@ def add_employee():
         'created_by': logged_employee['id']
     }
 
-    sql, query_params = build_insert_statement('employees', params)
+    sql, query_params = build_insert_statement('employees', params, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, query_params)                    
+                new_employee = cur.execute(sql, query_params).fetchone()
+
+                # Save change for undo
+                save_change(cur, [{
+                    'table': 'employees',
+                    'old_values': None,
+                    'new_values': convert_dict_to_serializable(dict(new_employee))
+                }], logged_employee['id'])
 
     except IntegrityError as e:
         # username už existuje: detail obsahuje unique_index_employees_username_active
@@ -177,20 +186,23 @@ def edit_employee():
 
         params['password_hash'] = new_password_hash
 
-    sql, query_params = build_update_statement('employees', params, edit_employee_id)
+    sql, query_params = build_update_statement('employees', params, edit_employee_id, returning=['*'])
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                # if is_admin:
-                #     cur.execute(
-                #         '''
-                #         DELETE FROM employee_event_booth_roles
-                #         WHERE employee_id = %s
-                #         ''',
-                #         (edit_employee_id,))
+                # Capture old values before update
+                old_employee = cur.execute(
+                    'SELECT * FROM employees WHERE id = %s AND deleted_at IS NULL',
+                    (edit_employee_id,)
+                ).fetchone()
 
-                cur.execute(sql, query_params)
+                if not old_employee:
+                    raise NoRowsAffectedError()
+
+                old_values = convert_dict_to_serializable(dict(old_employee))
+
+                new_employee = cur.execute(sql, query_params).fetchone()
 
                 rows_affected = cur.rowcount
 
@@ -198,17 +210,26 @@ def edit_employee():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
+
+                new_values = convert_dict_to_serializable(dict(new_employee))
+
+                # Save change for undo
+                save_change(cur, [{
+                    'table': 'employees',
+                    'old_values': old_values,
+                    'new_values': new_values
+                }], logged_employee['id'])
+
                 an_admin_exists = cur.execute(
                         '''
                         SELECT 1
                         FROM employees
                         WHERE is_admin IS TRUE
                         AND deleted_at IS NULL''').fetchone()
-                    
+
                 if not an_admin_exists:
                     raise CanNotDeleteLastAdminError()
-    
+
     except IntegrityError as e:
         # username už existuje: detail obsahuje unique_index_employees_username_active
         # email už existuje: detail obsahuje unique_index_employees_email_active
@@ -230,9 +251,6 @@ def delete_employee():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print(request.form, file=f)
 
     try:
         delete_employee_id = UUID(request.form.get('id'))
@@ -250,25 +268,33 @@ def delete_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # Capture all data before delete (employee + roles)
+                changes = capture_employee_cascade(cur, delete_employee_id)
+
+                if not changes:
+                    raise NoRowsAffectedError()
+
                 cur.execute(sql, query_params)
-                
+
                 rows_affected = cur.rowcount
 
                 if rows_affected > 1:
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
+
                 an_admin_exists = cur.execute(
                     '''
                     SELECT 1
                     FROM employees
                     WHERE is_admin IS TRUE
                     AND deleted_at IS NULL''').fetchone()
-                
+
                 if not an_admin_exists:
                     raise CanNotDeleteLastAdminError()
-                
+
+                # Save change for undo
+                save_change(cur, changes, logged_employee['id'])
 
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for employee id %s', delete_employee_id)

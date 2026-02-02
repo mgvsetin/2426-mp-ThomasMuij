@@ -4,10 +4,11 @@ import { isPlainObject, isTypingInEditable, isUUID, mod } from "./utils.js";
 
 const selectedRowIds = new Set(); // pro markSelectedRows
 let lastSelectedRowId;
-let currentlyPasting = false;
 let copyPasteMesContainer;
 
 export function handleRowSelection(event) {
+  if (document.querySelector('.modal')) return;
+
   if (event.type === 'keydown' && event.key === 'Escape') {
     unselectRows();
     return;
@@ -124,7 +125,7 @@ export function directTo(clickedDirectEl, parent) {
 }
 
 
-function makeCopyPasteMessage(message) {
+function makeMessage(message) {
   if (!copyPasteMesContainer) {
     copyPasteMesContainer = document.createElement('div');
     copyPasteMesContainer.classList.add('copy-paste-message-container');
@@ -196,7 +197,7 @@ async function pasteCopied(calledWithin) {
       employeeIds: []
     };
   } catch {
-    makeCopyPasteMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
+    makeMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
     localStorage.removeItem('copied');
     return;
   }
@@ -209,7 +210,7 @@ async function pasteCopied(calledWithin) {
     || !Array.isArray(data.dataToCopy.managerIds)
     || !Array.isArray(data.dataToCopy.employeesToAssignToTargetBooths)
     || !Array.isArray(data.dataToCopy.employeeIds)) {
-    makeCopyPasteMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
+    makeMessage('Něco se nepovedlo. Zkuste data znovu zkopírovat.');
     localStorage.removeItem('copied');
     return;
   }
@@ -221,7 +222,7 @@ async function pasteCopied(calledWithin) {
     && data.dataToCopy.managerIds.length === 0
     && data.dataToCopy.employeesToAssignToTargetBooths.length === 0
     && data.dataToCopy.employeeIds.length === 0) {
-    makeCopyPasteMessage('Nemáte nic zkopírováno.');
+    makeMessage('Nemáte nic zkopírováno.');
     return;
   }
 
@@ -257,7 +258,7 @@ async function pasteCopied(calledWithin) {
       boothIds: []
     };
   } else {
-    makeCopyPasteMessage('Sem nelze vkládat zkopírované data.');
+    makeMessage('Sem nelze vkládat zkopírované data.');
     return;
   }
 
@@ -274,14 +275,18 @@ async function pasteCopied(calledWithin) {
 
     const resData = await response.json();
 
-    console.log(resData);
-
     if (response.status === 403 && resData.error === 'insufficient_privileges') {
       throw new ForbiddenError();
     }
 
     if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
-      makeCopyPasteMessage('Chvíli počkejte.');
+      makeMessage('Chvíli počkejte.');
+      return false;
+    }
+
+    if (response.status === 500 && resData.error === 'unique_conflict') {
+      makeMessage('Při vkládání nastala změna dat a nemohlo být dokončeno.');
+      return false;
     }
 
     if (!response.ok) {
@@ -293,150 +298,77 @@ async function pasteCopied(calledWithin) {
 }
 
 
-async function undoPaste() {
-  const isConfirmed = await new Promise((resolve) => {
-    if (document.querySelector('.unpaste-confirmation-modal')) {
-      resolve(false);
-      return;
-    }
-
-    const container = document.createElement('div');
-    container.className = 'unpaste-confirmation-container';
-    container.innerHTML = `
-      <div class="unpaste-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="unpaste-title" tabindex="-1">
-        <header>
-          <h2 id="unpaste-title">Chcete opravdu vrátit poslední vložení?</h2>
-          <button class="close-unpaste-modal cross-close" aria-label="Zavřít">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <div>Změny provedené po vložení nejdou automaticky obnovit.</div>
-        <div class="unpaste-confirmation-actions">
-          <button class="cancel-unpaste">Ne</button>
-          <button class="confirm-unpaste">Ano</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(container);
-
-    const confirmBtn = container.querySelector('.confirm-unpaste');
-
-    confirmBtn?.focus();
-
-    let cleanedUp = false;
-    const cleanup = (result) => {
-      if (cleanedUp) return;
-      cleanedUp = true;
-      try { container.remove(); } catch (e) { }
-      document.removeEventListener('keydown', keydownFunc);
-      container.removeEventListener('click', clickHandler);
-      resolve(result);
-    };
-
-    const keydownFunc = (event) => {
-      if (isTypingInEditable()) return;
-
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        cleanup(false);
-        return;
-      }
-
-      const ctrlPressed = event.ctrlKey || event.metaKey;
-      if (!ctrlPressed) return;
-
-      const key = (event.key || '').toLowerCase();
-      if (key === 'z') {
-        event.preventDefault();
-        cleanup(true);
-      }
-    };
-
-    const clickHandler = (event) => {
-      if (event.target.closest('.cancel-unpaste')) {
-        cleanup(false);
-        return;
-      }
-      if (event.target.closest('.confirm-unpaste')) {
-        cleanup(true);
-        return;
-      }
-      if (event.target.closest('.close-unpaste-modal')) {
-        cleanup(false);
-        return;
-      }
-
-      // If user clicks outside the modal (backdrop), cancel
-      if (!event.target.closest('.unpaste-confirmation-modal')) {
-        cleanup(false);
-        return;
-      }
-    };
-
-    container.addEventListener('click', clickHandler);
-    document.addEventListener('keydown', keydownFunc);
-  });
-
-  if (!isConfirmed) return;
-
+async function undoGeneral() {
   try {
-    const response = await fetch('/api/paste/undo', { method: 'POST' });
+    const response = await fetch('/api/undo', { method: 'POST' });
 
     await handleUnauthorizedRedirect(response);
 
     const resData = await response.json();
 
-    if (resData?.message === 'no_paste_to_undo') {
-      makeCopyPasteMessage('Není nic k vrácení.');
-      return;
+    if (resData?.message === 'no_change_to_undo') {
+      makeMessage('Není co vrátit zpět.');
+      return false;
     }
 
-    if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
-      makeCopyPasteMessage('Chvíli počkejte.');
+    if (resData?.message === 'undo_conflict') {
+      makeMessage('Nelze vrátit zpět - konflikt s jinou změnou.');
+      return false;
+    }
+
+    if (response.status === 409 && resData.error === 'operation_in_progress') {
+      makeMessage('Chvíli počkejte.');
+      return false;
     }
 
     if (!response.ok) {
       throw new UnexpectedError();
     }
+
+    return true;
   } catch (error) {
     console.log(error);
+    return false;
   }
 }
 
 
-
-async function redoPaste() {
+async function redoGeneral() {
   try {
-    const response = await fetch('/api/paste/redo', { method: 'POST' });
+    const response = await fetch('/api/redo', { method: 'POST' });
 
     await handleUnauthorizedRedirect(response);
 
     const resData = await response.json();
 
-    console.log(resData);
-
-    if (response.status === 403 && resData.error === 'insufficient_privileges') {
-      throw new ForbiddenError();
+    if (resData?.message === 'no_change_to_redo') {
+      makeMessage('Není co znovu provést.');
+      return false;
     }
 
-    if (response.status === 409 && resData.error === 'paste_operation_in_progress') {
-      makeCopyPasteMessage('Chvíli počkejte.');
+    if (resData?.message === 'redo_conflict') {
+      makeMessage('Nelze znovu provést - konflikt s jinou změnou.');
+      return false;
+    }
+
+    if (response.status === 409 && resData.error === 'operation_in_progress') {
+      makeMessage('Chvíli počkejte.');
+      return false;
     }
 
     if (!response.ok) {
       throw new UnexpectedError();
     }
 
+    return true;
   } catch (error) {
     console.log(error);
+    return false;
   }
 }
 
 
-async function handleCopyPasteOnKeydownFunc(event, calledWithin) {
+export async function handleCopyPasteUndoRedoOnKeydown(event, calledWithin) {
   const ctrlPressed = event.ctrlKey || event.metaKey;
   if (!ctrlPressed) {
     return;
@@ -468,21 +400,10 @@ async function handleCopyPasteOnKeydownFunc(event, calledWithin) {
       return;
     }
   } else if (key === 'z') {
-    await undoPaste();
-    return 'undo-paste';
+    await undoGeneral();
+    return 'undo';
   } else if (key === 'y') {
-    await redoPaste();
-    return 'redo-paste';
+    await redoGeneral();
+    return 'redo';
   }
-}
-
-export async function handleCopyPasteOnKeydown(event, calledWithin) {
-  if (currentlyPasting) {
-    makeCopyPasteMessage('Chvíli počkejte here.');
-    return 'currentlyPasting'
-  }
-  currentlyPasting = true;
-  const result = await handleCopyPasteOnKeydownFunc(event, calledWithin);
-  currentlyPasting = false;
-  return result;
 }

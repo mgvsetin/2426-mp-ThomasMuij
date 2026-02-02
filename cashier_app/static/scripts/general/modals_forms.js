@@ -1,4 +1,4 @@
-export function openModal(html) {
+export function openModal(html, focusFirstInput=true) {
   document.querySelector('.overlay')?.remove();
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
@@ -13,6 +13,14 @@ export function openModal(html) {
     </div>`;
   document.body.appendChild(overlay);
   document.body.classList.add('no-scroll');
+
+  if (focusFirstInput) {
+    // timeout, aby při otevření přes enter nedošlo k submit hned po otevření
+    setTimeout(() => {
+      overlay.querySelector('input:not([type="hidden"], [disabled], [readonly])')?.focus();
+    }, 0);
+  }
+
   return overlay;
 }
 

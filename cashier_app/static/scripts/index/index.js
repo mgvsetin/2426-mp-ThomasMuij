@@ -530,7 +530,7 @@ document.addEventListener('click', async (event) => {
   }
 
   const interactableEl = event.target.closest('input') || event.target.closest('button');
-  if (interactableEl) {
+  if (interactableEl || document.querySelector('.modal')) {
     return;
   }
   // kliknutí na "nic" odvybere řádek

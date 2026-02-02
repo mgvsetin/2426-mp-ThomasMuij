@@ -19,6 +19,16 @@ class NoPasteToUndoError(Exception):
 class NoPasteToRedoError(Exception):
     pass
 
+class NoChangeToUndoError(Exception):
+    pass
+
+class NoChangeToRedoError(Exception):
+    pass
+
+class UndoTargetDeletedError(Exception):
+    """Raised when trying to undo an UPDATE but the target entity was deleted by another user."""
+    pass
+
 class CanNotDeleteLastAdminError(Exception):
     pass
 
@@ -32,4 +42,7 @@ class UnexpectedError(Exception):
     pass
 
 class PgTryAdvisoryLockError(Exception):
+    pass
+
+class ConflictingExistingEmployeeRoles(Exception):
     pass

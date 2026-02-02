@@ -6,7 +6,6 @@ from dataclasses import dataclass, field, asdict, fields
 from flask import Blueprint, current_app, jsonify, url_for, session, request
 from uuid import UUID
 import uuid
-import hashlib
 from collections.abc import Mapping, Iterable
 from datetime import datetime
 from psycopg import IntegrityError, Cursor
@@ -21,7 +20,11 @@ from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, image_extension_is_allowed, verify_image_file_get_info, save_unique_stream, convert_image_paths_from_relative
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.utils.products import convert_image_paths_from_relative
-from cashier_app.errors import ForbiddenError, PgTryAdvisoryLockError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError, NoPasteToUndoError, NoPasteToRedoError
+from cashier_app.errors import ForbiddenError, PgTryAdvisoryLockError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError
+from cashier_app.undo_and_redo import save_change
+from cashier_app.utils.cascade_capture import convert_dict_to_serializable
+from cashier_app.utils.query_builder import build_insert_statement, get_placeholders_and_params
+from cashier_app.utils.general import convert_uuids_to_str, get_employee_lock_key
 
 
 
@@ -32,16 +35,6 @@ def change_keys_make_values_UUID(from_dict: dict[str, list[str]], old_to_new_key
     return new_dict
 
 
-
-def get_employee_paste_lock_key(employee_id: UUID) -> int:
-    """Convert employee UUID to a consistent bigint for advisory lock."""
-    namespace = 1001  # předejdi bránění jiným operacím než pasting
-    hash_bytes = hashlib.md5(str(employee_id).encode()).digest()
-    # vezmi prvních 8 bytes jako signed 64-bit int
-    key = int.from_bytes(hash_bytes[:8], 'big', signed=True)
-    return key
-
-
 def make_unique_name(original_name: str, other_names_lower: set[str]) -> str:
     new_name = original_name
     i = 0
@@ -50,98 +43,6 @@ def make_unique_name(original_name: str, other_names_lower: set[str]) -> str:
         new_name = f"{original_name}_copy" if i == 1 else f"{original_name}_copy{i}"
     
     return new_name
-
-
-def get_placeholders_and_params(rows: Sequence[Tuple[Any, ...]]) -> Tuple[str, list]:
-    """
-    Build SQL multi-row placeholders and a flat params list.
-
-    Example:
-      rows = [(1, 'a'), (2, 'b')]
-      -> placeholders = '(%s,%s),(%s,%s)'
-         params = [1, 'a', 2, 'b']
-
-    Returns:
-      (placeholders_string, flat_params_list)
-    """
-    # handle empty input
-    if not rows:
-        return "", []
-
-    # ensure every row has same length
-    row_len = len(rows[0])
-    if any(len(row) != row_len for row in rows):
-        raise ValueError("All rows must have the same number of columns")
-
-    placeholders_for_row = "(" + ",".join(["%s"] * row_len) + ")"
-    placeholders = ",".join([placeholders_for_row] * len(rows))
-    params = [item for row in rows for item in row]
-
-    return placeholders, params
-
-
-def get_delete_columns_placeholders_and_params(rows_to_delete: list[dict]):
-    columns_list = list(rows_to_delete[0].keys())
-    columns = '(' + ', '.join(columns_list) + ')'
-
-
-    placeholders = []
-    params = []
-    for row in rows_to_delete:
-        placeholders.append(f"({', '.join(['%s'] * len(columns_list))})")
-        params.extend([row[col] for col in columns_list])
-
-    placeholders = ', '.join(placeholders)
-
-    return columns, placeholders, params
-
-
-def convert_uuids_to_str(obj: Any) -> Any:
-    if isinstance(obj, UUID):
-        return str(obj)
-    if isinstance(obj, dict):
-        return {k: convert_uuids_to_str(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [convert_uuids_to_str(v) for v in obj]
-    if isinstance(obj, tuple):
-        return tuple(convert_uuids_to_str(v) for v in obj)
-    return obj
-
-
-def bulk_insert_rows(cur: Cursor, table_name: str, rows: list[dict]):
-    if not rows:
-        return
-    cols = list(rows[0].keys())
-    placeholders_per_row = '(' + ', '.join('%s' for _ in cols) + ')'
-    placeholders = ', '.join(placeholders_per_row for _ in rows)
-    params = []
-    for r in rows:
-        for c in cols:
-            params.append(r.get(c))
-    cur.execute(
-        f"""
-        INSERT INTO {table_name} ({', '.join(cols)})
-        VALUES {placeholders}
-        ON CONFLICT DO NOTHING
-        """,
-        params
-    )
-
-
-# def convert_str_to_uuids(obj: Any) -> Any:
-#     if isinstance(obj, str):
-#         try:
-#             return UUID(obj)
-#         except (ValueError, TypeError):
-#             return obj
-#     # dict/list/tuple recursion
-#     if isinstance(obj, dict):
-#         return {k: convert_str_to_uuids(v) for k, v in obj.items()}
-#     if isinstance(obj, list):
-#         return [convert_str_to_uuids(v) for v in obj]
-#     if isinstance(obj, tuple):
-#         return tuple(convert_str_to_uuids(v) for v in obj)
-#     return obj
 
 
 def wrap_for_mutation(obj):
@@ -222,7 +123,7 @@ class StrList(list):
 
 
 
-
+# předtím bylo pro copy paste history, ale pořád se hodí pro save_changes
 @dataclass
 class CopyPasteRow:
     performed_by: UUID
@@ -284,65 +185,108 @@ class CopyPasteRow:
         }
 
 
-def save_copy_paste(cur: Cursor, row: CopyPasteRow, logged_employee_id):
-    cur.execute(
-        '''
-        DELETE FROM copy_paste_history p
-        USING undo_copy_paste u
-        WHERE u.copy_paste_history_id = p.id
-        AND p.performed_by = %s;''',
-        (logged_employee_id,))
-    # cascade smaže i undo_copy_paste
+def build_changes_from_paste(cur: Cursor, copy_paste_row: CopyPasteRow) -> list[dict]:
+    """
+    Builds a list of change dicts from a completed paste operation.
+    Queries the created rows to get full data for undo/redo.
+    """
+    changes = []
 
-    cur.execute(
-        '''
-        INSERT INTO copy_paste_history
-            (performed_by,
+    # Query and add main entities (order matters for undo: parent before children)
+    if copy_paste_row.employee_ids:
+        employees = cur.execute(
+            'SELECT * FROM employees WHERE id = ANY(%s)',
+            (list(copy_paste_row.employee_ids),)
+        ).fetchall()
+        for emp in employees:
+            changes.append({
+                'table': 'employees',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(emp))
+            })
 
-            targets_were_new_employees,
-            targets_were_new_events,
+    if copy_paste_row.event_ids:
+        events = cur.execute(
+            'SELECT * FROM events WHERE id = ANY(%s)',
+            (list(copy_paste_row.event_ids),)
+        ).fetchall()
+        for event in events:
+            changes.append({
+                'table': 'events',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(event))
+            })
 
-            target_event_ids,
-            target_booth_ids,
+    if copy_paste_row.booth_ids:
+        booths = cur.execute(
+            'SELECT * FROM booths WHERE id = ANY(%s)',
+            (list(copy_paste_row.booth_ids),)
+        ).fetchall()
+        for booth in booths:
+            changes.append({
+                'table': 'booths',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(booth))
+            })
 
-            data_to_copy,
+    if copy_paste_row.product_ids:
+        products = cur.execute(
+            'SELECT * FROM products WHERE id = ANY(%s)',
+            (list(copy_paste_row.product_ids),)
+        ).fetchall()
+        for product in products:
+            changes.append({
+                'table': 'products',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(product))
+            })
 
-            event_ids,
-            booth_ids,
-            product_ids,
-            category_ids,
-            employee_ids,
+    if copy_paste_row.category_ids:
+        categories = cur.execute(
+            'SELECT * FROM categories WHERE id = ANY(%s)',
+            (list(copy_paste_row.category_ids),)
+        ).fetchall()
+        for category in categories:
+            changes.append({
+                'table': 'categories',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(category))
+            })
 
-            employee_event_booth_roles_rows,
-            product_booth_link_rows,
-            category_booth_link_rows,
-            category_product_link_rows)
-        VALUES (
-            %(performed_by)s,
+    # Add link table rows (already have full data, just need to serialize)
+    for row in copy_paste_row.employee_event_booth_roles_rows:
+        changes.append({
+            'table': 'employee_event_booth_roles',
+            'old_values': None,
+            'new_values': convert_dict_to_serializable(dict(row))
+        })
 
-            %(targets_were_new_employees)s,
-            %(targets_were_new_events)s,
+    for row in copy_paste_row.product_booth_link_rows:
+        changes.append({
+            'table': 'product_booth_link',
+            'old_values': None,
+            'new_values': convert_dict_to_serializable(dict(row))
+        })
 
-            %(target_event_ids)s,
-            %(target_booth_ids)s,
+    for row in copy_paste_row.category_booth_link_rows:
+        changes.append({
+            'table': 'category_booth_link',
+            'old_values': None,
+            'new_values': convert_dict_to_serializable(dict(row))
+        })
 
-            %(data_to_copy)s,
+    for row in copy_paste_row.category_product_link_rows:
+        changes.append({
+            'table': 'category_product_link',
+            'old_values': None,
+            'new_values': convert_dict_to_serializable(dict(row))
+        })
 
-            %(event_ids)s,
-            %(booth_ids)s,
-            %(product_ids)s,
-            %(category_ids)s,
-            %(employee_ids)s,
-
-            %(employee_event_booth_roles_rows)s,
-            %(product_booth_link_rows)s,
-            %(category_booth_link_rows)s,
-            %(category_product_link_rows)s)
-        ''',
-        row.to_params())
+    return changes
 
 
 def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_new_events, logged_employee):
+    # předtím bylo k ukládání do copy paste history, ale pořád se hodí pro save_changes
     copy_paste_row = CopyPasteRow(
         performed_by=logged_employee['id'],
         targets_were_new_employees=targets_are_new_employees,
@@ -356,13 +300,12 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
     if targets_are_new_employees:
         if not data_to_copy['employee_ids']:
             return jsonify(error='no_employees_to_copy'), 400
-        
         try:
             with get_pool().connection() as conn:
                 with conn.cursor() as cur:
                     locked = cur.execute(
                         "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                        (get_employee_paste_lock_key(logged_employee['id']),)
+                        (get_employee_lock_key(logged_employee['id'], 'paste'),)
                     ).fetchone()['locked']
 
                     if not locked:
@@ -422,46 +365,45 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         new_id = uuid.uuid4()
                         copied_to_created_employees[employee_to_copy['id']] = new_id
 
-                        employee_rows.append((
-                            new_id,
-                            new_employee_username,
-                            new_employee_email,
-                            employee_to_copy['password_hash'],
-                            employee_to_copy['is_admin'],
-                            logged_employee['id']
-                        ))
+                        employee_rows.append({
+                            'id': new_id,
+                            'username': new_employee_username,
+                            'email': new_employee_email,
+                            'password_hash': employee_to_copy['password_hash'],
+                            'is_admin': employee_to_copy['is_admin'],
+                            'created_by': logged_employee['id']
+                        })
 
                         copy_paste_row.employee_ids.append(new_id)
 
-                    placeholders, params = get_placeholders_and_params(employee_rows)
-
-                    cur.execute(
-                        f'''
-                        INSERT INTO employees
-                        (id, username, email, password_hash, is_admin, created_by)
-                        VALUES {placeholders}
-                        ''',
-                        params)
+                    sql, query_params = build_insert_statement('employees', employee_rows)
+                    cur.execute(sql, query_params)
                         
                     if employee_event_booth_roles_to_copy:
-                        rows = [(copied_to_created_employees[link['employee_id']], link['event_id'], link['booth_id']) for link in employee_event_booth_roles_to_copy]
+                        em_ev_bo_roles_rows = [{
+                            'employee_id': copied_to_created_employees[link['employee_id']],
+                            'event_id': link['event_id'],
+                            'booth_id': link['booth_id']
+                            } 
+                            for link in employee_event_booth_roles_to_copy]
 
-                        placeholders, params = get_placeholders_and_params(rows)
+                        sql, query_params = build_insert_statement('employee_event_booth_roles', em_ev_bo_roles_rows)
+                        cur.execute(sql, query_params)
 
-                        cur.execute(
-                            f'''
-                            INSERT INTO employee_event_booth_roles
-                            (employee_id, event_id, booth_id)
-                            VALUES {placeholders}
-                            ''',
-                            params)
-                        
-                    save_copy_paste(cur, copy_paste_row, logged_employee['id'])
+                    # Save to unified change history for undo/redo
+                    changes = build_changes_from_paste(cur, copy_paste_row)
+                    save_change(cur, changes, logged_employee['id'])
 
         except NoValidEmployeesToCopyError:
             return jsonify(error='no_valid_employees_to_copy'), 400
         except PgTryAdvisoryLockError:
             return jsonify(error='paste_operation_in_progress'), 409
+        except IntegrityError as e:
+            # došlo ke změně nebo přidání nového jména,... během vkládání
+            if 'unique_index' in str(e):
+                return jsonify(error='unique_conflict'), 500
+            else:
+                raise
 
         return jsonify(), 200
 
@@ -474,7 +416,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
             with conn.cursor() as cur:
                 locked = cur.execute(
                     "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                    (get_employee_paste_lock_key(logged_employee['id']),)
+                    (get_employee_lock_key(logged_employee['id'], 'paste'),)
                 ).fetchone()['locked']
 
                 if not locked:
@@ -746,17 +688,15 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     # copied_ids_already_created_per_target_event['copied_directly'][target_event['id']].add(manager['id'])
                                     # copied_ids_already_created_per_target_event['copied_indirectly'][target_event['id']].add(manager['id'])
 
-                                    manager_rows.append((
-                                        manager['id'],
-                                        target_event['id'],
-                                        None
-                                    ))
-
-                                    copy_paste_row.employee_event_booth_roles_rows.append({
+                                    new_row = {
                                         'employee_id': manager['id'],
                                         'event_id': target_event['id'],
                                         'booth_id': None
-                                    })
+                                    }
+
+                                    manager_rows.append(new_row)
+
+                                    copy_paste_row.employee_event_booth_roles_rows.append(new_row)
                             else:
                                 # jestli se kopíruje stejný manager z různých events, tak ho zkopírujeme jen jednou
                                 copied_managers_ids = {manager['id'] for manager in copied_managers}
@@ -765,17 +705,15 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     if manager_id in manager_ids_of_target_event:
                                         continue
 
-                                    manager_rows.append({
-                                        manager_id,
-                                        target_event['id'],
-                                        None
-                                    })
-
-                                    copy_paste_row.employee_event_booth_roles_rows.append({
+                                    new_row = {
                                         'employee_id': manager_id,
                                         'event_id': target_event['id'],
                                         'booth_id': None
-                                    })
+                                    }
+
+                                    manager_rows.append(new_row)
+
+                                    copy_paste_row.employee_event_booth_roles_rows.append(new_row)
                         
 
                         if copied_booths:
@@ -805,13 +743,13 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_directly'][target_event['id']][booth['id']] = new_id
 
-                                booth_rows.append((
-                                    new_id,
-                                    new_booth_name,
-                                    target_event['id'],
-                                    booth['booth_type'],
-                                    logged_employee['id']
-                                ))
+                                booth_rows.append({
+                                    'id': new_id,
+                                    'name': new_booth_name,
+                                    'event_id': target_event['id'],
+                                    'ibooth_typed': booth['booth_type'],
+                                    'created_by': logged_employee['id']
+                                })
 
                                 copy_paste_row.booth_ids.append(new_id)
 
@@ -835,13 +773,13 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']][booth['id']] = new_id
 
-                                booth_rows.append((
-                                    new_id,
-                                    new_booth_name,
-                                    target_event['id'],
-                                    booth['booth_type'],
-                                    logged_employee['id']
-                                ))
+                                booth_rows.append({
+                                    'id': new_id,
+                                    'name': new_booth_name,
+                                    'event_id': target_event['id'],
+                                    'booth_type': booth['booth_type'],
+                                    'created_by': logged_employee['id']
+                                })
 
                                 copy_paste_row.booth_ids.append(new_id)
 
@@ -873,13 +811,13 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_directly'][target_event['id']][product['id']] = new_id
 
-                                product_rows.append((
-                                    new_id,
-                                    target_event['id'],
-                                    new_product_name,
-                                    product['price'],
-                                    product['image_id']
-                                ))
+                                product_rows.append({
+                                    'id': new_id,
+                                    'event_id': target_event['id'],
+                                    'name': new_product_name,
+                                    'price': product['price'],
+                                    'image_id': product['image_id']
+                                })
 
                                 copy_paste_row.product_ids.append(new_id)
 
@@ -902,13 +840,13 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']][product['id']] = new_id
 
-                                product_rows.append((
-                                    new_id,
-                                    target_event['id'],
-                                    new_product_name,
-                                    product['price'],
-                                    product['image_id']
-                                ))
+                                product_rows.append({
+                                    'id': new_id,
+                                    'event_id': target_event['id'],
+                                    'name': new_product_name,
+                                    'price': product['price'],
+                                    'image_id': product['image_id']
+                                })
 
                                 copy_paste_row.product_ids.append(new_id)
 
@@ -940,11 +878,11 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_directly'][target_event['id']][category['id']] = new_id
 
-                                category_rows.append((
-                                    new_id,
-                                    new_category_name,
-                                    target_event['id']
-                                ))
+                                category_rows.append({
+                                    'id': new_id,
+                                    'name': new_category_name,
+                                    'event_id': target_event['id']
+                                })
 
                                 copy_paste_row.category_ids.append(new_id)
 
@@ -967,17 +905,18 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_id = uuid.uuid4()
                                 copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']][category['id']] = new_id
 
-                                category_rows.append((
-                                    new_id,
-                                    new_category_name,
-                                    target_event['id']
-                                ))
+                                category_rows.append({
+                                    'id': new_id,
+                                    'name': new_category_name,
+                                    'event_id': target_event['id']
+                                })
 
                                 copy_paste_row.category_ids.append(new_id)
 
                     
                     if manager_rows:
-                        placeholders, params = get_placeholders_and_params(manager_rows)
+                        cols = ['employee_id','event_id','booth_id']
+                        placeholders, params = get_placeholders_and_params(manager_rows, cols)
 
                         # kontrola, že employee není admin nebo je deleted není potřeba, protože data se berou z této tabulky
                         cur.execute(
@@ -987,9 +926,9 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             ),
                             input_with_cols AS (
                             SELECT 
-                                column1::uuid AS employee_id,
-                                column2::uuid AS event_id,
-                                column3::uuid AS booth_id
+                                column1::uuid AS {cols[0]},
+                                column2::uuid AS {cols[1]},
+                                column3::uuid AS {cols[2]}
                             FROM input_data
                             ),
                             valid_rows AS (
@@ -1007,37 +946,16 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             params)
                         
                     if booth_rows:
-                        placeholders, params = get_placeholders_and_params(booth_rows)
+                        sql, query_params = build_insert_statement('booths', booth_rows)
+                        cur.execute(sql, query_params)
 
-                        cur.execute(
-                            f'''
-                            INSERT INTO booths
-                            (id, name, event_id, booth_type, created_by)
-                            VALUES {placeholders}
-                            ''',
-                            params)
-                        
                     if product_rows:
-                        placeholders, params = get_placeholders_and_params(product_rows)
-
-                        cur.execute(
-                            f'''
-                            INSERT INTO products
-                            (id, event_id, name, price, image_id)
-                            VALUES {placeholders}
-                            ''',
-                            params)
+                        sql, query_params = build_insert_statement('products', product_rows)
+                        cur.execute(sql, query_params)
                         
                     if category_rows:
-                        placeholders, params = get_placeholders_and_params(category_rows)
-
-                        cur.execute(
-                            f'''
-                            INSERT INTO categories
-                            (id, name, event_id)
-                            VALUES {placeholders}
-                            ''',
-                            params)
+                        sql, query_params = build_insert_statement('categories', category_rows)
+                        cur.execute(sql, query_params)
 
 
                     # vytovření řádků ve spojovacích tabulkách, kde to jde:
@@ -1132,29 +1050,27 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 if new_booth_id and new_booth_id != row['booth_id']:
                                     new_product_id = copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']][row['product_id']]
 
-                                    product_booth_link_rows.append((
-                                    new_booth_id,
-                                    new_product_id
-                                    ))
+                                    new_row = {
+                                        'product_id': new_product_id,
+                                        'booth_id': new_booth_id
+                                    }
 
-                                    copy_paste_row.product_booth_link_rows.append({
-                                        'booth_id': new_booth_id,
-                                        'product_id': new_product_id
-                                    })
+                                    product_booth_link_rows.append(new_row)
+
+                                    copy_paste_row.product_booth_link_rows.append(new_row)
 
                             if target_event['id'] == row['event_id']:
                                 new_product_id = copied_to_created_ids_per_target_event['copied_directly'][target_event['id']].get(row['product_id'])
 
                                 if new_product_id:
-                                    product_booth_link_rows.append((
-                                    row['booth_id'],
-                                    new_product_id
-                                    ))
+                                    new_row = {
+                                        'product_id': new_product_id,
+                                        'booth_id': row['booth_id']
+                                    }
 
-                                    copy_paste_row.product_booth_link_rows.append({
-                                        'booth_id': row['booth_id'],
-                                        'product_id': new_product_id
-                                    })
+                                    product_booth_link_rows.append(new_row)
+
+                                    copy_paste_row.product_booth_link_rows.append(new_row)
 
                             
                         # booths x categories
@@ -1166,30 +1082,27 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 if new_booth_id and new_booth_id != row['booth_id']:
                                     new_category_id = copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']][row['category_id']]
 
-                                    category_booth_link_rows.append((
-                                    new_booth_id,
-                                    new_category_id
-                                    ))
+                                    new_row = {
+                                        'category_id': new_category_id,
+                                        'booth_id': new_booth_id
+                                    }
 
-                                    copy_paste_row.category_booth_link_rows.append({
-                                        'booth_id': new_booth_id,
-                                        'category_id': new_category_id
-                                    })
+                                    category_booth_link_rows.append(new_row)
+
+                                    copy_paste_row.category_booth_link_rows.append(new_row)
 
 
                             if target_event['id'] == row['event_id']:
                                 new_category_id = copied_to_created_ids_per_target_event['copied_directly'][target_event['id']].get(row['category_id'])
 
                                 if new_category_id:
-                                    category_booth_link_rows.append((
-                                    row['booth_id'],
-                                    new_category_id
-                                    ))
+                                    new_row = {
+                                        'category_id': new_category_id,
+                                        'booth_id': row['booth_id']
+                                    }
+                                    category_booth_link_rows.append(new_row)
 
-                                    copy_paste_row.category_booth_link_rows.append({
-                                        'booth_id': row['booth_id'],
-                                        'category_id': new_category_id
-                                    })
+                                    copy_paste_row.category_booth_link_rows.append(new_row)
                             
                         # products x categories
                         for row in category_product_links_to_copy:
@@ -1197,47 +1110,45 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             new_category_id = copied_to_created_ids_per_target_event['copied_indirectly'][target_event['id']].get(row['category_id'])
 
                             if new_product_id and new_category_id and (new_product_id != row['product_id'] or new_category_id != row['category_id']):
-                                category_product_link_rows.append((
-                                new_product_id,
-                                new_category_id
-                                ))
+                                new_row = {
+                                    'category_id': new_category_id,
+                                    'product_id': new_product_id
+                                }
 
-                                copy_paste_row.category_product_link_rows.append({
-                                    'product_id': new_product_id,
-                                    'category_id': new_category_id
-                                })
+                                category_product_link_rows.append(new_row)
+
+                                copy_paste_row.category_product_link_rows.append(new_row)
 
 
                             if target_event['id'] == row['event_id']:
                                 new_product_id = copied_to_created_ids_per_target_event['copied_directly'][target_event['id']].get(row['product_id'])
 
                                 if new_product_id:
-                                    category_product_link_rows.append((
-                                    new_product_id,
-                                    row['category_id']
-                                    ))
+                                    new_row = {
+                                        'category_id': row['category_id'],
+                                        'product_id': new_product_id
+                                    }
 
-                                    copy_paste_row.category_product_link_rows.append({
-                                        'product_id': new_product_id,
-                                        'category_id': row['category_id']
-                                    })
+                                    category_product_link_rows.append(new_row)
+
+                                    copy_paste_row.category_product_link_rows.append(new_row)
 
                                 new_category_id = copied_to_created_ids_per_target_event['copied_directly'][target_event['id']].get(row['category_id'])
 
                                 if new_category_id:
-                                    category_product_link_rows.append((
-                                    row['product_id'],
-                                    new_category_id
-                                    ))
+                                    new_row = {
+                                        'category_id': new_category_id,
+                                        'product_id': row['product_id']
+                                    }
 
-                                    copy_paste_row.category_product_link_rows.append({
-                                        'product_id': row['product_id'],
-                                        'category_id': new_category_id
-                                    })
+                                    category_product_link_rows.append(new_row)
+
+                                    copy_paste_row.category_product_link_rows.append(new_row)
 
                             
                     if employee_event_booth_roles_rows:
-                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows)
+                        cols = ['employee_id','event_id','booth_id']
+                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows, cols)
                         cur.execute(
                             f'''
                             WITH input_data AS (
@@ -1245,9 +1156,9 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             ),
                             input_with_cols AS (
                             SELECT 
-                                column1::uuid AS booth_id,
-                                column2::uuid AS employee_id,
-                                column3::uuid AS event_id
+                                column1::uuid AS {cols[0]},
+                                column2::uuid AS {cols[1]},
+                                column3::uuid AS {cols[2]}
                             FROM input_data
                             ),
                             valid_rows AS (
@@ -1267,37 +1178,16 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             params)
                         
                     if product_booth_link_rows:
-                        placeholders, params = get_placeholders_and_params(product_booth_link_rows)
-
-                        cur.execute(
-                            f'''
-                            INSERT INTO product_booth_link
-                            (booth_id, product_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('product_booth_link', product_booth_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
                         
                     if category_booth_link_rows:
-                        placeholders, params = get_placeholders_and_params(category_booth_link_rows)
-
-                        cur.execute(
-                            f'''
-                            INSERT INTO category_booth_link
-                            (booth_id, category_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('category_booth_link', category_booth_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
                         
                     if category_product_link_rows:
-                        placeholders, params = get_placeholders_and_params(category_product_link_rows)
-
-                        cur.execute(
-                            f'''
-                            INSERT INTO category_product_link
-                            (product_id, category_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('category_product_link', category_product_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
 
 
 
@@ -1332,14 +1222,14 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
 
                             new_id = uuid.uuid4()
                             created_ids_per_event[event_id]['products'][product['id']] = new_id
-                            
-                            product_rows.append((
-                                new_id,
-                                event_id,
-                                product['name'],
-                                product['price'],
-                                product['image_id']
-                            ))
+
+                            product_rows.append({
+                                'id': new_id,
+                                'event_id': event_id,
+                                'name': product['name'],
+                                'price': product['price'],
+                                'image_id': product['image_id']
+                            })
                             
                             copy_paste_row.product_ids.append(new_id)
                         
@@ -1356,35 +1246,23 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
 
                             new_id = uuid.uuid4()
                             created_ids_per_event[event_id]['categories'][category['id']] = new_id
-                            
-                            category_rows.append((
-                                new_id,
-                                category['name'],
-                                event_id
-                            ))
+
+                            category_rows.append({
+                                'id': new_id,
+                                'name': category['name'],
+                                'event_id': event_id
+                            })
                             
                             copy_paste_row.category_ids.append(new_id)
 
 
                     if product_rows:
-                        placeholders, params = get_placeholders_and_params(product_rows)
-                        cur.execute(
-                            f'''
-                            INSERT INTO products
-                            (id, event_id, name, price, image_id)
-                            VALUES {placeholders}
-                            ''',
-                            params)
+                        sql, query_params = build_insert_statement('products', product_rows)
+                        cur.execute(sql, query_params)
                         
                     if category_rows:
-                        placeholders, params = get_placeholders_and_params(category_rows)
-                        cur.execute(
-                            f'''
-                            INSERT INTO categories
-                            (id, name, event_id)
-                            VALUES {placeholders}
-                            ''',
-                            params)
+                        sql, query_params = build_insert_statement('categories', category_rows)
+                        cur.execute(sql, query_params)
                     
 
                     all_copied_ids = set()
@@ -1475,15 +1353,14 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     continue
                                     
                                 if new_product_id:
-                                    product_booth_link_rows.append((
-                                        booth['id'],
-                                        new_product_id
-                                    ))
+                                    new_row = {
+                                        'product_id': new_product_id,
+                                        'booth_id': booth['id']
+                                    }
                                     
-                                    copy_paste_row.product_booth_link_rows.append({
-                                        'booth_id': booth['id'],
-                                        'product_id': new_product_id
-                                    })
+                                    product_booth_link_rows.append(new_row)
+                                    
+                                    copy_paste_row.product_booth_link_rows.append(new_row)
                         
                         if booth['booth_type'] == 'seller':
                             # categories x booths
@@ -1494,15 +1371,14 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     continue
 
                                 if new_category_id:
-                                    category_booth_link_rows.append((
-                                        booth['id'],
-                                        new_category_id
-                                    ))
+                                    new_row = {
+                                        'category_id': new_category_id,
+                                        'booth_id': booth['id']
+                                    }
+
+                                    category_booth_link_rows.append(new_row)
                                     
-                                    copy_paste_row.category_booth_link_rows.append({
-                                        'booth_id': booth['id'],
-                                        'category_id': new_category_id
-                                    })
+                                    copy_paste_row.category_booth_link_rows.append(new_row)
                         
                         # products x categories
                         for row in category_product_links_to_copy:
@@ -1513,19 +1389,32 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 continue
 
                             if (new_product_id and new_category_id):
-                                category_product_link_rows.append((
-                                    new_product_id,
-                                    new_category_id
-                                ))
+                                new_row = {
+                                    'category_id': new_category_id,
+                                    'product_id': new_product_id
+                                }
+
+                                category_product_link_rows.append(new_row)
                                 
-                                copy_paste_row.category_product_link_rows.append({
-                                    'product_id': new_product_id,
-                                    'category_id': new_category_id
-                                })
+                                copy_paste_row.category_product_link_rows.append(new_row)
                     
 
                     if employee_event_booth_roles_rows:
-                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows)
+                        
+                        # cur.execute(
+                        #     f'''
+                        #     WITH input_data AS (
+                        #     VALUES {placeholders}
+                        #     ),
+                        #     input_with_cols AS (
+                        #     SELECT 
+                        #         column1::uuid AS {cols[0]},
+                        #         column2::uuid AS {cols[1]},
+                        #         column3::uuid AS {cols[2]}
+
+                        cols = ['employee_id','event_id','booth_id']
+                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows, cols)
+
                         cur.execute(
                             f'''
                             WITH input_data AS (
@@ -1533,9 +1422,9 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             ),
                             input_with_cols AS (
                             SELECT 
-                                column1::uuid AS booth_id,
-                                column2::uuid AS employee_id,
-                                column3::uuid AS event_id
+                                column1::uuid AS {cols[0]},
+                                column2::uuid AS {cols[1]},
+                                column3::uuid AS {cols[2]}
                             FROM input_data
                             ),
                             valid_rows AS (
@@ -1555,37 +1444,21 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             params)
                     
                     if product_booth_link_rows:
-                        placeholders, params = get_placeholders_and_params(product_booth_link_rows)
-                        cur.execute(
-                            f'''
-                            INSERT INTO product_booth_link
-                            (booth_id, product_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('product_booth_link', product_booth_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
                     
                     if category_booth_link_rows:
-                        placeholders, params = get_placeholders_and_params(category_booth_link_rows)
-                        cur.execute(
-                            f'''
-                            INSERT INTO category_booth_link
-                            (booth_id, category_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('category_booth_link', category_booth_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
                     
                     if category_product_link_rows:
-                        placeholders, params = get_placeholders_and_params(category_product_link_rows)
-                        cur.execute(
-                            f'''
-                            INSERT INTO category_product_link
-                            (product_id, category_id)
-                            VALUES {placeholders}
-                            ON CONFLICT DO NOTHING''',
-                            params)
+                        sql, query_params = build_insert_statement('category_product_link', category_product_link_rows, on_conflict_do_nothing=True)
+                        cur.execute(sql, query_params)
 
 
-                save_copy_paste(cur, copy_paste_row, logged_employee['id'])
+                # Save to unified change history for undo/redo
+                changes = build_changes_from_paste(cur, copy_paste_row)
+                save_change(cur, changes, logged_employee['id'])
 
     except ForbiddenError:
         return jsonify(error='insufficient_privileges'), 403
@@ -1593,6 +1466,12 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
         return jsonify(error='can_not_make_new_event_if_not_copying_event'), 400
     except PgTryAdvisoryLockError:
         return jsonify(error='paste_operation_in_progress'), 409
+    except IntegrityError as e:
+        # došlo ke změně nebo přidání nového jména (event, product,...) během vkládání
+        if 'unique_index' in str(e):
+            return jsonify(error='unique_conflict'), 500
+        else:
+            raise
 
     return jsonify(), 200
 
@@ -1709,284 +1588,3 @@ def paste():
     return do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_new_events, logged_employee)
 
 
-@api_bp.route('/undo', methods=('POST',))
-def undo_paste():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
-                locked = cur.execute(
-                    "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                    (get_employee_paste_lock_key(logged_employee['id']),)
-                ).fetchone()['locked']
-
-                if not locked:
-                    raise PgTryAdvisoryLockError()
-
-                last_valid_paste = cur.execute(
-                    '''
-                    SELECT paste.*
-                    FROM copy_paste_history AS paste
-                    LEFT JOIN undo_copy_paste as undo ON undo.copy_paste_history_id = paste.id
-                    WHERE paste.performed_by = %s
-                    AND undo.id IS NULL
-                    ORDER BY paste.occurred_at DESC
-                    LIMIT 1
-                    ''',
-                    (logged_employee['id'],)).fetchone()
-
-                if not last_valid_paste:
-                    raise NoPasteToUndoError()
-
-                last_valid_paste = CopyPasteRow(**last_valid_paste)
-                
-
-                if last_valid_paste.employee_ids:
-                    cur.execute(
-                        '''
-                        UPDATE employees
-                        SET deleted_at = now()
-                        WHERE id = ANY(%s)
-                        AND deleted_at IS NULL
-                        ''',
-                        (last_valid_paste.employee_ids,))
-
-
-                if last_valid_paste.event_ids:
-                    cur.execute(
-                        '''
-                        UPDATE events
-                        SET deleted_at = now()
-                        WHERE id = ANY(%s)
-                        AND deleted_at IS NULL
-                        ''',
-                        (last_valid_paste.event_ids,))
-                
-                if last_valid_paste.booth_ids:
-                    cur.execute(
-                        '''
-                        UPDATE booths
-                        SET deleted_at = now()
-                        WHERE id = ANY(%s)
-                        AND deleted_at IS NULL
-                        ''',
-                        (last_valid_paste.booth_ids,))
-                    
-                if last_valid_paste.product_ids:
-                    cur.execute(
-                        '''
-                        UPDATE products
-                        SET deleted_at = now()
-                        WHERE id = ANY(%s)
-                        AND deleted_at IS NULL
-                        ''',
-                        (last_valid_paste.product_ids,))
-                    
-                if last_valid_paste.category_ids:
-                    cur.execute(
-                        '''
-                        UPDATE categories
-                        SET deleted_at = now()
-                        WHERE id = ANY(%s)
-                        AND deleted_at IS NULL
-                        ''',
-                        (last_valid_paste.category_ids,))
-                    
-
-                rows = last_valid_paste.employee_event_booth_roles_rows
-                # booth_id může být null, proto se to liší od ostatních
-                if rows:
-                    cols = ['booth_id', 'event_id', 'employee_id']
-
-                    col_type = {
-                        'booth_id': 'uuid',
-                        'event_id': 'uuid',
-                        'employee_id': 'uuid',
-                    }
-
-                    # "(%s::uuid, %s::uuid, %s::uuid)"
-                    per_row_placeholder = '(' + ', '.join('%s::' + col_type[c] for c in cols) + ')'
-
-                    placeholders = ', '.join(per_row_placeholder for _ in rows)
-
-                    params = []
-                    for row in rows:
-                        for c in cols:
-                            params.append(row.get(c))
-
-                    cur.execute(
-                        f"""
-                        WITH to_delete ({', '.join(cols)}) AS (
-                            VALUES {placeholders}
-                        )
-                        DELETE FROM employee_event_booth_roles e
-                        USING to_delete t
-                        WHERE e.event_id = t.event_id
-                        AND e.employee_id = t.employee_id
-                        AND (e.booth_id IS NOT DISTINCT FROM t.booth_id)
-                        """,
-                        params
-                    )
-                    
-                if last_valid_paste.product_booth_link_rows:
-                    columns, placeholders, params = get_delete_columns_placeholders_and_params(last_valid_paste.product_booth_link_rows)
-
-                    cur.execute(
-                        f'''
-                        DELETE FROM product_booth_link 
-                        WHERE {columns} IN (VALUES {placeholders})
-                        ''',
-                        params)
-                    
-                if last_valid_paste.category_booth_link_rows:
-                    columns, placeholders, params = get_delete_columns_placeholders_and_params(last_valid_paste.category_booth_link_rows)
-
-                    cur.execute(
-                        f'''
-                        DELETE FROM category_booth_link 
-                        WHERE {columns} IN (VALUES {placeholders})
-                        ''',
-                        params)
-
-                if last_valid_paste.category_product_link_rows:
-                    columns, placeholders, params = get_delete_columns_placeholders_and_params(last_valid_paste.category_product_link_rows)
-
-                    cur.execute(
-                        f'''
-                        DELETE FROM category_product_link 
-                        WHERE {columns} IN (VALUES {placeholders})
-                        ''',
-                        params)
-
-
-                cur.execute(
-                    '''
-                    INSERT INTO undo_copy_paste
-                    (copy_paste_history_id)
-                    VALUES (%s)
-                    ''',
-                    (last_valid_paste.id,))
-
-    except NoPasteToUndoError:
-        return jsonify(message='no_paste_to_undo'), 200
-    except PgTryAdvisoryLockError:
-        return jsonify(error='paste_operation_in_progress'), 409
-
-    return jsonify(), 200
-
-
-@api_bp.route('/redo', methods=('POST',))
-def redo_paste():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
-                locked = cur.execute(
-                    "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                    (get_employee_paste_lock_key(logged_employee['id']),)
-                ).fetchone()['locked']
-
-                if not locked:
-                    raise PgTryAdvisoryLockError()
-
-                last_valid_undo_paste_dict = cur.execute(
-                    '''
-                    SELECT paste.*, undo.id AS undo_id
-                    FROM undo_copy_paste AS undo
-                    JOIN copy_paste_history AS paste ON paste.id = undo.copy_paste_history_id
-                    WHERE paste.performed_by = %s
-                    ORDER BY undo.occurred_at DESC
-                    LIMIT 1
-                    ''',
-                    (logged_employee['id'],)).fetchone()
-
-                if not last_valid_undo_paste_dict:
-                    raise NoPasteToRedoError()
-
-                undo_id = last_valid_undo_paste_dict.pop('undo_id')
-                
-                last_valid_undo_paste = CopyPasteRow(**last_valid_undo_paste_dict)
-
-                if last_valid_undo_paste.employee_ids:
-                    cur.execute(
-                        '''
-                        UPDATE employees
-                        SET deleted_at = NULL
-                        WHERE id = ANY(%s)
-                        ''',
-                        (last_valid_undo_paste.employee_ids,)
-                    )
-
-                if last_valid_undo_paste.event_ids:
-                    cur.execute(
-                        '''
-                        UPDATE events
-                        SET deleted_at = NULL
-                        WHERE id = ANY(%s)
-                        ''',
-                        (last_valid_undo_paste.event_ids,)
-                    )
-
-                if last_valid_undo_paste.booth_ids:
-                    cur.execute(
-                        '''
-                        UPDATE booths
-                        SET deleted_at = NULL
-                        WHERE id = ANY(%s)
-                        ''',
-                        (last_valid_undo_paste.booth_ids,)
-                    )
-
-                if last_valid_undo_paste.product_ids:
-                    cur.execute(
-                        '''
-                        UPDATE products
-                        SET deleted_at = NULL
-                        WHERE id = ANY(%s)
-                        ''',
-                        (last_valid_undo_paste.product_ids,)
-                    )
-
-                if last_valid_undo_paste.category_ids:
-                    cur.execute(
-                        '''
-                        UPDATE categories
-                        SET deleted_at = NULL
-                        WHERE id = ANY(%s)
-                        ''',
-                        (last_valid_undo_paste.category_ids,)
-                    )
-
-                if last_valid_undo_paste.product_booth_link_rows:
-                    bulk_insert_rows(cur, 'product_booth_link', last_valid_undo_paste.product_booth_link_rows)
-
-                if last_valid_undo_paste.category_booth_link_rows:
-                    bulk_insert_rows(cur, 'category_booth_link', last_valid_undo_paste.category_booth_link_rows)
-
-                if last_valid_undo_paste.category_product_link_rows:
-                    bulk_insert_rows(cur, 'category_product_link', last_valid_undo_paste.category_product_link_rows)
-
-                if last_valid_undo_paste.employee_event_booth_roles_rows:
-                    bulk_insert_rows(cur, 'employee_event_booth_roles', last_valid_undo_paste.employee_event_booth_roles_rows)
-
-                cur.execute(
-                    '''
-                    DELETE FROM undo_copy_paste
-                    WHERE id = %s
-                    ''',
-                    (undo_id,))
-
-    except NoPasteToRedoError:
-        return jsonify(message='no_paste_to_redo'), 200
-    except PgTryAdvisoryLockError:
-        return jsonify(error='paste_operation_in_progress'), 409
-
-    return jsonify(), 200

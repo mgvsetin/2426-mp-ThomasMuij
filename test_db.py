@@ -15,16 +15,13 @@ def get_db(row_factory=dict_row, **kwargs):
 
 with get_db() as conn:
     with conn.cursor() as cur:
-        events_to_copy = cur.execute(
-            '''
-            SELECT id, name, start_at, end_at
-            FROM events
-            WHERE id = ANY(%s)
-            AND deleted_at IS NULL
-            ''',
-            ([],)).fetchall()
-        
-        print(events_to_copy)
+        from cashier_app.utils.query_builder import build_update_statement
+        sql, query_params = build_update_statement('employees', {'username': 'bob', 'password_hash': 'the_builder'}, "10000000-0000-0000-0000-000000000013", False, ['*'])
+        new_employee = cur.execute(sql, query_params).fetchone()
+
+        print(cur.rowcount)
+        print(new_employee)
+     
         
 
         

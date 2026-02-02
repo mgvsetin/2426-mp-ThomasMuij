@@ -141,7 +141,7 @@ def add_user():
     if not (params.get('email') or params.get('phone_number') or params.get('other_identifier')):
         return jsonify(error='at_least_one_of_email_phone_number_other_identifier_is_required'), 400
     
-    sql, query_params = build_insert_statement('users', params, returning='id')
+    sql, query_params = build_insert_statement('users', params, returning=['id'])
 
     try:
         with get_pool().connection() as conn:
@@ -248,7 +248,7 @@ def edit_user():
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
                 
-                # delete wallets?
+                #### delete wallets?
 
     except IntegrityError as e:
         # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
@@ -409,7 +409,7 @@ def add_wallet():
     if change_balance_by != new_balance:
         return jsonify(error=f"change_balance_by_and_new_balance_do_not_match"), 400
 
-    sql, query_params = build_insert_statement('wallets', params, returning='id, owner_id')
+    sql, query_params = build_insert_statement('wallets', params, returning=['id', 'owner_id'])
 
     try:
         with get_pool().connection() as conn:
