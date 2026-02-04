@@ -298,3 +298,29 @@ export async function unselectEventBooth() {
   ]);
 
 }
+
+
+export async function unselectBooth() {
+  order.reset();
+  try {
+    const response = await fetch('/api/employees/me/events/booths/remove', {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      throw new UnexpectedError();
+    }
+
+  } catch (error) {
+
+  }
+
+  await Promise.all([
+    resetWalletsCache(),
+    resetProductsCache(),
+    removeReadCard(),
+    unselectUserForUpdate(),
+    saveSelectedCategory(null)
+  ]);
+
+}

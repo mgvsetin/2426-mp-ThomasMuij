@@ -1,4 +1,4 @@
-import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent } from "./event_booth.js";
+import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent, unselectBooth } from "./event_booth.js";
 import { renderProducts, renderCategories, saveSelectedCategory, findProduct, fetchProductsAndCategories } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
@@ -6,13 +6,14 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { closeModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { getSessionInfo } from "../general/session.js";
-import { setUpCardReading, lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise } from "./cards.js";
+import { lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelCardReadPromise, handleCardRead } from "./cards.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
 import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, fetchUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { getWalletByTag, fetchWallets, resetWalletsCache } from "./wallets.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
+import { setUpCardReading } from "../general/card_reader.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
@@ -83,7 +84,7 @@ async function chooseAndLoadPage() {
   if (sessionInfo.booth) {
     pageContainer.setAttribute('show', sessionInfo.booth.booth_type === 'seller' ? 'seller' : 'cashier');
     await Promise.all([
-      setUpCardReading(false),
+      setUpCardReading(handleCardRead, false),
       editUserFormOnChange(),
       loadPage({
         products: true,
@@ -221,7 +222,7 @@ document.addEventListener('click', async (event) => {
   const payButton = event.target.closest('#pay-button');
   if (payButton) {
     payButton.disabled = true;
-    setUpCardReading(true);
+    setUpCardReading(handleCardRead, true);
     clearPayError();
 
     if (!lastReadCardId) {
@@ -349,7 +350,7 @@ document.addEventListener('click', async (event) => {
   }
 
   if (event.target.matches('#choose-card-reader')) {
-    await setUpCardReading(true);
+    await setUpCardReading(handleCardRead, true);
   }
 
   const closeChoosingReader = event.target.closest('#close-choosing-reader');
@@ -364,6 +365,15 @@ document.addEventListener('click', async (event) => {
       return;
     }
     await unselectEventBooth();
+    chooseAndLoadPage();
+    return;
+  }
+
+  if (event.target.matches('#choose-new-booth-button')) {
+    if (selectingEvent) {
+      return;
+    }
+    await unselectBooth();
     chooseAndLoadPage();
     return;
   }
@@ -648,7 +658,7 @@ document.addEventListener('submit', async (event) => {
   const boothForm = event.target.closest('#booth-selector-form');
   if (boothForm) {
     event.preventDefault();
-    setUpCardReading(true);
+    setUpCardReading(handleCardRead, true);
     const formData = new FormData(boothForm);
     const booth_type = await pickBooth(formData);
 
@@ -1079,7 +1089,7 @@ sellerPage.addEventListener('focusout', (event) => {
 // }
 
 navigator.serial.addEventListener('connect', (event) => {
-  setUpCardReading(false);
+  setUpCardReading(handleCardRead, false);
 });
 
 

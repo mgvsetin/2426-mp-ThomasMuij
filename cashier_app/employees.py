@@ -5,7 +5,7 @@ from argon2 import PasswordHasher
 from cashier_app.employee_events_booths import load_selected_event
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
-from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_password
+from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_new_password
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, CanNotDeleteLastAdminError
 from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 from cashier_app.undo_and_redo import save_change
@@ -93,7 +93,7 @@ def add_employee():
     if not ok:
         return jsonify(error="invalid_email"), 400    
 
-    ok, errors = validate_password(password_raw)
+    ok, errors = validate_new_password(password_raw)
     if not ok:
         return jsonify(error=errors[0]), 400
     
@@ -108,7 +108,7 @@ def add_employee():
         'created_by': logged_employee['id']
     }
 
-    sql, query_params = build_insert_statement('employees', params, returning=['*'])
+    sql, query_params = build_insert_statement('employees', params, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -145,7 +145,7 @@ def edit_employee():
     if not edit_employee_id:
         return jsonify(error='missing_id'), 400
 
-    if not logged_employee['is_admin'] and logged_employee['id'] != edit_employee_id:
+    if not logged_employee['is_admin']:
         return jsonify(error='insufficient_privileges'), 403
 
     new_username = request.form.get('username', '').strip()
@@ -177,7 +177,7 @@ def edit_employee():
     params['email'] = new_email
         
     if new_password_raw:
-        ok, errors = validate_password(new_password_raw)
+        ok, errors = validate_new_password(new_password_raw)
         if not ok:
             return jsonify(error=errors[0]), 400
         
@@ -186,7 +186,7 @@ def edit_employee():
 
         params['password_hash'] = new_password_hash
 
-    sql, query_params = build_update_statement('employees', params, edit_employee_id, returning=['*'])
+    sql, query_params = build_update_statement('employees', params, edit_employee_id, returning='*')
 
     try:
         with get_pool().connection() as conn:

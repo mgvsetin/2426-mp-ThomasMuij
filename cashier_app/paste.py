@@ -23,7 +23,7 @@ from cashier_app.utils.products import convert_image_paths_from_relative
 from cashier_app.errors import ForbiddenError, PgTryAdvisoryLockError, CanNotMakeNewEventIfNotCopyingEventError, NoValidEmployeesToCopyError
 from cashier_app.undo_and_redo import save_change
 from cashier_app.utils.cascade_capture import convert_dict_to_serializable
-from cashier_app.utils.query_builder import build_insert_statement, get_placeholders_and_params
+from cashier_app.utils.query_builder import build_insert_statement, get_insert_placeholders_and_params
 from cashier_app.utils.general import convert_uuids_to_str, get_employee_lock_key
 
 
@@ -747,7 +747,7 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                     'id': new_id,
                                     'name': new_booth_name,
                                     'event_id': target_event['id'],
-                                    'ibooth_typed': booth['booth_type'],
+                                    'booth_type': booth['booth_type'],
                                     'created_by': logged_employee['id']
                                 })
 
@@ -916,13 +916,13 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                     
                     if manager_rows:
                         cols = ['employee_id','event_id','booth_id']
-                        placeholders, params = get_placeholders_and_params(manager_rows, cols)
+                        placeholders, params = get_insert_placeholders_and_params(manager_rows, cols)
 
                         # kontrola, že employee není admin nebo je deleted není potřeba, protože data se berou z této tabulky
                         cur.execute(
                             f'''
                             WITH input_data AS (
-                            VALUES {placeholders}
+                            VALUES {placeholders.as_string(cur)}
                             ),
                             input_with_cols AS (
                             SELECT 
@@ -1028,17 +1028,15 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                                 new_booth_id = value[target_event['id']].get(row['booth_id'])
 
                                 if new_booth_id and new_booth_id != row['booth_id']:
-                                    employee_event_booth_roles_rows.append((
-                                        new_booth_id,
-                                        row['employee_id'],
-                                        target_event['id']
-                                    ))
-
-                                    copy_paste_row.employee_event_booth_roles_rows.append({
-                                        'booth_id': new_booth_id,
+                                    new_row = {
                                         'employee_id': row['employee_id'],
-                                        'event_id': target_event['id']
-                                    })
+                                        'event_id': target_event['id'],
+                                        'booth_id': new_booth_id
+                                    }
+
+                                    employee_event_booth_roles_rows.append(new_row)
+
+                                    copy_paste_row.employee_event_booth_roles_rows.append(new_row)
 
                             
                         # booths x products
@@ -1148,11 +1146,11 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             
                     if employee_event_booth_roles_rows:
                         cols = ['employee_id','event_id','booth_id']
-                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows, cols)
+                        placeholders, params = get_insert_placeholders_and_params(employee_event_booth_roles_rows, cols)
                         cur.execute(
                             f'''
                             WITH input_data AS (
-                            VALUES {placeholders}
+                            VALUES {placeholders.as_string(cur)}
                             ),
                             input_with_cols AS (
                             SELECT 
@@ -1332,17 +1330,15 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                             if row['booth_id'] == booth['id'] and row['employee_id'] in employee_ids_assigned_per_target_booth:
                                 continue
 
-                            employee_event_booth_roles_rows.append((
-                                booth['id'],
-                                row['employee_id'],
-                                booth['event_id']
-                            ))
-                            
-                            copy_paste_row.employee_event_booth_roles_rows.append({
-                                'booth_id': booth['id'],
+                            new_row = {
                                 'employee_id': row['employee_id'],
-                                'event_id': booth['event_id']
-                            })
+                                'event_id': booth['event_id'],
+                                'booth_id': booth['id']
+                            }
+
+                            employee_event_booth_roles_rows.append(new_row)
+                            
+                            copy_paste_row.employee_event_booth_roles_rows.append(new_row)
                         
                         if booth['booth_type'] == 'seller':
                             # products x booths
@@ -1413,12 +1409,12 @@ def do_paste(data_to_copy, target_ids, targets_are_new_employees, targets_are_ne
                         #         column3::uuid AS {cols[2]}
 
                         cols = ['employee_id','event_id','booth_id']
-                        placeholders, params = get_placeholders_and_params(employee_event_booth_roles_rows, cols)
+                        placeholders, params = get_insert_placeholders_and_params(employee_event_booth_roles_rows, cols)
 
                         cur.execute(
                             f'''
                             WITH input_data AS (
-                            VALUES {placeholders}
+                            VALUES {placeholders.as_string(cur)}
                             ),
                             input_with_cols AS (
                             SELECT 

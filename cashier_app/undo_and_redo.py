@@ -10,7 +10,7 @@ from cashier_app.utils.general import get_employee_lock_key
 
 # Configuration for undo/redo limits
 MAX_UNDO_CHANGES = 30
-UNDO_TIME_LIMIT_HOURS = 1
+UNDO_TIME_LIMIT_MINUTES = 60
 
 
 bp = Blueprint('undo_and_redo', __name__, url_prefix='/api')
@@ -38,19 +38,19 @@ def _cleanup_old_history(cur: Cursor, employee_id):
     params = {
         "employee_id": employee_id,
         "max_undo": MAX_UNDO_CHANGES,
-        "undo_time_limit": UNDO_TIME_LIMIT_HOURS
+        "undo_time_limit": UNDO_TIME_LIMIT_MINUTES
     }
 
     cur.execute(
         '''
         DELETE FROM change_history c
         WHERE c.performed_by = %(employee_id)s
-        AND c.occurred_at <= NOW() - make_interval(hours => %(undo_time_limit)s)
+        AND c.occurred_at <= NOW() - make_interval(mins => %(undo_time_limit)s)
         AND NOT EXISTS (
             SELECT 1
             FROM undo_change_history u
             WHERE u.change_history_id = c.id
-                AND u.occurred_at > NOW() - make_interval(hours => %(undo_time_limit)s)
+                AND u.occurred_at > NOW() - make_interval(mins => %(undo_time_limit)s)
         )
         ''',
         params)

@@ -1,7 +1,7 @@
 import { cloneData } from "./cache.js";
 
 
-export function cacheFunctionFactory(func, cacheTimeMs=1000 * 60 * 2 /*2 min*/, cacheRefetchMs=1000 * 60 /*1 min*/) {
+export function cacheFunctionFactory(func, cacheTimeMs = 1000 * 60 * 2 /*2 min*/, cacheRefetchMs = 1000 * 60 /*1 min*/) {
   const cache = {
     data: null,
     fetchTime: 0
@@ -36,7 +36,7 @@ export function cacheFunctionFactory(func, cacheTimeMs=1000 * 60 * 2 /*2 min*/, 
   const resetCacheFunc = () => {
     cache.data = null;
     cache.fetchTime = 0;
-    wrapperFunc();
+    wrapperFunc().catch(() => { });
   }
 
   return [wrapperFunc, resetCacheFunc]

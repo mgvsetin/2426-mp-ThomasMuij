@@ -9,7 +9,10 @@ let header, /*searchBar,*/ accountDropdown, sessionInfoEl, sidebarOverlayPage;
 function initHeader() {
   if (document.getElementById('header')) return;
 
-  const newEventButtonHTML = location.pathname === '/' ? `
+  const newEventBoothButtonHTML = location.pathname === '/' ? `
+    <button id="choose-new-booth-button">
+      Změnit stánek
+    </button>
     <button id="choose-new-event-button">
       Změnit akci
     </button>
@@ -37,7 +40,8 @@ function initHeader() {
 
     <div id="header-right">
       <button id="account-button">
-        <img id="account-icon" src="/static/images/icons/account_icon.png">
+        <div id="account-icon"></div>
+        <!-- <img id="account-icon" src="/static/images/icons/account_icon.png"> -->
       </button>
 
       <div id="account-dropdown">
@@ -49,7 +53,7 @@ function initHeader() {
         </div>
         <div class="divider"></div>
         <div class="dropdown-actions">
-          ${newEventButtonHTML}
+          ${newEventBoothButtonHTML}
           <a id="logout-link" href="/api/auth/logout" class="logout">Odhlásit</a>
         </div>
       </div>
@@ -65,7 +69,27 @@ function initHeader() {
   accountDropdown = document.querySelector('#account-dropdown');
   sessionInfoEl = document.querySelector('#session-info');
 
+  setTimeout(async () => {
+    const sessionInfo = await getSessionInfo().catch(() => { });
+
+    const displayName = sessionInfo?.employee?.username || "-";
+    const avatarEl = document.getElementById('account-icon');
+    avatarEl.textContent = displayName[0];
+    avatarEl.style.backgroundColor = nameToColor(displayName);
+  }, 0)
+
   // searchBar.value = new URL(window.location).searchParams.get('search_query') || '';
+}
+
+
+function nameToColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+
+  return `hsl(${hue} 60% 45%)`;
 }
 
 
@@ -132,7 +156,7 @@ export async function renderHeader() {
 export function headerClickListeners(event) {
   if (!header) initHeader();
 
-  if (!(event.target.matches('#account-button, #account-icon')
+  if (!(event.target.closest('#account-button')
     || (event.target.closest('#account-dropdown') && !event.target.closest('button, a')))) {
     // kliknutí jinam než na dropdown nebo ikonu uživatele
     // nebo na <button>/<a> v něm
@@ -167,7 +191,7 @@ export function headerClickListeners(event) {
   //   return true;
   // }
 
-  if (event.target.matches('#account-button, #account-icon')) {
+  if (event.target.closest('#account-button')) {
     accountDropdown.toggleAttribute('opened');
     return true;
   }

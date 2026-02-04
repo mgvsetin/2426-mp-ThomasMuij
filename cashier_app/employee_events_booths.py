@@ -308,6 +308,15 @@ def select_booth():
 
 
 
+@api_booths_bp.route('/remove', methods=('DELETE',))
+def remove_booth():
+    """Odstraní vybraný stánek z aktuální session.
+    """
+    session.pop('booth_id', None)
+    return jsonify(), 200
+
+
+
 def load_selected_booth():
     """Načte vybraný stánek ze session a ulož do `g`.
 

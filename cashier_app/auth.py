@@ -6,6 +6,7 @@ přihlášeného zaměstnance.
 
 import functools
 from urllib.parse import urlparse, urljoin
+from uuid import UUID
 from flask import Blueprint, request, render_template, current_app, session, redirect, url_for, g, jsonify
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
@@ -28,49 +29,43 @@ api_bp = Blueprint('auth_api', __name__, url_prefix='/api/auth')
 # db error handling
 
 
-def get_employee_id(username_or_email: str, password: str) -> str | None:
-    """Ověří zadané uživatelské jméno/e-mail a heslo, vrátí id zaměstnance.
+def get_employee_id(username_or_email: str) -> str | UUID | None:
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            employee = cur.execute(
+                '''
+                SELECT id
+                FROM employees
+                WHERE (username = %s OR email = %s)
+                AND deleted_at IS NULL''',
+                (username_or_email, username_or_email)).fetchone()
+    
+    if not employee:
+        return None
+    
+    return employee['id']
 
 
-    Postup:
-    1. Najde záznam zaměstnance podle username nebo email (pokud existuje a není smazaný).
-    2. Ověří heslo pomocí Argon2.
-    3. Pokud je potřeba, přehashuje heslo a uloží nový hash.
-    
-    
-    Parametry
-    ---------
-    username_or_email: str
-    Uživatelské jméno nebo e-mail zadaný do přihlašovacího formuláře.
-    password: str
-    Nehashované heslo z formuláře.
-    
-    
-    Vrací
-    -----
-    str | None
-    ID zaměstnance (řetězec) pokud ověření proběhlo úspěšně, jinak None.
-    """
-
+def employee_password_is_correct(employee_id: str, password: str):
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             employee = cur.execute(
                 '''
                 SELECT id, password_hash
                 FROM employees
-                WHERE (username = %s OR email = %s)
+                WHERE id = %s
                 AND deleted_at IS NULL''',
-                (username_or_email, username_or_email)).fetchone()
+                (employee_id,)).fetchone()
+            
+    if not employee:
+        return False
     
     password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
-
-    if not employee:
-        return None
 
     try:
         password_hasher.verify(employee['password_hash'], password)
     except (VerifyMismatchError, VerificationError, InvalidHashError):
-        return None
+        return False
     
     if password_hasher.check_needs_rehash(employee['password_hash']):
         new_hash = password_hasher.hash(password)
@@ -83,26 +78,19 @@ def get_employee_id(username_or_email: str, password: str) -> str | None:
                     WHERE id = %s''',
                     (new_hash, employee['id']))
     
-    return employee['id']
+    return True
 
 
 @api_bp.route('/login', methods=('POST',))
 def login():
-    """View pro přihlášení zaměstnance.
-
-
-    Zpracovává oba způsoby:
-    - GET: vrátí statickou HTML stránku přihlášení (pro vývoj/produkci lze použít webserver)
-    - POST: zpracuje přihlašovací údaje, vytvoří session a vrátí JSON s redirect_url nebo chybu.
-    """
     # if request.method == 'POST':
     username_or_email = request.form.get('username-email', '').strip()
     password = request.form.get('password', '')
     remember_me = request.form.get('remember-me')
 
-    employee_id = get_employee_id(username_or_email, password)
+    employee_id = get_employee_id(username_or_email)
 
-    if employee_id:
+    if employee_id and employee_password_is_correct(employee_id, password):
         session.clear()
         # request that the session cookie be replaced with a new sid when saved
         session['_regenerate'] = True

@@ -127,7 +127,7 @@ def validate_email(email: str) -> Tuple[bool, List[str]]:
     return (len(errors) == 0), errors
 
 
-def validate_password(
+def validate_new_password(
     password: str,
     min_len: int = 8,
     require_upper: bool = True,

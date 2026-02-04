@@ -262,6 +262,29 @@ async function pasteCopied(calledWithin) {
     return;
   }
 
+  if (data.targets === 'newEvents'
+    && data.dataToCopy.employeeIds.length === 0) {
+    makeMessage('Zkopírované data sem nelze vložit.');
+    return;
+  }
+
+  if (data.targets === 'newEmployees') {
+    if (data.dataToCopy.employeeIds.length === 0) {
+      makeMessage('Zkopírované data sem nelze vložit.');
+      return;
+    }
+  } else {
+    if (data.dataToCopy.eventIds.length === 0
+      && data.dataToCopy.boothIds.length === 0
+      && data.dataToCopy.productIds.length === 0
+      && data.dataToCopy.categoryIds.length === 0
+      && data.dataToCopy.managerIds.length === 0
+      && data.dataToCopy.employeesToAssignToTargetBooths.length === 0) {
+      makeMessage('Zkopírované data sem nelze vložit.');
+      return;
+    }
+  }
+
   try {
     const response = await fetch('/api/paste', {
       method: 'POST',

@@ -362,7 +362,7 @@ def add_event():
     #     if start_at_utc > end_at_utc:
     #         return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    sql, query_params = build_insert_statement('events', params, returning=['*'])
+    sql, query_params = build_insert_statement('events', params, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -445,7 +445,7 @@ def edit_event():
         if start_at_utc > end_at_utc:
             return jsonify(error='invalid_start_at_end_at_dates'), 400
 
-    sql, query_params = build_update_statement('events', params, event_id, returning=['*'])
+    sql, query_params = build_update_statement('events', params, event_id, returning='*')
     # validate start_at end_at from db?
 
     # add editing event info from other tables
@@ -657,7 +657,7 @@ def add_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    sql, query_params = build_insert_statement('booths', params, returning=['*'])
+    sql, query_params = build_insert_statement('booths', params, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -772,7 +772,7 @@ def edit_booth():
                 if not category:
                     return jsonify(error='category_not_found'), 400
 
-    sql, query_params = build_update_statement('booths', params, booth_id, returning=['*'])
+    sql, query_params = build_update_statement('booths', params, booth_id, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -873,6 +873,9 @@ def delete_booth():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
+                
+                sync_booth_product_links(cur, booth_id, [])
+                sync_booth_category_links(cur, booth_id, [])
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
@@ -1276,7 +1279,7 @@ def add_product():
                 changes = []
 
                 if image_file:
-                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning=['*'])
+                    img_sql, img_query_params = build_insert_statement('product_images', product_images_params, returning='*')
                     new_image = cur.execute(img_sql, img_query_params).fetchone()
                     image_id = new_image['id']
                     params['image_id'] = image_id
@@ -1287,7 +1290,7 @@ def add_product():
                         'new_values': convert_dict_to_serializable(dict(new_image))
                     })
 
-                sql, query_params = build_insert_statement('products', params, returning=['*'])
+                sql, query_params = build_insert_statement('products', params, returning='*')
                 new_product = cur.execute(sql, query_params).fetchone()
                 product_id = new_product['id']
 
@@ -1479,7 +1482,7 @@ def edit_product():
                     image_id = cur.execute(img_sql, img_query_params).fetchone()['id']
                     params['image_id'] = image_id
 
-                sql, query_params = build_update_statement('products', params, product_id, returning=['*'])
+                sql, query_params = build_update_statement('products', params, product_id, returning='*')
 
                 new_product = cur.execute(sql, query_params).fetchone()
 
@@ -1583,17 +1586,9 @@ def delete_product():
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
 
-                # měly by se dít sami:
-                cur.execute(
-                    f'''
-                    DELETE FROM product_booth_link
-                    WHERE product_id = %s''',
-                    (product_id,))
-                cur.execute(
-                    f'''
-                    DELETE FROM category_product_link
-                    WHERE product_id = %s''',
-                    (product_id,))
+                # do changes už zaznamená capture_product_cascade
+                sync_product_booth_links(cur, product_id, [])
+                sync_product_category_links(cur, product_id, [])
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
@@ -1700,7 +1695,7 @@ def add_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    sql, query_params = build_insert_statement('categories', params, returning=['*'])
+    sql, query_params = build_insert_statement('categories', params, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -1827,7 +1822,7 @@ def edit_category():
         return jsonify(error=errors[0]), 400
     params['name'] = name
 
-    sql, query_params = build_update_statement('categories', params, category_id, returning=['*'])
+    sql, query_params = build_update_statement('categories', params, category_id, returning='*')
 
     try:
         with get_pool().connection() as conn:
@@ -1886,11 +1881,11 @@ def delete_category():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     try:
-        cateogry_id = UUID(request.form.get('id'))
+        category_id = UUID(request.form.get('id'))
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
     
-    if not cateogry_id:
+    if not category_id:
         return jsonify(error='missing_id'), 400
 
     with get_pool().connection() as conn:
@@ -1901,7 +1896,7 @@ def delete_category():
                 FROM categories
                 WHERE id = %s
                 AND deleted_at IS NULL''',
-                (cateogry_id,)).fetchone()
+                (category_id,)).fetchone()
 
     if not category:
         return jsonify(error='category_not_found'), 404
@@ -1911,13 +1906,13 @@ def delete_category():
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
-    sql, query_params = build_delete_statement('categories', cateogry_id)
+    sql, query_params = build_delete_statement('categories', category_id)
 
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 # Capture all data before delete (category + link tables)
-                changes = capture_category_cascade(cur, cateogry_id)
+                changes = capture_category_cascade(cur, category_id)
 
                 if not changes:
                     raise NoRowsAffectedError()
@@ -1930,22 +1925,13 @@ def delete_category():
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
 
-                # měly by se dít sami:
-                cur.execute(
-                    '''
-                    DELETE FROM category_booth_link
-                    WHERE category_id = %s''',
-                    (cateogry_id,))
-                cur.execute(
-                    '''
-                    DELETE FROM category_product_link
-                    WHERE category_id = %s''',
-                    (cateogry_id,))
+                sync_category_booth_links(cur, category_id, [])
+                sync_category_product_links(cur, category_id, [])
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
-        current_app.logger.exception('multiple rows deleted for category id %s', cateogry_id)
+        current_app.logger.exception('multiple rows deleted for category id %s', category_id)
         return jsonify(error='internal_server_error'), 500
     except NoRowsAffectedError:
         return jsonify(error='category_not_found'), 404
