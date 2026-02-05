@@ -564,7 +564,7 @@ usersTableBody.addEventListener('dblclick', async (event) => {
 document.addEventListener('keydown', (event) => {
   // headerKeydownListeners(event);
   if (phoneInputKeydownListeners(event)) return;
-  
+
   handleRowSelection(event);
 
   if (event.target.matches('#change-balance-by-input, #edit-wallet-change-balance-by-input') && event.key === '-') {
@@ -1088,9 +1088,12 @@ sellerPage.addEventListener('focusout', (event) => {
 })
 // }
 
-navigator.serial.addEventListener('connect', (event) => {
-  setUpCardReading(handleCardRead, false);
-});
+if ('serial' in navigator) {
+  navigator.serial.addEventListener('connect', (event) => {
+    setUpCardReading(handleCardRead, false);
+  });
+}
+
 
 
 function clearPayError() {

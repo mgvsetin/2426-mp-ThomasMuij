@@ -1,5 +1,5 @@
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
-import { setUpCardReading } from "../general/card_reader.js";
+import { requestPortFromUser, setUpCardReading } from "../general/card_reader.js";
 import { UnexpectedError } from "../general/errors.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML } from "../general/html_display_utils.js";
@@ -425,13 +425,18 @@ async function renderReaders() {
   let html = '';
   ports.forEach((port, index) => {
     const info = port.getInfo();
+
     let label = `Čtečka ${index + 1}`;
+  
+    const infoArr = [];
     if (info.usbVendorId) {
-      label += ` (VID: ${escapeHTML(String(info.usbVendorId))}`;
-      if (info.usbProductId) {
-        label += `, PID: ${escapeHTML(String(info.usbProductId))}`;
-      }
-      label += ')';
+      infoArr.push(`VID: ${escapeHTML(String(info.usbVendorId))}`);
+    }
+    if (info.usbProductId) {
+      infoArr.push(`PID: ${escapeHTML(String(info.usbProductId))}`);
+    }
+    if (infoArr.length > 0) {
+      label += ` (${infoArr.join(', ')})`;
     }
 
     html += `
@@ -466,7 +471,7 @@ async function addReader() {
   if (!('serial' in navigator)) return;
 
   try {
-    await navigator.serial.requestPort();
+    await requestPortFromUser(true);
     renderReaders();
   } catch (error) {
     // uživatel zrušil výběr

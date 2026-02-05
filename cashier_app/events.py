@@ -114,24 +114,74 @@ def delete_unused_images():
 
         if not success:
             if image_row_to_delete['attempt'] < 5:
+                image_row_to_delete['attempt'] += 1
                 rows_failed_to_delete_img.append(image_row_to_delete)
             else:
-                current_app.logger.exception('failed to delete image %s after %s requests', image_row_to_delete['attempt'], image_row_to_delete['attempt'])
+                current_app.logger.exception('failed to delete image %s after %s requests', image_row_to_delete['image_path'], image_row_to_delete['attempt'])
     
     if rows_failed_to_delete_img:
-        placeholders = ",".join(["(%s, %s)"] * len(rows_failed_to_delete_img))
-        params = [val for row in rows_failed_to_delete_img 
-                for val in (row['image_path'], row['attempt'] + 1)]
+        sql, query_params = build_insert_statement('product_images_failed_to_delete', rows_failed_to_delete_img)
 
         # jestli nešel smazat obrázek, tak vytvoř řadu, aby se smazal příště
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    f'''
-                    INSERT INTO product_images_failed_to_delete
-                    (image_path, attempt)
-                    VALUES {placeholders}''',
-                    params)
+                cur.execute(sql, query_params)
+    
+    # with get_pool().connection() as conn:
+    #     with conn.cursor() as cur:
+    #         row = cur.execute(
+    #             '''
+    #             SELECT image_path
+    #             FROM product_images
+    #             LIMIT 1
+    #             '''
+    #         ).fetchone()
+
+    # if row:
+    #     image_path_example = row['image_path']
+    # else:
+    #     image_path_example = None
+
+    # if image_path_example:
+    #     static_to_image_dir_path = os.path.dirname(image_path_example)
+    #     image_dir_path = os.path.join(current_app.static_folder, static_to_image_dir_path)
+
+    #     if os.path.isdir(image_dir_path):
+    #         filenames = [f for f in os.listdir(image_dir_path)
+    #                     if os.path.isfile(os.path.join(image_dir_path, f))]
+
+    #         saved_image_paths = [
+    #             os.path.normpath(os.path.join(static_to_image_dir_path, f)).replace('\\', '/')
+    #             for f in filenames
+    #         ]
+
+    #         with get_pool().connection() as conn:
+    #             with conn.cursor() as cur:
+    #                 if saved_image_paths:
+    #                     # build placeholders for NOT IN
+    #                     placeholders = ",".join(["%s"] * len(saved_image_paths))
+    #                     sql = f'''
+    #                         SELECT image_path
+    #                         FROM product_images
+    #                         WHERE image_path NOT IN ({placeholders})
+    #                     '''
+    #                     unused_image_rows = cur.execute(sql, tuple(saved_image_paths)).fetchall()
+
+    #         # delete the missing files (they're missing on disk, so remove DB entries or try removing file)
+    #         for row in unused_image_rows:
+    #             db_image_path = row['image_path']
+    #             full_fs_path = os.path.join(current_app.static_folder, db_image_path)
+
+    #             success = remove_image_if_exists(full_fs_path)
+
+    #             if not success:
+    #                 current_app.logger.exception('failed to delete image %s', db_image_path)
+    #     else:
+    #         current_app.logger.debug('Image directory does not exist: %s', image_dir_path)
+    # else:
+    #     current_app.logger.debug('No product_images rows found; skipping filesystem sync')
+    
+
 
 
 @api_bp.route('')

@@ -15,20 +15,47 @@ async function getReaderInfo() {
   const resData = await response.json();
 
   readerInfo = resData.reader_info;
-  if (!readerInfo) {
+  if (!readerInfo
+    || !readerInfo.serial_port_options) {
     console.warn('Unable to get reader information');
     throw new UnexpectedError();
   }
-  if (!['serial', 'usb', 'hid'].includes(readerInfo.connection_type)) {
-    console.warn(`Invalid reader connection type ${readerInfo.connection_type}`);
-    throw new UnexpectedError();
-  }
-  if (readerInfo.connection_type === 'serial') {
-    console.warn('Reader information must contain serial_port_options if connection_type is serial');
-    throw new UnexpectedError();
-  }
 
-    return readerInfo;
+  return readerInfo;
+}
+
+
+export async function requestPortFromUser(calledFromInteraction=false) {
+  if (!('serial' in navigator)) return;
+
+  if (calledFromInteraction) {
+    const readerInfo = await getReaderInfo().catch(() => { });
+    if (readerInfo
+      && readerInfo.filters
+      && readerInfo.filters.length > 0) {
+      // [{
+      //   usbVendorId: 'An unsigned short integer that identifies a USB device vendor. The USB Implementors Forum assigns IDs to specific vendors.',
+      //   usbProductId (optional): 'An unsigned short integer that identifies a USB device. Each vendor assigns IDs to its products.'
+      // }, {...]
+      return await navigator.serial.requestPort({ filters: readerInfo.filters });
+    }
+    // může se zavolat jen při interakci se stránkou (např. kliknutí na tlačítko)
+    return await navigator.serial.requestPort();
+  } else {
+    const modal = document.createElement('div')
+    modal.id = 'select-reader-modal';
+    modal.innerHTML = `
+        <button id="close-choosing-reader">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id='choose-card-reader'>Vybrat čtečku</button>
+      `;
+
+    document.body.appendChild(modal);
+    return null;
+  }
 }
 
 
@@ -46,22 +73,8 @@ async function getCardReaderPort(calledFromInteraction, portIdx = undefined) {
     }
     if (pairedPorts.length === 1) {
       return pairedPorts[0];
-    } else if (calledFromInteraction) {
-      // může se zavolat jen při interakci se stránkou (např. kliknutí na tlačítko)
-      return await navigator.serial.requestPort();
     } else {
-      const modal = document.createElement('div')
-      modal.id = 'select-reader-modal';
-      modal.innerHTML = `
-        <button id="close-choosing-reader">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button id='choose-card-reader'>Vybrat čtečku</button>
-      `;
-
-      document.body.appendChild(modal);
+      requestPortFromUser(calledFromInteraction);
       return null;
     }
   } catch (error) {
@@ -75,7 +88,7 @@ async function openPortIfNecessary(port) {
   try {
     if (!port.readable) { // port není otevřený
       const readerInfo = await getReaderInfo().catch(() => { });
-      if (!readerInfo) return false;
+      if (!readerInfo || !readerInfo.serial_port_options) return false;
       await port.open(readerInfo.serial_port_options);
       return true;
       // await cardReaderPort.open({
@@ -156,6 +169,11 @@ async function _setUpCardReading(onCardRead, calledFromInteraction = false, port
 
 
 export async function setUpCardReading(onCardRead, calledFromInteraction = false, portIdx = undefined) {
+  if (!('serial' in navigator)) {
+    // prohlížeč nepodporuje
+    console.warn('Browser does not support Web Serial API.');
+    return;
+  }
   if (cardReaderIsBeingRead) return;
   try {
     cardReaderIsBeingRead = true;

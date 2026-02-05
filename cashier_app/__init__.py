@@ -47,14 +47,22 @@ def create_app(test_config=None):
             'salt_len':16
         },
         READER_INFO = {
-            'connection_type': 'serial',
+            # musí být a všechno je povinné
             'serial_port_options': {
                 'baudRate': 9600, 
                 'dataBits': 8,
                 'stopBits': 1,
                 'parity': 'none',
                 'flowControl': 'none'
-            }
+            },
+            # když není, můžou se v prohlížeči vybrat všechny připojené čtečky
+            # když je, tak musí mít každý slovník usbVendorId a může mít usbProductId
+            # každý slovník přidá navíc možnosti
+            # usbVendorId: An unsigned short integer that identifies a USB device vendor. The USB Implementors Forum assigns IDs to specific vendors.
+            # usbProductId: An unsigned short integer that identifies a USB device. Each vendor assigns IDs to its products.
+            # 'filters': [
+            #     {'usbVendorId': 4292, 'usbProductId': 60000}
+            # ]
         },
         UPLOAD_FOLDER = os.path.join(app.static_folder, 'images', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
