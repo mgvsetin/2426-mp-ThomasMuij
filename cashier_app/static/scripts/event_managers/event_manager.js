@@ -31,6 +31,10 @@ const categoriesTableBody = document.querySelector('#categories-table tbody');
 const usersTableBody = document.querySelector('#users-table tbody');
 const walletsTableBody = document.querySelector('#wallets-table tbody');
 
+// Multi-select: state stored per container element
+const multiSelectState = new WeakMap();
+const pendingMultiSelectStates = [];
+
 let statsData = null;
 let charts = {};
 
@@ -242,6 +246,36 @@ document.addEventListener('click', async (event) => {
   if (boothStatHeader) {
     toggleBoothProducts(boothStatHeader.getAttribute('data-booth-id'));
   }
+
+  // Multi-select: handle tag removal
+  const tagRemoveBtn = event.target.closest('.tag-remove');
+  if (tagRemoveBtn) {
+    event.preventDefault();
+    const tag = tagRemoveBtn.closest('.multi-select-tag');
+    const container = tag.closest('.multi-select-container');
+    multiSelectToggleItem(container, tag.dataset.itemId);
+    return;
+  }
+
+  // Multi-select: handle option click (toggle select/unselect)
+  const msOption = event.target.closest('.multi-select-option');
+  if (msOption) {
+    event.preventDefault();
+    const container = msOption.closest('.multi-select-container');
+    multiSelectToggleItem(container, msOption.dataset.itemId);
+
+    // Re-open dropdown (render resets innerHTML) and keep focus
+    const dropdown = container.querySelector('.multi-select-dropdown');
+    dropdown.classList.add('active');
+    const input = container.querySelector('.multi-select-input');
+    input.focus();
+    return;
+  }
+
+  // Multi-select: close all dropdowns when clicking outside any multi-select
+  const multiSelect = event.target.closest('.multi-select-container');
+  const dropdown = multiSelect?.querySelector('.multi-select-dropdown');
+  closeOtherMultiSelectDropdowns([dropdown]);
 
   if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
     return;
@@ -1265,6 +1299,16 @@ document.addEventListener('submit', async (event) => {
 
 
 document.addEventListener('input', (event) => {
+  // Multi-select: handle search/filter
+  const multiSelectInput = event.target.closest('.multi-select-input');
+  if (multiSelectInput) {
+    const container = multiSelectInput.closest('.multi-select-container');
+    const dropdown = container.querySelector('.multi-select-dropdown');
+    dropdown.classList.add('active');
+    renderMultiSelectDropdown(container);
+    return;
+  }
+
   const searchBar = event.target.closest('.search-bar');
   if (searchBar) {
     if (searchBar === boothsSearchBar) {
@@ -1289,6 +1333,7 @@ document.addEventListener('input', (event) => {
 
 
 document.addEventListener('keydown', (event) => {
+  if (multiSelectKeydownHandler(event)) return;
   if (phoneInputKeydownListeners(event)) return;
   handleRowSelection(event);
 
@@ -1340,14 +1385,25 @@ document.addEventListener('change', (event) => {
     categoriesRow.style.display = isSellerBooth ? 'flex' : 'none';
 
     if (!isSellerBooth) {
-      productsRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-      categoriesRow.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      const productsMultiSelect = productsRow.querySelector('.multi-select-container');
+      const categoriesMultiSelect = categoriesRow.querySelector('.multi-select-container');
+      if (productsMultiSelect) multiSelectClearAll(productsMultiSelect);
+      if (categoriesMultiSelect) multiSelectClearAll(categoriesMultiSelect);
     }
   }
 });
 
 
 document.addEventListener('focusin', (event) => {
+  // Multi-select: show dropdown on focus
+  const multiSelectInput = event.target.closest('.multi-select-input');
+  if (multiSelectInput) {
+    const container = multiSelectInput.closest('.multi-select-container');
+    const dropdown = container.querySelector('.multi-select-dropdown');
+    dropdown.classList.add('active');
+    return;
+  }
+
   phoneInputFocusinisteners(event);
 });
 
@@ -1748,12 +1804,20 @@ function walletIsSearchedFor(wallet, searchQuery) {
 
 
 function belongingBoothsToDisplay(booths) {
-  return booths.map(booth => `<span data-direct-to="${booth.id}">${escapeHTML(booth.name)}</span>`).join('<br>') || '-';
+  if (!booths.length) return '-';
+  const pills = booths.map(booth =>
+    `<span class="linked-pill" data-direct-to="${booth.id}" title="${escapeHTML(booth.name)}">${escapeHTML(booth.name)}</span>`
+  ).join('');
+  return `<div class="linked-pills">${pills}</div>`;
 }
 
 
 function belongingCategoriesToDisplay(categories) {
-  return categories.map(category => `<span data-direct-to="${category.id}">${escapeHTML(category.name)}</span>`).join('<br>') || '-';
+  if (!categories.length) return '-';
+  const pills = categories.map(category =>
+    `<span class="linked-pill" data-direct-to="${category.id}" title="${escapeHTML(category.name)}">${escapeHTML(category.name)}</span>`
+  ).join('');
+  return `<div class="linked-pills">${pills}</div>`;
 }
 
 
@@ -1793,7 +1857,7 @@ function renderBooths(eventData) {
     rows += `
       <tr id="${booth.id}">
         <td>${idx + 1}</td>
-        <td class="event-name">${escapeHTML(booth.name)}</td>
+        <td class="truncate-name" title="${escapeHTML(booth.name)}">${escapeHTML(booth.name)}</td>
         <td>${escapeHTML(boothTypeToDisplay(booth.booth_type))}</td>
         <td class="actions">
           <button class="icon-btn edit edit-booth">
@@ -1831,8 +1895,8 @@ function renderManagers(eventData) {
     rows += `
       <tr id="${manager.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(manager.username)}</td>
-        <td>${escapeHTML(manager.email)}</td>
+        <td class="truncate-name" title="${escapeHTML(manager.username)}">${escapeHTML(manager.username)}</td>
+        <td class="truncate-name" title="${escapeHTML(manager.email)}">${escapeHTML(manager.email)}</td>
         <td class="actions">
           <button class="icon-btn delete remove-employee">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1865,9 +1929,9 @@ function renderEmployees(eventData) {
     rows += `
       <tr id="${employee.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(employee.username)}</td>
-        <td>${escapeHTML(employee.email)}</td>
-        <td>${boothsStr}</td>
+        <td class="truncate-name" title="${escapeHTML(employee.username)}">${escapeHTML(employee.username)}</td>
+        <td class="truncate-name" title="${escapeHTML(employee.email)}">${escapeHTML(employee.email)}</td>
+        <td class="linked-pills-cell">${boothsStr}</td>
         <td class="actions">
           <button class="icon-btn edit edit-employee">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1913,11 +1977,11 @@ function renderProducts(eventData) {
     rows += `
       <tr id="${product.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(product.name)}</td>
+        <td class="truncate-name" title="${escapeHTML(product.name)}">${escapeHTML(product.name)}</td>
         <td>${escapeHTML(String(product.price))}</td>
         <td class="image-cell">${imageHTML}</td>
-        <td>${boothsStr}</td>
-        <td>${categoriesStr}</td>
+        <td class="linked-pills-cell">${boothsStr}</td>
+        <td class="linked-pills-cell">${categoriesStr}</td>
         <td class="actions">
           <button class="icon-btn edit edit-product">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1953,8 +2017,8 @@ function renderCategories(eventData) {
     rows += `
       <tr id="${category.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(category.name)}</td>
-        <td>${boothsStr}</td>
+        <td class="truncate-name" title="${escapeHTML(category.name)}">${escapeHTML(category.name)}</td>
+        <td class="linked-pills-cell">${boothsStr}</td>
         <td class="actions">
           <button class="icon-btn edit edit-category">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1991,11 +2055,11 @@ function renderUsers(eventData) {
     rows += `
       <tr id="${user.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(user.first_name)}</td>
-        <td>${escapeHTML(user.last_name)}</td>
-        <td>${escapeHTML(user.email || '-')}</td>
+        <td class="truncate-name" title="${escapeHTML(user.first_name)}">${escapeHTML(user.first_name)}</td>
+        <td class="truncate-name" title="${escapeHTML(user.last_name)}">${escapeHTML(user.last_name)}</td>
+        <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
         <td>${escapeHTML(user.phone_number || '-')}</td>
-        <td>${escapeHTML(user.other_identifier || '-')}</td>
+        <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
         <td><span class="${eventConnectedClass}">${eventConnectedText}</span></td>
         <td class="actions">
           <button class="icon-btn view view-user-transactions" data-user-id="${user.id}" title="Zobrazit transakce">
@@ -2067,88 +2131,303 @@ function formatNumber(num) {
 }
 
 
-function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
-  let checkboxesHTML = '';
-  const checkBoothIds = checkBooths.map(booth => booth.id);
+function renderMultiSelect(container) {
+  const state = multiSelectState.get(container);
+  if (!state) return;
 
-  const sortedBooths = booths.toSorted((a, b) => { return a.name.localeCompare(b.name) });
+  const input = container.querySelector('.multi-select-input');
 
-  sortedBooths.forEach(booth => {
-    if (boothType !== 'all' && booth.booth_type !== boothType) {
-      return;
+  // Render tags (alphabetical order from sorted items)
+  const tagsContainer = container.querySelector('.multi-select-tags');
+  let tagsHTML = '';
+  state.items.forEach(item => {
+    if (!state.selectedIds.has(item.id)) return;
+    tagsHTML += `
+      <span class="multi-select-tag" data-item-id="${item.id}">
+        <span class="tag-text">${escapeHTML(item.name)}</span>
+        <button type="button" class="tag-remove" aria-label="Odebrat">\u00d7</button>
+      </span>
+    `;
+  });
+  tagsContainer.innerHTML = tagsHTML;
+
+  // Render hidden inputs
+  const hiddenContainer = container.querySelector('.multi-select-hidden-inputs');
+  hiddenContainer.innerHTML = [...state.selectedIds]
+    .map(id => `<input type="hidden" name="${state.name}" value="${id}" />`)
+    .join('');
+
+  // Render dropdown
+  renderMultiSelectDropdown(container);
+}
+
+
+function renderMultiSelectDropdown(container) {
+  const state = multiSelectState.get(container);
+  if (!state) return;
+
+  const input = container.querySelector('.multi-select-input');
+  const searchValue = input ? input.value.toLowerCase() : '';
+  const dropdown = container.querySelector('.multi-select-dropdown');
+
+  let optionsHTML = '';
+
+  if (state.items.length === 0) {
+    optionsHTML = `<div class="multi-select-empty">${state.emptyMessage}</div>`;
+  } else {
+    let hasVisible = false;
+    state.items.forEach(item => {
+      const matches = !searchValue || item.name.toLowerCase().includes(searchValue);
+      if (!matches) return;
+      hasVisible = true;
+      const isSelected = state.selectedIds.has(item.id);
+      optionsHTML += `
+        <div class="multi-select-option ${isSelected ? 'selected' : ''}" data-item-id="${item.id}" data-item-name="${escapeHTML(item.name)}">
+          <span class="multi-select-option-name">${escapeHTML(item.name)}</span>
+          <span class="multi-select-check">${isSelected ? '\u2713' : ''}</span>
+        </div>
+      `;
+    });
+
+    if (!hasVisible && searchValue) {
+      optionsHTML = `<div class="multi-select-no-results">Žádné výsledky</div>`;
+    }
+  }
+
+  dropdown.innerHTML = optionsHTML;
+}
+
+
+function multiSelectToggleItem(container, itemId) {
+  const state = multiSelectState.get(container);
+  if (!state) return;
+
+  if (state.selectedIds.has(itemId)) {
+    state.selectedIds.delete(itemId);
+  } else {
+    state.selectedIds.add(itemId);
+  }
+
+  // const input = container.querySelector('.multi-select-input');
+  // input.value = '';
+  renderMultiSelect(container);
+}
+
+
+function multiSelectClearAll(container) {
+  const state = multiSelectState.get(container);
+  if (!state) return;
+
+  state.selectedIds.clear();
+  renderMultiSelect(container);
+}
+
+
+function closeOtherMultiSelectDropdowns(dropdownsToNotClose=[]) {
+  document.querySelectorAll('.multi-select-dropdown.active').forEach(dropdown => {
+    if (dropdownsToNotClose.includes(dropdown)) return;
+    dropdown.classList.remove('active');
+  });
+}
+
+
+function multiSelectKeydownHandler(event) {
+  const multiSelectInput = event.target.closest('.multi-select-input');
+  if (!multiSelectInput) return false;
+
+  const container = multiSelectInput.closest('.multi-select-container');
+  const dropdown = container.querySelector('.multi-select-dropdown');
+
+  // Escape: close dropdown
+  if (event.key === 'Escape') {
+    if (dropdown.classList.contains('active')) {
+      dropdown.classList.remove('active');
+      return true;
+    }
+    return false;
+  }
+
+  // Arrow Down / Arrow Up: navigate options
+  let indexDirection;
+  if (event.key === 'ArrowDown') indexDirection = 1;
+  if (event.key === 'ArrowUp') indexDirection = -1;
+  if (indexDirection) {
+    event.preventDefault();
+    dropdown.classList.add('active');
+
+    const options = [...dropdown.querySelectorAll('.multi-select-option')];
+    if (!options.length) return true;
+
+    const activeOption = dropdown.querySelector('.multi-select-option.active');
+
+    if (!activeOption) {
+      const index = indexDirection === 1 ? 0 : options.length - 1;
+      options[index].classList.add('active');
+      options[index].scrollIntoView({ behavior: 'instant', block: 'nearest' });
+      return true;
     }
 
-    const checkedStr = checkBoothIds.includes(booth.id) ? 'checked' : ''
+    activeOption.classList.remove('active');
+    const currentIndex = options.indexOf(activeOption);
+    let nextIndex = currentIndex + indexDirection;
+    if (nextIndex < 0) nextIndex = options.length - 1;
+    if (nextIndex >= options.length) nextIndex = 0;
+    options[nextIndex].classList.add('active');
+    options[nextIndex].scrollIntoView({ behavior: 'instant', block: 'nearest' });
+    return true;
+  }
 
-    checkboxesHTML += `
-      <div class="checkbox-container">
-        <label class="checkbox-label">
-          <input type="checkbox" name="booths" value="${booth.id}" ${checkedStr}> ${escapeHTML(booth.name)}
-        </label>
-      </div>
+  // Enter: toggle active option
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (!dropdown.classList.contains('active')) return true;
+
+    let activeOption = dropdown.querySelector('.multi-select-option.active');
+    if (!activeOption) {
+      const options = [...dropdown.querySelectorAll('.multi-select-option')];
+      if (options.length === 1) {
+        activeOption = options[0];
+      } else {
+        return true;
+      }
+    }
+
+    multiSelectToggleItem(container, activeOption.dataset.itemId);
+    // Re-open dropdown (render resets innerHTML)
+    dropdown.classList.add('active');
+    return true;
+  }
+
+  return false;
+}
+
+
+// Generates initial HTML for a multi-select and queues its state
+function makeTagMultiSelect(items, selectedItems = [], config = {}) {
+  const {
+    name = 'items',
+    label = 'Items',
+    placeholder = 'Vyhledat...',
+    emptyMessage = 'Žádné položky k dispozici.',
+    filterFn = null
+  } = config;
+
+  let availableItems = items;
+  if (filterFn) {
+    availableItems = items.filter(filterFn);
+  }
+
+  const sortedItems = availableItems.toSorted((a, b) => a.name.localeCompare(b.name));
+  const selectedIds = new Set(selectedItems.map(item => item.id));
+
+  // Queue state to be attached after modal opens
+  pendingMultiSelectStates.push({ items: sortedItems, selectedIds, name, emptyMessage });
+
+  // Build initial tags HTML
+  let tagsHTML = '';
+  sortedItems.forEach(item => {
+    if (!selectedIds.has(item.id)) return;
+    tagsHTML += `
+      <span class="multi-select-tag" data-item-id="${item.id}">
+        <span class="tag-text">${escapeHTML(item.name)}</span>
+        <button type="button" class="tag-remove" aria-label="Odebrat">\u00d7</button>
+      </span>
     `;
   });
 
+  // Build initial dropdown options HTML
+  let optionsHTML = '';
+  if (sortedItems.length === 0) {
+    optionsHTML = `<div class="multi-select-empty">${emptyMessage}</div>`;
+  } else {
+    sortedItems.forEach(item => {
+      const isSelected = selectedIds.has(item.id);
+      optionsHTML += `
+        <div class="multi-select-option ${isSelected ? 'selected' : ''}" data-item-id="${item.id}" data-item-name="${escapeHTML(item.name)}">
+          <span class="multi-select-option-name">${escapeHTML(item.name)}</span>
+          <span class="multi-select-check">${isSelected ? '\u2713' : ''}</span>
+        </div>
+      `;
+    });
+  }
+
   return `
-    <fieldset>
-      <legend>Stánky</legend>
-      ${checkboxesHTML || '<div class="muted">Žádné stánky k dispozici.</div>'}
-    </fieldset>
+    <div class="multi-select-container" data-multi-select-name="${name}">
+      <label class="multi-select-label">${label}</label>
+      <div class="multi-select-wrapper">
+        <div class="multi-select-tags">
+          ${tagsHTML}
+        </div>
+        <input
+          type="text"
+          class="multi-select-input"
+          placeholder="${placeholder}"
+          autocomplete="off"
+        />
+        <div class="multi-select-dropdown">
+          ${optionsHTML}
+        </div>
+      </div>
+      <div class="multi-select-hidden-inputs">
+        ${[...selectedIds].map(id => `<input type="hidden" name="${name}" value="${id}" />`).join('')}
+      </div>
+    </div>
   `;
 }
 
 
-function makeCategoriesPicker(categories, checkCategories) {
-  let checkboxesHTML = '';
-  const checkCategoryIds = checkCategories.map(category => category.id);
-
-  const sortedCategories = categories.toSorted((a, b) => { return a.name.localeCompare(b.name) });
-
-  sortedCategories.forEach(category => {
-    const checkedStr = checkCategoryIds.includes(category.id) ? 'checked' : ''
-
-    checkboxesHTML += `
-      <div class="checkbox-container">
-        <label class="checkbox-label">
-          <input type="checkbox" name="categories" value="${category.id}" ${checkedStr}> ${escapeHTML(category.name)}
-        </label>
-      </div>
-    `;
+function attachMultiSelectStates() {
+  const containers = document.querySelectorAll('.multi-select-container');
+  const unattached = [...containers].filter(c => !multiSelectState.has(c));
+  unattached.forEach(container => {
+    const state = pendingMultiSelectStates.shift();
+    if (state) {
+      multiSelectState.set(container, state);
+    }
   });
+}
 
-  return `
-    <fieldset>
-      <legend>Kategorie</legend>
-      ${checkboxesHTML || '<div class="muted">Žádné kategorie k dispozici.</div>'}
-    </fieldset>
-  `;
+
+function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
+  return makeTagMultiSelect(
+    booths,
+    checkBooths,
+    {
+      name: 'booths',
+      label: 'Stánky',
+      placeholder: 'Vyhledat stánek...',
+      emptyMessage: 'Žádné stánky k dispozici.',
+      filterFn: boothType === 'all' ? null : (booth) => booth.booth_type === boothType
+    }
+  );
+}
+
+
+function makeCategoriesPicker(categories, checkCategories = []) {
+  return makeTagMultiSelect(
+    categories,
+    checkCategories,
+    {
+      name: 'categories',
+      label: 'Kategorie',
+      placeholder: 'Vyhledat kategorii...',
+      emptyMessage: 'Žádné kategorie k dispozici.'
+    }
+  );
 }
 
 
 function makeProductsPicker(products, checkProducts = []) {
-  let checkboxesHTML = '';
-  const checkProductIds = checkProducts.map(product => product.id);
-
-  const sortedProducts = products.toSorted((a, b) => { return a.name.localeCompare(b.name) });
-
-  sortedProducts.forEach(product => {
-    const checkedStr = checkProductIds.includes(product.id) ? 'checked' : ''
-
-    checkboxesHTML += `
-      <div class="checkbox-container">
-        <label class="checkbox-label">
-          <input type="checkbox" name="products" value="${product.id}" ${checkedStr}> ${escapeHTML(product.name)}
-        </label>
-      </div>
-    `;
-  });
-
-  return `
-    <fieldset>
-      <legend>Produkty</legend>
-      ${checkboxesHTML || '<div class="muted">Žádné produkty k dispozici.</div>'}
-    </fieldset>
-  `;
+  return makeTagMultiSelect(
+    products,
+    checkProducts,
+    {
+      name: 'products',
+      label: 'Produkty',
+      placeholder: 'Vyhledat produkt...',
+      emptyMessage: 'Žádné produkty k dispozici.'
+    }
+  );
 }
 
 
@@ -2247,6 +2526,7 @@ async function openEditEventModal() {
   `;
 
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2277,6 +2557,7 @@ async function openDeleteEventModal() {
   `;
 
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2331,6 +2612,7 @@ async function openAddBoothModal() {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 
 
 
@@ -2406,6 +2688,7 @@ async function openEditBoothModal(boothId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 
   if (booth.booth_type === 'cashier') {
     const productsRow = document.querySelector('#booth-products-row');
@@ -2444,6 +2727,7 @@ async function openDeleteBoothModal(boothId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2493,6 +2777,7 @@ async function openAssignEmployeeModal(assignManager) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2531,6 +2816,7 @@ async function openEditEmployeeModal(employeeId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2562,6 +2848,7 @@ async function openRemoveEmployeeModal(employeeId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2622,6 +2909,7 @@ async function openAddProductModal() {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2706,6 +2994,7 @@ async function openEditProductModal(productId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2737,6 +3026,7 @@ async function openDeleteProductModal(productId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2781,6 +3071,7 @@ async function openAddCategoryModal() {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2834,6 +3125,7 @@ async function openEditCategoryModal(categoryId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2865,6 +3157,7 @@ async function openDeleteCategoryModal(categoryId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 
@@ -2933,6 +3226,7 @@ async function openAddUserModal() {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 
   initValues();
   renderDropdown();
@@ -3012,6 +3306,7 @@ async function openEditUserModal(userId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 
   initValues();
   changeSelectedCode(user.phone_number_country_code);
@@ -3046,6 +3341,7 @@ async function openDeleteUserModal(userId) {
     </form>
   `;
   openModal(html);
+  attachMultiSelectStates();
 }
 
 

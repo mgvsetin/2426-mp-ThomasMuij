@@ -292,7 +292,7 @@ export function phoneInputKeydownListeners(event) {
         const index = indexDirection === 1 ? 0 : options.length - 1;
         const option = options[index];
         option?.classList.add('active');
-        option?.scrollIntoView({ behavior: 'instant', block: 'center' });
+        option?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
         return true;
       }
 
@@ -303,7 +303,7 @@ export function phoneInputKeydownListeners(event) {
           let nextOption = options[i + indexDirection];
           if (!nextOption) nextOption = options[indexDirection === 1 ? 0 : options.length - 1];
           nextOption?.classList.add('active');
-          nextOption?.scrollIntoView({ behavior: 'instant', block: 'center' });
+          nextOption?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
           return true;
         }
       }

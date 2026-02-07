@@ -4,7 +4,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: var(--header-height);
   border-bottom: 1px solid rgb(211, 211, 211);
   display: flex;
   align-items: stretch;

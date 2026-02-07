@@ -511,8 +511,8 @@ async function renderTableRows() {
     rowsHTML += `
       <tr id="${employee.id}">
         <td>${rowNumber}</td>
-        <td class="username">${employee.username} <span class="id muted">(${employee.id})</span></td>
-        <td class="email">${employee.email}</td>
+        <td class="username" title="${employee.username} (${employee.id})">${employee.username} <span class="id muted">(${employee.id})</span></td>
+        <td class="email" title="${employee.email}">${employee.email}</td>
         <td>${isAdminHTML}</td>
         <td class="created-by muted">${createdByHTML}</td>
         <td class="created-at muted">${createdAtHTML}</td>

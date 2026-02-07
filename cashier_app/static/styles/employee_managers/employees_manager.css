@@ -1,5 +1,5 @@
 body {
-  padding: 80px 20px 20px 20px;
+  padding: var(--body-padding-top) var(--base-padding) var(--base-padding) var(--base-padding);
   background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
   color: #102a43;
 }
@@ -10,6 +10,9 @@ body {
 
 #container {
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--body-padding-top) - var(--base-padding));
 }
 
 #topbar {
@@ -32,117 +35,49 @@ body {
   padding: 8px;
   border: 1px solid rgb(230, 238, 246);
   box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-#table-wrap {
-  overflow: auto;
-  border-radius: 8px;
-  max-height: calc(100vh - 186px);
-  min-height: 120px;
-  min-width: 100px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-thead th {
-  text-align: left;
-  padding: 14px 14px;
-  font-weight: 700;
-  color: #1f3b4d;
-  border-bottom: 2px solid #e6eef6;
-  background: #fbfdff;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-thead th div {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
-thead th span {
-  cursor: pointer;
-  padding: 3px 0;
+/* Size to content, shrink if needed, don't overflow parent */
+.table-wrap {
+  flex: 0 1 auto;
+  min-height: 120px;
 }
 
-thead th .order-by-arrow {
-  padding: 3px;
+/* Slightly larger header padding for this page */
+thead th {
+  padding: 14px 14px;
 }
 
-tbody td {
-  padding: 8px 10px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f2f6fb;
-  color: #123;
-  white-space: nowrap;
-}
-
-tbody tr:nth-child(odd) {
-  background: #ffffff;
-}
-
-tbody tr:nth-child(even) {
-  background: #f7fbff;
-}
-
-tbody tr:hover {
-  background: #eef6fb;
-}
-
-tbody tr[selected] {
-  background: #e8f2ff;
+tbody tr {
+  scroll-margin-top: 48px;
 }
 
 .username {
   font-weight: 600;
   color: #153040;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .id.muted {
   font-size: 10px;
   font-weight: 500;
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .email {
   font-weight: 600;
   color: #153040;
-}
-
-.muted {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.badge {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-  min-width: 56px;
-  text-align: center;
-}
-
-.badge.yes {
-  background: #ecfdf5;
-  color: #166534;
-  border: 1px solid rgba(16, 164, 82, 0.08);
-}
-
-.badge.no {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid rgba(99, 102, 241, 0.02);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .created-by {

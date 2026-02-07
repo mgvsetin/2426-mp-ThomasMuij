@@ -91,7 +91,7 @@ export function handleRowSelection(event) {
     }
   }
   lastSelectedRowId = targetRow.id;
-  if (event.type === 'keydown') targetRow.scrollIntoView({ behavior: 'instant', block: 'center' });
+  if (event.type === 'keydown') targetRow.scrollIntoView({ behavior: 'instant', block: 'nearest' });
 }
 
 

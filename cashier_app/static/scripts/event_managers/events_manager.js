@@ -347,7 +347,7 @@ function renderRowsFromList(list, tbody) {
     rows += `
         <tr id="${escapeHTML(String(ev.id))}" data-event='${safeEv}'>
           <td>${idx}</td>
-          <td class="event-name">${escapeHTML(ev.name || '-')} <!-- <span class="id-muted muted">(${escapeHTML(ev.id)})</span> --> </td>
+          <td class="event-name truncate-name" title="${escapeHTML(ev.name || '-')}">${escapeHTML(ev.name || '-')}</td>
           <td class="datetime">${startAtStr}</td>
           <td class="datetime">${endAtStr}</td>
           <td class="created-at muted">${createdAtStr}</td>

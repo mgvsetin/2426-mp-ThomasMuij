@@ -95,102 +95,18 @@ body {
   font-size: 13px;
 }
 
+/* Override for this page */
 .table-wrap {
-  overflow: auto;
-  border-radius: 8px;
   min-height: 60px;
-  border: 1px solid #e4ecf5;
   background: #ffffff;
-  max-height: calc(65vh);
-  min-width: 100px;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
+/* Slightly larger header padding */
 thead th {
-  text-align: left;
   padding: 12px 14px;
-  font-weight: 700;
-  color: #1f3b4d;
-  border-bottom: 2px solid #e6eef6;
-  background: #fbfdff;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-thead th div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-thead th span {
-  cursor: pointer;
-  padding: 3px 0;
-}
-
-tbody td {
-  padding: 8px 10px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f2f6fb;
-  color: #123;
-  white-space: nowrap;
-}
-
-tbody tr:nth-child(odd) {
-  background: #ffffff;
-}
-
-tbody tr:nth-child(even) {
-  background: #f7fbff;
-}
-
-tbody tr:hover {
-  background: #eef6fb;
-}
-
-tbody tr[selected] {
-  background: #e8f2ff;
 }
 
 .event-name {
   font-weight: 600;
   color: #153040;
-}
-
-.event-name .id-muted {
-  font-size: 11px;
-  font-weight: 500;
-  color: #6b7280;
-  display: block;
-}
-
-.datetime {
-  font-weight: 500;
-  color: #153040;
-  white-space: nowrap;
-}
-
-.muted {
-  color: #6b7280;
-  font-size: 13px;
-}
-
-/* actions and icons */
-.actions {
-  min-width: 90px;
-  text-align: right;
-  padding-right: 10px;
-}
-
-.counter-header,
-.actions-header {
-  width: 48px;
-  text-align: left;
 }

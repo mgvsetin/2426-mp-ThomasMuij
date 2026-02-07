@@ -1,5 +1,5 @@
 body {
-  padding-top: 60px;
+  padding-top: var(--header-height);
 }
 
 .search-div {
@@ -14,7 +14,7 @@ body {
 }
 
 #seller-page {
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--header-height));
   display: none;
   align-items: stretch;
   background-color: rgb(235, 237, 239);
@@ -784,7 +784,7 @@ body {
 
 
 #cashier-page {
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--header-height));
   display: none;
   grid-template-columns: 1fr 400px;
   background-color: rgb(235, 237, 239);
@@ -802,13 +802,17 @@ body {
   border-radius: 10px;
   padding: 12px;
   min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .panel-header {
   display: grid;
   align-items: center;
   grid-template-columns: max-content 1fr max-content;
-  margin-bottom: 8px
+  margin-bottom: 8px;
 }
 
 .panel-header h3 {
@@ -823,74 +827,10 @@ body {
   min-width: 125px;
 }
 
+/* Size to content, shrink if needed, don't overflow parent */
 .table-wrap {
-  overflow: auto;
-  border-radius: 8px;
-  border: 1px solid #e6eef6;
-  max-height: calc(100vh - 144px);
-  min-width: 100px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-thead th {
-  position: sticky;
-  top: 0;
-  background: #fbfdff;
-  padding: 10px 12px;
-  border-bottom: 2px solid #e6eef6;
-  text-align: left;
-  font-weight: 700
-}
-
-thead th div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-thead th span {
-  cursor: pointer;
-  padding: 3px 0;
-}
-
-tbody td {
-  padding: 8px 10px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f2f6fb;
-  color: #123;
-  white-space: nowrap;
-}
-
-tbody tr:nth-child(odd) {
-  background: #ffffff;
-}
-
-tbody tr:nth-child(even) {
-  background: #f7fbff;
-}
-
-tbody tr:hover {
-  background: #eef6fb;
-}
-
-tbody tr[selected] {
-  background: #e8f2ff;
-}
-
-tbody tr.selected-for-update {
-  background: #def0fa;
-}
-
-.actions {
-  min-width: 90px;
-  text-align: right;
-  padding-right: 10px;
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
 .icon-btn {
@@ -921,14 +861,6 @@ tbody tr.selected-for-update {
   border-color: rgba(239, 68, 68, 0.06);
   color: #ef4444;
 }
-
-.counter-header,
-.actions-header {
-  width: 48px;
-  text-align: left;
-}
-
-
 
 #card-and-user-part {
   display: grid;

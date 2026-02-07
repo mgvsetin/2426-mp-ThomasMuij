@@ -111,90 +111,19 @@ body.no-scroll {
   cursor: pointer;
 }
 
+/* Collapsible table support with transition */
 .table-wrap {
-  overflow: auto;
-  border-radius: 8px;
-  border: 1px solid #e6eef6;
-  max-height: var(--max-height);
+  --table-max-height: var(--max-height);
+  max-height: var(--table-max-height);
   transition: max-height 200ms ease;
 }
 
-.table-wrap.closed {
-  max-height: 0;
+/* Slightly narrower truncation for this page */
+.truncate-name {
+  max-width: 180px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .table-wrap {
-    transition: none;
-  }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-thead th {
-  position: sticky;
-  top: 0;
-  background: #fbfdff;
-  padding: 10px 12px;
-  border-bottom: 2px solid #e6eef6;
-  text-align: left;
-  font-weight: 700
-}
-
-thead th div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-thead th span {
-  cursor: pointer;
-  padding: 3px 0;
-}
-
-tbody td {
-  padding: 8px 10px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f2f6fb;
-  color: #123;
-  white-space: nowrap;
-}
-
-tbody tr:nth-child(odd) {
-  background: #ffffff;
-}
-
-tbody tr:nth-child(even) {
-  background: #f7fbff;
-}
-
-tbody tr:hover {
-  background: #eef6fb;
-}
-
-tbody tr[selected] {
-  background: #e8f2ff;
-}
-
-span[data-direct-to] {
-  cursor: pointer;
-  line-height: 1.4;
-}
-
-span[data-direct-to]:hover {
-  color: rgb(19, 50, 109);
-}
-
-.image-cell {
-  padding: 2px 3px;
-  text-align: center;
-}
-
+/* Image container for product editing (non-table context) */
 .image-container {
   aspect-ratio: 1 / 1;
   overflow: hidden;
@@ -202,11 +131,6 @@ span[data-direct-to]:hover {
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-}
-
-.image-container.table-image-container {
-  margin: 0 auto 0 0;
-  height: 47.34px;
 }
 
 .image-container.edit-product-image-container {
@@ -217,20 +141,7 @@ span[data-direct-to]:hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* or contain */
   display: block;
-}
-
-.actions {
-  min-width: 90px;
-  text-align: right;
-  padding-right: 10px;
-}
-
-.counter-header,
-.actions-header {
-  width: 48px;
-  text-align: left;
 }
 
 
