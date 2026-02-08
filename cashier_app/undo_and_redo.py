@@ -7,10 +7,7 @@ from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.query_builder import build_update_statement, build_delete_statement, build_insert_statement
 from cashier_app.errors import NoChangeToUndoError, ConflictingExistingEmployeeRoles, NoChangeToRedoError, UndoTargetDeletedError, PgTryAdvisoryLockError
 from cashier_app.utils.general import get_employee_lock_key
-
-# Configuration for undo/redo limits
-MAX_UNDO_CHANGES = 30
-UNDO_TIME_LIMIT_MINUTES = 60
+from cashier_app.utils.images import delete_unused_images
 
 
 bp = Blueprint('undo_and_redo', __name__, url_prefix='/api')
@@ -37,8 +34,8 @@ def _cleanup_old_history(cur: Cursor, employee_id):
 
     params = {
         "employee_id": employee_id,
-        "max_undo": MAX_UNDO_CHANGES,
-        "undo_time_limit": UNDO_TIME_LIMIT_MINUTES
+        "max_undo": current_app.config['MAX_UNDO_CHANGES'],
+        "undo_time_limit": current_app.config['UNDO_TIME_LIMIT_MINUTES']
     }
 
     cur.execute(
@@ -476,6 +473,8 @@ def undo():
         current_app.logger.exception('Undo operation failed: %s', str(e))
         return jsonify(error='undo_failed'), 500
 
+    delete_unused_images()
+
     return jsonify(), 200
 
 
@@ -541,5 +540,7 @@ def redo():
     except Exception as e:
         current_app.logger.exception('Redo operation failed: %s', str(e))
         return jsonify(error='redo_failed'), 500
+
+    delete_unused_images()
 
     return jsonify(), 200

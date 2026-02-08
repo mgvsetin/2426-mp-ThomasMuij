@@ -64,14 +64,6 @@ tbody tr {
   text-overflow: ellipsis;
 }
 
-.id.muted {
-  font-size: 10px;
-  font-weight: 500;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .email {
   font-weight: 600;
   color: #153040;
@@ -80,7 +72,7 @@ tbody tr {
   text-overflow: ellipsis;
 }
 
-.created-by {
+/* .created-by {
   font-size: 12px;
 }
 
@@ -92,7 +84,7 @@ tbody tr {
 
 .created-by span:hover {
   color: #556382;
-}
+} */
 
 .actions {
   min-width: 120px;

@@ -1967,11 +1967,11 @@ function renderProducts(eventData) {
     if (product.image_path) {
       imageHTML = `
         <div class="image-container table-image-container">
-          <img class="product-image" src="${product.image_path}">
+          <img class="product-image" title="${product.image_filename}" src="${product.image_path}">
         </div>
       `;
     } else {
-      imageHTML = '-';
+      imageHTML = '';
     }
 
     rows += `
@@ -3944,7 +3944,7 @@ function showAddProductErrors(error, detail) {
       setErr(imageError, 'Nepodařilo se uložit soubor.');
       return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_products_name')) {
+      if (detail && detail.includes('unique_index_products_event_id_name_active')) {
         setErr(nameError, 'Název už má jiný produkt.');
       } else {
         setErr(generalError, 'Něco se nepovedlo.');
@@ -4054,7 +4054,7 @@ function showEditProductErrors(error, detail) {
       setErr(imageError, 'Nepodařilo se uložit soubor.');
       return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_products_name')) {
+      if (detail && detail.includes('unique_index_products_event_id_name_active')) {
         setErr(nameError, 'Název už má jiný produkt.');
       } else {
         setErr(generalError, 'Něco se nepovedlo.');
@@ -4204,7 +4204,7 @@ function showAddCategoryErrors(error, detail) {
       setErr(productsError, 'ID produktu není správné.');
       return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_categories_name')) {
+      if (detail && detail.includes('unique_index_categories_event_id_name_active')) {
         setErr(nameError, 'Název už má jiná kategorie.');
       } else {
         setErr(generalError, 'Něco se nepovedlo.');
@@ -4281,7 +4281,7 @@ function showEditCategoryErrors(error, detail) {
       setErr(productsError, 'ID produktu není správné.');
       return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_categories_name')) {
+      if (detail && detail.includes('unique_index_categories_event_id_name_active')) {
         setErr(nameError, 'Název už má jiná kategorie.');
       } else {
         setErr(generalError, 'Něco se nepovedlo.');

@@ -353,7 +353,7 @@ CREATE TABLE IF NOT EXISTS product_images (
   image_size_bytes    int,
   image_width         int,
   image_height        int,
-  image_alt_text      text,
+  -- image_alt_text      text,
   CONSTRAINT image_mime_type_check
     CHECK (image_mime_type IN ('image/jpeg', 'image/png', 'image/webp'))
 );
@@ -389,8 +389,7 @@ CREATE TABLE IF NOT EXISTS products (
   -- CONSTRAINT price_is_positive_check
   --   CHECK (price >= 0)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_name ON products (event_id, LOWER(name));
-
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_products_event_id_name_active ON products (event_id, LOWER(name)) WHERE deleted_at IS NULL;
 
 
 -- odendá mezery na začátku a konci u name
@@ -491,7 +490,7 @@ CREATE TABLE IF NOT EXISTS categories (
   event_id   uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   deleted_at timestamptz
 );
-CREATE UNIQUE INDEX IF NOT EXISTS unique_index_categories_name ON categories (event_id, LOWER(name));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_index_categories_event_id_name_active ON categories (event_id, LOWER(name)) WHERE deleted_at IS NULL;
 
 
 -- u insert/update odendává extra mezery ze začátku a konce
@@ -1129,13 +1128,13 @@ INSERT INTO booths (id, name, event_id, booth_type, created_by, deleted_at)
 VALUES
 ('40000000000000000000000000000009', 'development_booth_event1_deleted', '30000000000000000000000000000001', 'seller', '10000000000000000000000000000001', now());
 
-INSERT INTO product_images (id, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height, image_alt_text)
+INSERT INTO product_images (id, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height)
 VALUES
-('02000000000000000000000000000001', '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225, 'Hamburger picture'),
-('02000000000000000000000000000002', '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125, 'Delicious hamburger picture'),
-('02000000000000000000000000000003', '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465, 'Tall delicious hamburger picture'),
-('02000000000000000000000000000004', '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333, 'Kofola picture'),
-('02000000000000000000000000000005', '/images/products/rohlík.png', 'rohlík.png', 'image/png', 53810, 250, 177, 'Rohlík picture');
+('02000000000000000000000000000001', '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225),
+('02000000000000000000000000000002', '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125),
+('02000000000000000000000000000003', '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465),
+('02000000000000000000000000000004', '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333),
+('02000000000000000000000000000005', '/images/products/rohlik.png', 'rohlik.png', 'image/png', 53810, 250, 177);
 
 INSERT INTO products (id, event_id, name, price, image_id)
 VALUES

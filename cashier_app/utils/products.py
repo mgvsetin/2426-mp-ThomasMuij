@@ -1,12 +1,14 @@
 from typing import List, Tuple
 import unicodedata
 import os
+from pathlib import Path
 import shutil
 import uuid
 from flask import Flask, request, url_for, jsonify, current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from werkzeug.exceptions import RequestEntityTooLarge
+from cashier_app.utils.images import relative_posix_path
 
 
 def validate_product_or_category_name(
@@ -242,3 +244,36 @@ def convert_image_paths_from_relative(products):
     for product in products:
         if product['image_path']:
             product['image_path'] = url_for('static', filename=product['image_path'])
+
+
+def save_image_get_params(image_file):
+    safe_filename = secure_filename(image_file.filename)
+
+    if not image_extension_is_allowed(safe_filename):
+        return {'error': 'disallowed_image_extension', 'code': 400}
+    
+    image_is_ok, image_info = verify_image_file_get_info(image_file)
+    if not image_is_ok:
+        return {'error': 'image_file_is_invalid', 'code': 400}
+
+    dest_dir = current_app.config.get('UPLOAD_FOLDER')
+    try:
+        saved_name = save_unique_stream(image_file, dest_dir, safe_filename)
+    except (PermissionError, OSError, RuntimeError):
+        return {'error': 'unable_to_save_file', 'code': 500}
+    except RequestEntityTooLarge:
+        return {'error': 'file_too_large', 'code': 413}
+    
+    rel_image_dir_path = Path(relative_posix_path(dest_dir, current_app.static_folder))
+
+    product_images_params = {
+    'image_path': (rel_image_dir_path/saved_name).as_posix(),
+    'image_filename': saved_name,
+    'image_mime_type': image_info['mime_type'],
+    'image_size_bytes': Path(dest_dir, saved_name).stat().st_size,
+    'image_width': image_info['width'],
+    'image_height': image_info['height']
+    }
+
+    return product_images_params
+    

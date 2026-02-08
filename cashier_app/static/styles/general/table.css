@@ -142,7 +142,7 @@ tbody tr.selected-for-update {
 }
 
 .linked-pill {
-  background: #e8f0fe;
+  background: #e5eeff;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
@@ -162,7 +162,7 @@ tbody tr.selected-for-update {
 /* Table image cells */
 .image-cell {
   padding: 2px 3px;
-  text-align: center;
+  /* text-align: center; */
 }
 
 .table-image-container {
@@ -172,7 +172,7 @@ tbody tr.selected-for-update {
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  margin: 0 auto 0 0;
+  /* margin: 0 auto; */
   height: 47.34px;
 }
 

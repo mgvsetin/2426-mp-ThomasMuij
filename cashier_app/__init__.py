@@ -64,6 +64,8 @@ def create_app(test_config=None):
             #     {'usbVendorId': 4292, 'usbProductId': 60000}
             # ]
         },
+        MAX_UNDO_CHANGES = 30,
+        UNDO_TIME_LIMIT_MINUTES = 1, # 60,
         UPLOAD_FOLDER = os.path.join(app.static_folder, 'images', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
         ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},

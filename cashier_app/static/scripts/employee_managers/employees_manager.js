@@ -93,8 +93,8 @@ document.addEventListener('click', (event) => {
       toggleOrder('email');
     } else if (headerEl.id === "is-admin-header") {
       toggleOrder('is_admin');
-    } else if (headerEl.id === "created-by-header") {
-      toggleOrder('created_by');
+    // } else if (headerEl.id === "created-by-header") {
+    //   toggleOrder('created_by');
     } else if (headerEl.id === "created-at-header") {
       toggleOrder('created_at');
     } else {
@@ -382,7 +382,6 @@ function isSearchedFor(employee, searchQuery) {
     ${username}
     ${email}
     ${isAdmin}
-    ${createdBy}
     ${createdAt}
   `;
 
@@ -498,11 +497,11 @@ async function renderTableRows() {
     }
 
     const createdAtHTML = formatDateTimeISOToDisplay(employee.created_at);
-    let createdByHTML = '-';
-    if (employee.created_by) {
-      const createdByEmp = employees.find((emp) => { return emp.id === employee.created_by });
-      createdByHTML = `<span data-direct-to="${employee.created_by}">${createdByEmp?.username || employee.created_by}</span>`
-    }
+    // let createdByHTML = '-';
+    // if (employee.created_by) {
+    //   const createdByEmp = employees.find((emp) => { return emp.id === employee.created_by });
+    //   createdByHTML = `<span data-direct-to="${employee.created_by}">${createdByEmp?.username || employee.created_by}</span>`
+    // }
 
     if (!isSearchedFor(employee, searchQuery)) {
       return;
@@ -511,10 +510,9 @@ async function renderTableRows() {
     rowsHTML += `
       <tr id="${employee.id}">
         <td>${rowNumber}</td>
-        <td class="username" title="${employee.username} (${employee.id})">${employee.username} <span class="id muted">(${employee.id})</span></td>
+        <td class="username" title="${employee.username}">${employee.username}</td>
         <td class="email" title="${employee.email}">${employee.email}</td>
         <td>${isAdminHTML}</td>
-        <td class="created-by muted">${createdByHTML}</td>
         <td class="created-at muted">${createdAtHTML}</td>
         <td class="actions">
           <button class="icon-btn edit">
