@@ -263,8 +263,8 @@ async function pasteCopied(calledWithin) {
   }
 
   if (data.targets === 'newEvents'
-    && data.dataToCopy.employeeIds.length === 0) {
-    makeMessage('Zkopírované data sem nelze vložit.');
+    && data.dataToCopy.eventIds.length === 0) {
+    makeMessage('Zkopírované data sem nelze vložit.1');
     return;
   }
 

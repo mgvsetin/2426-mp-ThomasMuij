@@ -3,4 +3,15 @@ with open('prints.txt', 'a', encoding='utf-8') as f:
     from pprint import pprint
     pprint('here', stream=f)
 
-[]
+set()
+{UUID('6a62147d-ce15-42e9-8d9f-19828d4cd8a2')}
+set()
+{UUID('6a62147d-ce15-42e9-8d9f-19828d4cd8a2')}
+{UUID('4fd16f44-74ca-4151-8e43-d2477107387f')}
+{UUID('5edb4836-7bc2-4439-8edb-cefd10b69f5c'), UUID('9c739b24-e15c-4735-b97e-e4c7f9557140')}
+{UUID('4fd16f44-74ca-4151-8e43-d2477107387f')}
+{UUID('ea523cc4-2bea-47a3-8f13-26564b6e382f')}
+set()
+{UUID('5edb4836-7bc2-4439-8edb-cefd10b69f5c'), UUID('9c739b24-e15c-4735-b97e-e4c7f9557140')}
+set()
+{UUID('ea523cc4-2bea-47a3-8f13-26564b6e382f')}

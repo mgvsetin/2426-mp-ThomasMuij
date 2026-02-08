@@ -975,7 +975,7 @@ function showEditErrors(error, detail) {
   if (resStr.includes('username must be at most')) {
     let limit = resStr.split('username must be at most ');
     limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}..`);
+    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
     return;
   }
   if (resStr.includes('username must start and end with')) {

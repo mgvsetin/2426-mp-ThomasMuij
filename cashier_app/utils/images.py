@@ -71,7 +71,7 @@ def delete_unused_images():
                 RETURNING image_path, attempt''',
                 ).fetchall()
     for image_row_to_delete in unused_image_rows:
-        unused_image_path = Path(current_app.static_folder, image_row_to_delete['image_path'])
+        unused_image_path = Path(current_app.config['UPLOAD_FOLDER'], image_row_to_delete['image_path'])
 
         success = remove_image_if_exists(unused_image_path)
 

@@ -3,7 +3,7 @@ Obsahuje funkci create_app, ktera vytvori a nakonfiguruje Flask aplikaci,
 registruje blueprinty a nastavuje session interface.
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from werkzeug.exceptions import RequestEntityTooLarge
 import os
 from datetime import datetime, date, timezone
@@ -65,8 +65,8 @@ def create_app(test_config=None):
             # ]
         },
         MAX_UNDO_CHANGES = 30,
-        UNDO_TIME_LIMIT_MINUTES = 1, # 60,
-        UPLOAD_FOLDER = os.path.join(app.static_folder, 'images', 'products'),
+        UNDO_TIME_LIMIT_MINUTES = 60,
+        UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
         ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},
         ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'},
@@ -147,6 +147,11 @@ def create_app(test_config=None):
     @app.errorhandler(RequestEntityTooLarge)
     def handle_too_large(e):
         return jsonify(error="file_too_large"), 413
+
+    # make sure nginx does this
+    @app.route('/uploads/products/<path:filename>')
+    def uploaded_product_image(filename):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     from cashier_app import auth
     app.register_blueprint(auth.bp)

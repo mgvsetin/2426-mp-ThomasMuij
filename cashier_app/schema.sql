@@ -1130,11 +1130,11 @@ VALUES
 
 INSERT INTO product_images (id, image_path, image_filename, image_mime_type, image_size_bytes, image_width, image_height)
 VALUES
-('02000000000000000000000000000001', '/images/products/hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225),
-('02000000000000000000000000000002', '/images/products/hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125),
-('02000000000000000000000000000003', '/images/products/hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465),
-('02000000000000000000000000000004', '/images/products/kofola.png', 'kofola.png', 'image/png', 163383, 250, 333),
-('02000000000000000000000000000005', '/images/products/rohlik.png', 'rohlik.png', 'image/png', 53810, 250, 177);
+('02000000000000000000000000000001', 'hamburger1.png', 'hamburger1.png', 'image/png', 54289, 225, 225),
+('02000000000000000000000000000002', 'hamburger2.png', 'hamburger2.png', 'image/png', 1882222, 1500, 1125),
+('02000000000000000000000000000003', 'hamburger3.png', 'hamburger3.png', 'image/png', 5308416, 1440, 2465),
+('02000000000000000000000000000004', 'kofola.png', 'kofola.png', 'image/png', 163383, 250, 333),
+('02000000000000000000000000000005', 'rohlik.png', 'rohlik.png', 'image/png', 53810, 250, 177);
 
 INSERT INTO products (id, event_id, name, price, image_id)
 VALUES

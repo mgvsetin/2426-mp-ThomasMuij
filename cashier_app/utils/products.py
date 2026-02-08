@@ -8,7 +8,6 @@ from flask import Flask, request, url_for, jsonify, current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from werkzeug.exceptions import RequestEntityTooLarge
-from cashier_app.utils.images import relative_posix_path
 
 
 def validate_product_or_category_name(
@@ -243,7 +242,7 @@ def save_unique_stream(file_obj, dest_dir, secure_name, max_attempts=1000):
 def convert_image_paths_from_relative(products):
     for product in products:
         if product['image_path']:
-            product['image_path'] = url_for('static', filename=product['image_path'])
+            product['image_path'] = url_for('uploaded_product_image', filename=product['image_path'])
 
 
 def save_image_get_params(image_file):
@@ -264,10 +263,8 @@ def save_image_get_params(image_file):
     except RequestEntityTooLarge:
         return {'error': 'file_too_large', 'code': 413}
     
-    rel_image_dir_path = Path(relative_posix_path(dest_dir, current_app.static_folder))
-
     product_images_params = {
-    'image_path': (rel_image_dir_path/saved_name).as_posix(),
+    'image_path': saved_name,
     'image_filename': saved_name,
     'image_mime_type': image_info['mime_type'],
     'image_size_bytes': Path(dest_dir, saved_name).stat().st_size,

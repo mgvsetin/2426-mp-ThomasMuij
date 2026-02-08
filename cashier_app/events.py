@@ -1217,12 +1217,12 @@ def add_product():
                 save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         raise
 
     return jsonify(), 200
@@ -1400,21 +1400,21 @@ def edit_product():
 
     except IntegrityError as e:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         # jméno už existuje: detail obsahuje unique_index_products_event_id_name_active
         return jsonify(error='db_integrity_error', detail=str(e)), 400
     except MultipleRowsAffectedError:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         current_app.logger.exception('multiple rows updated for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500
     except NoRowsAffectedError:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         return jsonify(error='product_not_found'), 404
     except:
         if created_image_path:
-            remove_image_if_exists(Path(current_app.static_folder, created_image_path))
+            remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
         raise
         
 
