@@ -631,8 +631,7 @@ async function openEditModal(employeeId) {
 
     <form id="edit-employee-form">
       <div class="form-row">
-        <label for="edit-id">Id:</label>
-        <input id="edit-id" name="id" type="text" value="${escapeHTML(employee.id) || ''}" required readonly/>
+        <input id="edit-id" name="id" type="hidden" value="${escapeHTML(employee.id) || ''}" required readonly/>
         <div id="edit-employee-id-error" class="form-error"></div>
       </div>
 
@@ -725,8 +724,7 @@ async function openDeleteModal(employeeId) {
 
     <form id="delete-employee-form">
       <div class="form-row">
-        <div id="delete-id-label">Id:</div>
-        <input id="delete-id" name="id" value="${escapeHTML(String(employee.id) || '')}" required readonly/>
+        <input id="delete-id" name="id" type="hidden" value="${escapeHTML(String(employee.id) || '')}" required readonly/>
       </div>
       
       <div class="form-row">
