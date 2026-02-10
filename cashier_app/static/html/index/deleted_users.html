@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smazaní uživatelé</title>
+
+  <link rel="stylesheet" href="/static/styles/general/general.css">
+  <link rel="stylesheet" href="/static/styles/general/table.css">
+  <link rel="stylesheet" href="/static/styles/general/modals_forms.css">
+  <link rel="stylesheet" href="/static/styles/index/deleted_users.css">
+</head>
+
+<body>
+  <div id="container">
+    <div id="header">
+      <h1>Smazaní uživatelé</h1>
+    </div>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Uživatelé</h2>
+        <div class="search-div">
+          <div class="search-bar-container">
+            <input class="search-bar" id="search-bar" placeholder="Vyhledávání" />
+            <div class="search-icon-container">
+              <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="deleted-users-table">
+          <thead>
+            <tr>
+              <th class="counter-header">#</th>
+              <th id="first-name-header">
+                <div><span>Jméno</span></div>
+              </th>
+              <th id="last-name-header">
+                <div><span>Příjmení</span></div>
+              </th>
+              <th id="email-header">
+                <div><span>Email</span></div>
+              </th>
+              <th id="phone-header">
+                <div><span>Telefon</span></div>
+              </th>
+              <th id="other-identifier-header">
+                <div><span>Jiný identifikátor</span></div>
+              </th>
+              <th id="deleted-at-header">
+                <div><span>Smazáno</span></div>
+              </th>
+              <th class="actions-header"></th>
+            </tr>
+          </thead>
+          <tbody id="deleted-users-table-body">
+            <tr>
+              <td colspan="8" class="empty-message">Načítání...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="/static/scripts/index/deleted_users.js"></script>
+</body>
+
+</html>

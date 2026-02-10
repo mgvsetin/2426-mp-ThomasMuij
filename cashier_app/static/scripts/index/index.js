@@ -134,6 +134,11 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  if (event.target.matches('#open-deleted-users')) {
+    window.open('/deleted-users', '_blank');
+    return;
+  }
+
   if (event.target.matches('.category')) {
     const categoryButton = event.target;
     if (categoryButton.classList.contains('selected')) {

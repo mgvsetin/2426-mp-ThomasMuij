@@ -151,6 +151,11 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  if (event.target.matches('#open-deleted-users')) {
+    window.open('/deleted-users', '_blank');
+    return;
+  }
+
   // upravit stánek, zaměstnance (vrámci akce), produkt,...
   const editIcon = event.target.closest('.edit.icon-btn');
   if (editIcon) {

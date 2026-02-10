@@ -313,6 +313,118 @@ def delete_user():
     return jsonify(), 200
 
 
+@api_bp.route('/deleted')
+def get_deleted_users():
+    logged_employee = load_logged_in_employee()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if not logged_employee['is_admin']:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                is_any_manager = cur.execute(
+                    '''
+                    SELECT 1 FROM employee_event_booth_roles
+                    WHERE employee_id = %s AND booth_id IS NULL
+                    LIMIT 1
+                    ''',
+                    (logged_employee['id'],)
+                ).fetchone()
+
+        if not is_any_manager:
+            selected_event = load_selected_event()
+            selected_booth = load_selected_booth()
+
+            if selected_event is None:
+                return jsonify(error='no_selected_event'), 400
+
+            if selected_booth is None:
+                return jsonify(error='no_selected_booth'), 400
+
+            if selected_booth['booth_type'] != 'cashier':
+                return jsonify(error='invalid_booth_type'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            users = cur.execute(
+                '''
+                SELECT id, first_name, last_name, email, phone_number, other_identifier, deleted_at
+                FROM users
+                WHERE deleted_at IS NOT NULL
+                ORDER BY deleted_at DESC''',
+            ).fetchall()
+
+    add_more_phone_number_info(users)
+
+    return jsonify(users=users), 200
+
+
+@api_bp.route('/restore', methods=('POST',))
+def restore_user():
+    logged_employee = load_logged_in_employee()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if not logged_employee['is_admin']:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                is_any_manager = cur.execute(
+                    '''
+                    SELECT 1 FROM employee_event_booth_roles
+                    WHERE employee_id = %s AND booth_id IS NULL
+                    LIMIT 1
+                    ''',
+                    (logged_employee['id'],)
+                ).fetchone()
+
+        if not is_any_manager:
+            selected_event = load_selected_event()
+            selected_booth = load_selected_booth()
+
+            if selected_event is None:
+                return jsonify(error='no_selected_event'), 400
+
+            if selected_booth is None:
+                return jsonify(error='no_selected_booth'), 400
+
+            if selected_booth['booth_type'] != 'cashier':
+                return jsonify(error='invalid_booth_type'), 400
+
+    try:
+        user_id = UUID(request.form.get('user-id'))
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_user_id'), 400
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                user = cur.execute(
+                    'SELECT deleted_at FROM users WHERE id = %s AND deleted_at IS NOT NULL',
+                    (user_id,)
+                ).fetchone()
+
+                if user is None:
+                    return jsonify(error='user_not_found'), 404
+
+                user_deleted_at = user['deleted_at']
+
+                cur.execute(
+                    'UPDATE users SET deleted_at = NULL WHERE id = %s AND deleted_at IS NOT NULL',
+                    (user_id,)
+                )
+
+                cur.execute(
+                    'UPDATE wallets SET deleted_at = NULL WHERE owner_id = %s AND deleted_at = %s',
+                    (user_id, user_deleted_at)
+                )
+    except IntegrityError:
+        return jsonify(error='user_conflict'), 409
+
+    return jsonify(), 200
+
+
 api_wallets_bp = Blueprint('wallets', __name__, url_prefix='/wallets')
 api_bp.register_blueprint(api_wallets_bp)
 
