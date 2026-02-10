@@ -415,12 +415,26 @@ def restore_user():
                     (user_id,)
                 )
 
+                rows_affected = cur.rowcount
+                if rows_affected > 1:
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
+
                 cur.execute(
                     'UPDATE wallets SET deleted_at = NULL WHERE owner_id = %s AND deleted_at = %s',
                     (user_id, user_deleted_at)
                 )
-    except IntegrityError:
-        return jsonify(error='user_conflict'), 409
+    except IntegrityError as e:
+        # uživatel se stejnými údaji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
+        # email už existuje: detail obsahuje unique_index_users_email_active
+        # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
+        return jsonify(error='db_integrity_error', detail=str(e)), 400
+    except MultipleRowsAffectedError:
+        current_app.logger.exception('multiple rows restored for user id %s', user_id)
+        return jsonify(error='internal_server_error'), 500
+    except NoRowsAffectedError:
+        return jsonify(error='user_not_found'), 404
 
     return jsonify(), 200
 

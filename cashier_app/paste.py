@@ -461,6 +461,11 @@ def _paste_to_events_path(
     all_booth_rows = []
     all_product_rows = []
     all_category_rows = []
+
+    # {event_id: {old_id: {new_id/old_id}}}
+    # set[UUID], obsahuje max 2 věci a to pokud
+    # je v copied directly i indirectly a paste
+    # je do eventu z kterého pohází
     id_maps_per_target: dict[UUID, dict[UUID, set[UUID]]] = {}
 
     def booth_builder(old: dict, new_id: UUID, new_name: str, tgt_eid: UUID) -> dict:

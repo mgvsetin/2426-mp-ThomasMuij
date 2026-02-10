@@ -2,6 +2,8 @@
   --header-height: 60px;
   --base-padding: 20px;
   --body-padding-top: calc(var(--header-height) + var(--base-padding));
+  --fg: #585858;
+  --contrast: #fff;
 }
 
 html {
@@ -59,7 +61,12 @@ input[type=submit] {
 }
 
 .btn-ghost:hover {
-  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 3px 3px 5px 2px rgba(16, 24, 40, 0.025);
+  background-color: rgba(0, 0, 0, 0.023);
+}
+
+.btn-ghost:active {
+  background-color: rgba(0, 0, 0, 0.036);
 }
 
 .btn-delete {
@@ -236,4 +243,49 @@ input[type=submit] {
 .cancel-unpaste:active,
 .confirm-unpaste:active {
   background-color: rgb(35, 35, 35);
+}
+
+
+/* Password eye toggle */
+.pw-eye {
+  position: absolute;
+  top: 30px;
+  right: 8px;
+  cursor: pointer;
+}
+
+.eye-shape {
+  fill: var(--fg);
+  vector-effect: non-scaling-stroke;
+}
+
+.g-show {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.g-hide {
+  opacity: 0;
+  transform: scale(.98);
+  pointer-events: none;
+}
+
+:root .pw-eye.state-hide .g-show {
+  opacity: 0;
+  transform: scale(.98);
+  pointer-events: none;
+}
+
+:root .pw-eye.state-hide .g-hide {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.slash,
+.ring-stroke {
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

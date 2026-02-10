@@ -106,57 +106,6 @@ body {
 }
 
 
-/* password eye (modals) */
-
-:root {
-  --fg: #585858;
-  --contrast: #fff;
-}
-
-.pw-eye {
-  position: absolute;
-  top: 30px;
-  right: 8px;
-  cursor: pointer;
-}
-
-.eye-shape {
-  fill: var(--fg);
-  vector-effect: non-scaling-stroke;
-}
-
-.g-show {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-
-.g-hide {
-  opacity: 0;
-  transform: scale(.98);
-  pointer-events: none;
-}
-
-:root .pw-eye.state-hide .g-show {
-  opacity: 0;
-  transform: scale(.98);
-  pointer-events: none;
-}
-
-:root .pw-eye.state-hide .g-hide {
-  opacity: 1;
-  transform: scale(1);
-  pointer-events: auto;
-}
-
-.slash,
-.ring-stroke {
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-
 /* readers */
 
 .readers-empty,

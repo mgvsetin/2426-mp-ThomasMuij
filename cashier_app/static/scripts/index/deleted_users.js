@@ -1,89 +1,288 @@
 import { handleUnauthorizedRedirect } from '../general/api_utils.js';
+import { cacheFunctionFactory } from '../general/cache_factory.js';
+import { formatDateTimeISOToDisplay } from '../general/date_utils.js';
 import { escapeHTML } from '../general/html_display_utils.js';
-import { closeModal, openModal } from '../general/modals_forms.js';
-
-
-// Everything is done. Here's a summary of all changes made:
-
-// New files:
-
-// deleted_users.html — the page with search bar and sortable deleted-users table
-// deleted_users.js — fetches deleted users, renders table, handles sorting/search/restore confirm modal
-// deleted_users.css — page layout styles following the same visual pattern as the rest of the app
-// Modified files:
-
-// users_and_wallets.py — added GET /api/users/deleted and POST /api/users/restore endpoints
-// index.py — added /deleted-users page route
-// index.html — added "Smazaní uživatelé" button in the cashier users-panel header
-// index.js — click handler to open /deleted-users in new tab
-// event_manager.html — added "Smazaní uživatelé" button in the users-panel header
-// event_manager.js — click handler to open /deleted-users in new tab
-// Restore logic: The endpoint fetches the user's deleted_at timestamp, restores the user, then restores only wallets whose deleted_at exactly matches — those are the ones that were cascade-deleted when the user was deleted. Independently-deleted wallets (different timestamp) are left as-is. Unique constraint conflicts (e.g. same email already active) return a 409 with a friendly error message in the UI.
-
+import { clearModalErrors, closeModal, openModal } from '../general/modals_forms.js';
+import { handleRowSelection, markSelectedRows, unselectRows } from '../general/table_utils.js';
 
 
 const tableBody = document.querySelector('#deleted-users-table-body');
-const searchBar = document.querySelector('#search-bar');
+const tableHeader = document.querySelector('table thead');
+const usersSearchBar = document.querySelector('.search-bar');
 
 const orderBy = { key: '', ascending: true };
 
-let users = [];
-
-
-async function fetchDeletedUsers() {
+const [fetchDeletedUsers, resetDeletedUsersCache] = cacheFunctionFactory(async () => {
   const response = await fetch('/api/users/deleted');
+
   await handleUnauthorizedRedirect(response);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'unknown_error');
-  return data.users;
+
+  const resData = await response.json();
+
+  if (!response.ok) {
+    throw new Error(resData.error || 'unknown_error');
+  }
+
+  return resData.users;
+})
+
+loadPage();
+
+
+async function loadPage() {
+  await renderTable();
 }
 
 
-function formatDeletedAt(isoString) {
-  if (!isoString) return '-';
-  const d = new Date(isoString);
-  return d.toLocaleString('cs-CZ', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  });
-}
+document.addEventListener('click', (event) => {
+  const closeModalBtn = event.target.closest('.close-modal');
+  if (closeModalBtn) {
+    closeModal();
+    return;
+  }
+
+  const restoreBtn = event.target.closest('.restore.icon-btn');
+  if (restoreBtn) {
+    const row = restoreBtn.closest('tr[id]');
+    if (row) openRestoreModal(row.id);
+    return;
+  }
+
+  // nastavuje řazení (při kliknutí na span v header)
+  const headerEl = event.target.closest('th[id]');
+  if (headerEl && event.target.matches('span')) {
+    if (headerEl.id === 'first-name-header') {
+      toggleOrder('first_name');
+    } else if (headerEl.id === 'last-name-header') {
+      toggleOrder('last_name');
+    } else if (headerEl.id === 'email-header') {
+      toggleOrder('email');
+    } else if (headerEl.id === 'phone-header') {
+      toggleOrder('phone_number');
+    } else if (headerEl.id === 'other-identifier-header') {
+      toggleOrder('other_identifier');
+    } else if (headerEl.id === 'deleted-at-header') {
+      toggleOrder('deleted_at');
+    } else {
+      return;
+    }
+    tableHeader.querySelectorAll('.order-by-arrow').forEach(el => el.remove());
+    if (orderBy.key) {
+      const orderByArrow = document.createElement('span');
+      orderByArrow.classList.add('order-by-arrow');
+      orderByArrow.innerHTML = orderBy.ascending ? '&#8595;' : '&#8593;';
+      headerEl.querySelector('div').appendChild(orderByArrow);
+    }
+
+    loadPage();
+    return;
+  }
+
+  // kliknutí na řádek ho vybere
+  const row = event.target.closest('tr[id]');
+  if (row) {
+    handleRowSelection(event);
+    return;
+  }
+
+  if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
+    return;
+  }
+
+  // když nebylo kliknuto na nic jiného:
+  unselectRows();
+});
 
 
-function userMatchesSearch(user) {
-  const query = searchBar.value.trim().toLowerCase();
-  if (!query) return true;
-  const searchable = [
-    user.first_name,
-    user.last_name,
-    user.email,
-    user.phone_number,
-    user.other_identifier,
-  ].filter(Boolean).map(v => v.toLowerCase()).join(' ');
-  return searchable.includes(query);
-}
+document.addEventListener('dblclick', async (event) => {
+  const row = event.target.closest('tr[id]');
+  if (row) {
+    openRestoreModal(row.id);
+    return;
+  }
+});
 
 
-function toggleOrder(key, headerEl) {
+document.addEventListener('submit', async (event) => {
+  const restoreForm = event.target.closest('#restore-user-form');
+  if (restoreForm) {
+    event.preventDefault();
+    const submitButton = restoreForm.querySelector('button[type=submit]');
+    submitButton.disabled = true;
+
+    clearModalErrors();
+
+    const formData = new FormData(restoreForm);
+
+    const response = await restoreUser(formData);
+
+    submitButton.disabled = false;
+
+    if (response === true) {
+      closeModal();
+      resetDeletedUsersCache();
+      loadPage();
+      return;
+    }
+
+    showRestoreErrors(response.error, response.detail);
+    return;
+  }
+});
+
+
+usersSearchBar.addEventListener('input', () => {
+  loadPage();
+});
+
+
+document.addEventListener('keydown', (event) => {
+  handleRowSelection(event);
+
+  if (event.key === 'Escape') {
+    const overlay = document.querySelector('.overlay');
+    if (overlay) {
+      closeModal();
+      return;
+    }
+  }
+
+  if (event.key === 'Enter') {
+    const selectedRows = document.querySelectorAll('tr[selected]');
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0];
+      if (row) {
+        openRestoreModal(row.id);
+        return;
+      }
+    }
+  }
+
+});
+
+
+function toggleOrder(key) {
   if (orderBy.key !== key) {
     orderBy.key = key;
     orderBy.ascending = true;
+  } else if (orderBy.ascending) {
+    orderBy.ascending = false;
   } else {
-    orderBy.ascending = !orderBy.ascending;
+    orderBy.key = '';
+    orderBy.ascending = true;
   }
-  document.querySelectorAll('th[id]').forEach(th => th.removeAttribute('sort-ascending'));
-  if (orderBy.ascending) {
-    headerEl.setAttribute('sort-ascending', '');
+}
+
+
+function userIsSearchedFor(user) {
+  const searchQuery = usersSearchBar.value.toLowerCase().trim();
+
+  if (!searchQuery) return true;
+
+  const queries = searchQuery.split(/\s+/);
+
+
+  const firstName = String(user.first_name || '').toLowerCase();
+  const lastName = String(user.last_name || '').toLowerCase();
+  const email = String(user.email || '-').toLowerCase();
+  const phoneNumber = String(user.phone_number || '-').toLowerCase().replace(/\s/g, '');
+  const otherIdentifier = String(user.other_identifier || '-').toLowerCase();
+
+  const searchable = `${firstName} ${lastName} ${email} ${phoneNumber} ${otherIdentifier}`;
+
+  for (const query of queries) {
+    if (!query.includes('=')) {
+      if (!searchable.includes(query)) return false;
+    } else {
+      const [searchKeyWord, search] = query.split('=');
+
+      if (['name',
+        'jméno',
+        'jmeno',
+        'uživatel',
+        'uzivatel',
+        'uživatelské_jméno',
+        'uzivatelske_jmeno',
+        'uživatelskéjméno',
+        'uzivatelskejmeno'].includes(searchKeyWord)) {
+        if (!`${firstName} ${lastName}`.includes(search)) return false;
+      } else if ([
+        'first_name',
+        'firstname',
+        'křestníjméno',
+        'krestnijmeno',
+        'křestní_jméno',
+        'krestni_jmeno',
+        'křestní',
+        'krestni',].includes(searchKeyWord)) {
+        if (!firstName.includes(search)) return false;
+      } else if (['last_name',
+        'lastname',
+        'příjmení',
+        'prijmeni'].includes(searchKeyWord)) {
+        if (!lastName.includes(search)) return false;
+      } else if (['email',
+        'e-mail',
+        'mail'].includes(searchKeyWord)) {
+        if (!email.includes(search)) return false;
+      } else if (['phone',
+        'phone_number',
+        'phonenumber',
+        'telephone',
+        'number',
+        'telefonní_číslo',
+        'telefonni_cislo',
+        'telefonníčíslo',
+        'telefonnicislo',
+        'telefon',
+        'číslo',
+        'cislo',
+        'telefonní',
+        'telefonni'].includes(searchKeyWord)) {
+        if (!phoneNumber.includes(search)) return false;
+      } else if (['identifier',
+        'other_identifier',
+        'otheridentifier',
+        'other',
+        'jiný_identifikátor',
+        'jiny_identifikator',
+        'jinýidentifikátor',
+        'jinyidentifikator',
+        'identifikátor',
+        'identifikator',
+        'jiný',
+        'jiny'].includes(searchKeyWord)) {
+        if (!otherIdentifier.includes(search)) return false;
+      } else {
+        if (!searchable.includes(query)) return false;
+      }
+    }
   }
-  renderTable();
+  return true;
 }
 
 
 async function renderTable() {
+  const users = await fetchDeletedUsers().catch(() => {
+    tableBody.innerHTML = '<tr><td colspan="8" class="error-message">Nepovedlo se načíst smazané uživatele.</td></tr>';
+  });
+  if (!users) return;
+
   const sorter = (a, b) => {
     if (!orderBy.key) return 0;
-    let aVal = String(a[orderBy.key] || '').toLowerCase();
-    let bVal = String(b[orderBy.key] || '').toLowerCase();
-    return aVal.localeCompare(bVal) * (orderBy.ascending ? 1 : -1);
+    const key = orderBy.key;
+    let aa = a[key] || '';
+    let bb = b[key] || '';
+
+    if (key === 'deleted_at') {
+      aa = aa ? new Date(aa).getTime() : Infinity;
+      bb = bb ? new Date(bb).getTime() : 0;
+      return (aa - bb) * (orderBy.ascending ? 1 : -1);
+    }
+
+    aa = String(aa).toLowerCase();
+    bb = String(bb).toLowerCase();
+    return aa.localeCompare(bb) * (orderBy.ascending ? 1 : -1);
   };
 
   const sorted = users.toSorted(sorter);
@@ -91,7 +290,7 @@ async function renderTable() {
   let idx = 0;
 
   sorted.forEach(user => {
-    if (!userMatchesSearch(user)) return;
+    if (!userIsSearchedFor(user)) return;
     idx++;
     rows += `
       <tr id="${user.id}">
@@ -101,9 +300,9 @@ async function renderTable() {
         <td>${escapeHTML(user.email || '-')}</td>
         <td>${escapeHTML(user.phone_number || '-')}</td>
         <td>${escapeHTML(user.other_identifier || '-')}</td>
-        <td class="deleted-at">${escapeHTML(formatDeletedAt(user.deleted_at))}</td>
+        <td class="deleted-at muted">${escapeHTML(formatDateTimeISOToDisplay(user.deleted_at))}</td>
         <td class="actions">
-          <button class="restore-btn" title="Obnovit uživatele">
+          <button class="icon-btn restore" title="Obnovit uživatele">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M3 3v5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -115,50 +314,91 @@ async function renderTable() {
   });
 
   tableBody.innerHTML = rows || '<tr><td colspan="8" class="empty-message">Žádní smazaní uživatelé.</td></tr>';
-}
 
-
-async function loadUsers() {
-  try {
-    users = await fetchDeletedUsers();
-  } catch {
-    tableBody.innerHTML = '<tr><td colspan="8" class="error-message">Nepovedlo se načíst smazané uživatele.</td></tr>';
-    return;
-  }
-  renderTable();
+  markSelectedRows(tableBody);
 }
 
 
 async function openRestoreModal(userId) {
-  const user = users.find(u => u.id === userId);
+  const users = await fetchDeletedUsers().catch(() => { });
+  if (!users) return;
+  const user = users.find(user => user.id === userId);
   if (!user) return;
 
-  const overlay = openModal(`
+  const html = `
     <header>
       <h2>Obnovit uživatele</h2>
     </header>
     <form id="restore-user-form">
-      <input type="hidden" name="user-id" value="${userId}" />
+      <input type="hidden" name="user-id" value="${user.id}" />
       <div class="form-row">
-        <div>Opravdu chcete obnovit uživatele „${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
+        <div>Opravdu chcete obnovit uživatele "${user.first_name} ${user.last_name}"?</div>
       </div>
       <div class="form-row">
         <div id="restore-general-error" class="form-error"></div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="cancel-form close-modal">Zrušit</button>
-        <button type="submit" class="save-form">Obnovit</button>
+        <button type="button" class="btn btn-ghost close-modal">Zrušit</button>
+        <button type="submit" class="btn btn-primary">Obnovit</button>
       </div>
     </form>
-  `, false);
+  `;
 
-  overlay.querySelector('#restore-user-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorEl = overlay.querySelector('#restore-general-error');
-    errorEl.textContent = '';
+  openModal(html, false);
+}
 
-    const formData = new FormData(e.target);
 
+function showRestoreErrors(error, detail) {
+  const generalError = document.querySelector('#restore-general-error');
+
+  const setErr = (el, text) => {
+    if (!el) return;
+    el.innerHTML = escapeHTML(String(text));
+    el.classList.add('show-form-error');
+  };
+
+  if (!error) {
+    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+    return;
+  }
+
+  const errorStr = String(error).toLowerCase().trim();
+
+  switch (errorStr) {
+    case 'unexpected_error':
+    case 'internal_server_error':
+      setErr(generalError, 'Něco se nepovedlo.');
+      return;
+    case 'invalid_user_id':
+      setErr(generalError, 'ID uživatele není správné.');
+      return;
+    case 'user_not_found':
+      setErr(generalError, 'Uživatel nebyl nalezen.');
+      return;
+    case 'user_conflict':
+      setErr(generalError, 'Nelze obnovit: existuje aktivní uživatel s konfliktními údaji (např. stejný email).');
+      return;
+    case 'db_integrity_error':
+      if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
+        setErr(generalError, 'Nelze obnovit: uživatel se stejnými údaji už existuje.');
+      } else if (detail && detail.includes('unique_index_users_email_active')) {
+        setErr(generalError, 'Nelze obnovit: uživatel se stejným emailem už existuje.');
+      } else if (detail && detail.includes('unique_index_event_tag_id_active')) {
+        setErr(generalError, 'Nelze obnovit: id karty uživatele se aktuálně používá.');
+      } else {
+        setErr(generalError, 'Něco se nepovedlo.');
+      }
+      return;
+    default:
+      break;
+  }
+
+  setErr(generalError, errorStr);
+}
+
+
+async function restoreUser(formData) {
+  try {
     const response = await fetch('/api/users/restore', {
       method: 'POST',
       body: formData,
@@ -166,50 +406,23 @@ async function openRestoreModal(userId) {
 
     await handleUnauthorizedRedirect(response);
 
-    if (response.ok) {
-      closeModal();
-      users = users.filter(u => u.id !== userId);
-      renderTable();
-      return;
-    }
-
     const data = await response.json();
-    if (data.error === 'user_conflict') {
-      errorEl.textContent = 'Nelze obnovit: existuje aktivní uživatel s confliktními údaji (např. stejný email).';
-    } else {
-      errorEl.textContent = 'Nepovedlo se obnovit uživatele.';
+
+    if (response.status === 400) {
+      return data;
     }
-  });
+
+    if (response.status === 404 && data.error === 'user_not_found') {
+      return data;
+    }
+
+    if (!response.ok) {
+      throw new Error('unexpected_error');
+    }
+
+    return true;
+
+  } catch (error) {
+    return { error: 'unexpected_error' };
+  }
 }
-
-
-document.addEventListener('click', async (event) => {
-  const closeBtn = event.target.closest('.close-modal');
-  if (closeBtn) {
-    closeModal();
-    return;
-  }
-
-  const restoreBtn = event.target.closest('.restore-btn');
-  if (restoreBtn) {
-    const row = restoreBtn.closest('tr[id]');
-    if (row) await openRestoreModal(row.id);
-    return;
-  }
-
-  const headerEl = event.target.closest('th[id]');
-  if (headerEl && event.target.matches('span')) {
-    switch (headerEl.id) {
-      case 'first-name-header': toggleOrder('first_name', headerEl); break;
-      case 'last-name-header': toggleOrder('last_name', headerEl); break;
-      case 'email-header': toggleOrder('email', headerEl); break;
-      case 'phone-header': toggleOrder('phone_number', headerEl); break;
-      case 'other-identifier-header': toggleOrder('other_identifier', headerEl); break;
-      case 'deleted-at-header': toggleOrder('deleted_at', headerEl); break;
-    }
-  }
-});
-
-searchBar.addEventListener('input', renderTable);
-
-loadUsers();

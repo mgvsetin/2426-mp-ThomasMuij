@@ -86,7 +86,7 @@
             </div>
           </div>
           <!-- <div><button id="add-employee" class="btn btn-primary">+ Přiřadit zaměstnance</button></div> -->
-          <div><button id="open-deleted-users" class="btn btn-ghost">Smazaní uživatelé</button></div>
+          <div><a href="/deleted-users" target="_blank"><button id="open-deleted-users" class="btn btn-ghost">Smazaní uživatelé</button></a></div>
         </div>
         <div class="table-wrap">
           <table id="users-table">
@@ -176,7 +176,7 @@
                     <div class="dropdown-content"></div>
                   </div>
                 </div>
-                <input id="phone-number-input" class="phone-number-input" name="phone-number" type="tel" />
+                <input id="phone-number-input" class="user-phone-input" name="phone-number" type="tel" />
               </div>
               <div id="phone-number-error" class="form-error"></div>
             </div>
@@ -204,9 +204,9 @@
             </div>
 
             <div id="user-actions">
-              <button type="button" id="cancel-user-form" class="cancel-form">Zrušit</button>
+              <button type="button" id="cancel-user-form" class="btn btn-ghost">Zrušit</button>
               <button type="button" id="open-more-user-options">Další</button>
-              <button type="submit" id="save-user-form" class="save-form">Vytvořit</button>
+              <button type="submit" id="save-user-form" class="btn btn-primary">Vytvořit</button>
             </div>
           </form>
         </section>

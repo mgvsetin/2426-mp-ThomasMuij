@@ -1,123 +1,67 @@
 body {
-  padding: 20px;
-  background: #ffffff;
+  padding: var(--base-padding);
+  background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
   color: #102a43;
-  line-height: 1.5;
-}
-
-#container {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-#header {
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e6eef6;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-#header h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #153040;
-}
-
-.panel {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e6eef6;
-  padding: 16px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #153040;
 }
 
 .search-div {
-  flex: 1;
-  min-width: 160px;
+  flex: 1 1 auto;
 }
 
-.search-bar-container {
+#container {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 2 * var(--base-padding));
+}
+
+#topbar {
   display: flex;
   align-items: center;
-  background: #f0f6fb;
-  border: 1px solid #d6e8f4;
+  height: 64px;
+  margin-bottom: 4px;
+  padding: 0 15px;
+  gap: 32px;
+  background-color: white;
+  border: 1px solid rgb(230, 238, 246);
   border-radius: 8px;
-  padding: 0 10px;
-  height: 36px;
-  gap: 8px;
 }
 
-.search-bar {
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 14px;
-  color: #102a43;
-  width: 100%;
-}
-
-.search-icon-container {
+#card {
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid rgb(230, 238, 246);
+  box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
-.search-icon {
-  width: 16px;
-  height: 16px;
-  opacity: 0.5;
+/* Size to content, shrink if needed, don't overflow parent */
+.table-wrap {
+  flex: 0 1 auto;
+  min-height: 70px;
+}
+
+/* Page-specific styles */
+.deleted-at {
+  white-space: nowrap;
+}
+
+.icon-btn.restore {
+  background: #f0fdfa;
+  border-color: rgba(15, 118, 110, 0.06);
+  color: #0f766e;
+}
+
+.error-message {
+  padding-top: 10px;
+  background-color: white;
 }
 
 .empty-message {
   text-align: center;
   color: #6b7280;
-  padding: 40px 20px;
-  font-style: italic;
-}
-
-.error-message {
-  text-align: center;
-  color: #dc2626;
-  padding: 40px 20px;
-  font-weight: 500;
-}
-
-.deleted-at {
-  white-space: nowrap;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.restore-btn {
-  display: inline-grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: transparent;
-  color: #0f766e;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-}
-
-.restore-btn:hover {
-  background: #e6faf8;
-  box-shadow: 2px 2px 6px rgba(15, 118, 110, 0.15);
 }

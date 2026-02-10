@@ -2,8 +2,8 @@
 <html>
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smazaní uživatelé</title>
 
   <link rel="stylesheet" href="/static/styles/general/general.css">
@@ -14,22 +14,18 @@
 
 <body>
   <div id="container">
-    <div id="header">
-      <h1>Smazaní uživatelé</h1>
-    </div>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Uživatelé</h2>
-        <div class="search-div">
-          <div class="search-bar-container">
-            <input class="search-bar" id="search-bar" placeholder="Vyhledávání" />
-            <div class="search-icon-container">
-              <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
-            </div>
+    <div id="topbar">
+      <div class="search-div">
+        <div class="search-bar-container">
+          <input class="search-bar" placeholder="Vyhledávání">
+          <div class="search-icon-container">
+            <img class="search-icon" src="/static/images/icons/search_icon.png">
           </div>
         </div>
       </div>
+    </div>
+
+    <div id="card">
       <div class="table-wrap">
         <table id="deleted-users-table">
           <thead>
@@ -63,7 +59,7 @@
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   </div>
 
   <script type="module" src="/static/scripts/index/deleted_users.js"></script>

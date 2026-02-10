@@ -491,8 +491,8 @@ export async function openDeleteUserModal(row) {
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="cancel-form close-modal">Zrušit</button>
-          <button type="submit" class="save-form user-form-delete-button">Smazat</button>
+          <button type="button" class="btn btn-ghost close-modal">Zrušit</button>
+          <button type="submit" class="btn btn-delete">Smazat</button>
         </div>
       </form>
     </div>

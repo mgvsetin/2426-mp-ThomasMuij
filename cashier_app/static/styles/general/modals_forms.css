@@ -17,7 +17,7 @@
   box-shadow: 0 12px 30px rgba(10, 10, 10, 0.24);
   padding: 16px;
   max-height: calc(100vh - 85px);
-  min-height: 200px;
+  min-height: 120px;
   overflow: auto;
   position: relative;
 }
