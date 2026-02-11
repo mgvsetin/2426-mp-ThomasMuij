@@ -644,8 +644,8 @@ CREATE OR REPLACE TRIGGER trg_category_product_link_limit_insert_update
 -- admin: (není částí této tabulky) může věci mimo akce (např. vytvářet účty)
 CREATE TABLE IF NOT EXISTS employee_event_booth_roles (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  employee_id   uuid REFERENCES employees(id) NOT NULL ON DELETE CASCADE,
-  event_id      uuid REFERENCES events(id) NOT NULL ON DELETE CASCADE,
+  employee_id   uuid NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+  event_id      uuid NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   booth_id      uuid REFERENCES booths(id) ON DELETE CASCADE, -- null -> event_manager
   role          text NOT NULL,
   created_at    timestamptz NOT NULL DEFAULT now(),
@@ -789,12 +789,12 @@ CREATE OR REPLACE TRIGGER trg_employee_event_booth_roles_limit_autocomplete_inse
 -- created by?
 CREATE TABLE IF NOT EXISTS wallets (
   id                            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id                      uuid REFERENCES events(id) NOT NULL ON DELETE RESTRICT,
+  event_id                      uuid NOT NULL REFERENCES events(id) ON DELETE RESTRICT,
   -- tag_id                        uuid REFERENCES tags(id) ON DELETE SET NULL,
   tag_id                        text NOT NULL,
-  owner_id                      uuid REFERENCES users(id) NOT NULL ON DELETE RESTRICT,
+  owner_id                      uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   balance_czk                   int NOT NULL DEFAULT 0, -- cache, není zdroj pravdy
-  created_by                    uuid REFERENCES employees(id) NOT NULL ON DELETE RESTRICT,
+  created_by                    uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
   created_at                    timestamptz NOT NULL DEFAULT now(),
   deleted_at                    timestamptz
 );
