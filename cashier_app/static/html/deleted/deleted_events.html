@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smazaní uživatelé</title>
+  <title>Smazané akce</title>
 
   <link rel="stylesheet" href="/static/styles/general/general.css">
   <link rel="stylesheet" href="/static/styles/general/table.css">
   <link rel="stylesheet" href="/static/styles/general/modals_forms.css">
-  <link rel="stylesheet" href="/static/styles/index/deleted_users.css">
+  <link rel="stylesheet" href="/static/styles/deleted/deleted_events.css">
 </head>
 
 <body>
@@ -27,24 +27,18 @@
 
     <div id="card">
       <div class="table-wrap">
-        <table id="deleted-users-table">
+        <table id="deleted-events-table">
           <thead>
             <tr>
               <th class="counter-header">#</th>
-              <th id="first-name-header">
-                <div><span>Jméno</span></div>
+              <th id="name-header">
+                <div><span>Název</span></div>
               </th>
-              <th id="last-name-header">
-                <div><span>Příjmení</span></div>
+              <th id="start-at-header">
+                <div><span>Začátek</span></div>
               </th>
-              <th id="email-header">
-                <div><span>Email</span></div>
-              </th>
-              <th id="phone-header">
-                <div><span>Telefon</span></div>
-              </th>
-              <th id="other-identifier-header">
-                <div><span>Jiný identifikátor</span></div>
+              <th id="end-at-header">
+                <div><span>Konec</span></div>
               </th>
               <th id="deleted-at-header">
                 <div><span>Smazáno</span></div>
@@ -52,9 +46,9 @@
               <th class="actions-header"></th>
             </tr>
           </thead>
-          <tbody id="deleted-users-table-body">
+          <tbody id="deleted-events-table-body">
             <tr>
-              <td colspan="8" class="empty-message">Načítání...</td>
+              <td colspan="6" class="empty-message">Načítání...</td>
             </tr>
           </tbody>
         </table>
@@ -62,7 +56,7 @@
     </div>
   </div>
 
-  <script type="module" src="/static/scripts/index/deleted_users.js"></script>
+  <script type="module" src="/static/scripts/deleted/deleted_events.js"></script>
 </body>
 
 </html>

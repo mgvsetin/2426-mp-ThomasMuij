@@ -65,3 +65,7 @@ body {
   text-align: center;
   color: #6b7280;
 }
+
+#force-event-restore {
+  margin: 8px 0;
+}

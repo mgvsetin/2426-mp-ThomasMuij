@@ -194,6 +194,9 @@ def create_app(test_config=None):
     app.register_blueprint(settings.bp)
     app.register_blueprint(settings.api_bp)
 
+    from cashier_app import deleted
+    app.register_blueprint(deleted.bp)
+
     # @app.after_request
     # def print_sum(a):
     #     with open(r'C:\Users\thoma\Documents\code\2426-mp-ThomasMuij\prints.txt', 'a', encoding='utf-8') as f:

@@ -196,20 +196,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAddEventErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAddEventErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAddEventErrors('unexpected_error');
+        showAddEventErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -470,7 +458,7 @@ function openAddEventOverlay() {
 
 
 
-function showAddEventErrors(error, detail) {
+function showAddEventErrors(error) {
   const nameError = document.querySelector('#name-add-error');
   const startAtError = document.querySelector('#start-add-error');
   const endAtError = document.querySelector('#end-add-error');
@@ -510,13 +498,11 @@ function showAddEventErrors(error, detail) {
     // case 'invalid_end_at_date':
     //   setErr(endAtError, 'Konec nemůže být nastaven do minulosti.');
     //   return;
+    case 'event_name_taken':
+      setErr(nameError, 'Název už má jiná akce.');
+      return;
     case 'db_integrity_error':
-      if (detail.includes('unique_index_events_name_active')) {
-        setErr(nameError, 'Název už má jiná akce.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-        return;
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;

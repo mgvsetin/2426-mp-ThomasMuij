@@ -642,9 +642,9 @@ export async function openUserCardModal(userWalletLi) {
       </div>
 
       <div class="modal-actions">
-        <button type="button" id="back-to-user-cards" class="cancel-form" user-id="${user.id}">Zpět</button>
-        <button type="button" class="save-form" id="return-card-button">Vrátit kartu</button>
-        <button type="submit" class="save-form">Uložit</button>
+        <button type="button" id="back-to-user-cards" class="btn btn-ghost" user-id="${user.id}">Zpět</button>
+        <button type="button" class="btn btn-primary" id="return-card-button">Vrátit kartu</button>
+        <button type="submit" class="btn btn-primary">Uložit</button>
       </div>
     </form>
   `;
@@ -802,16 +802,17 @@ export function showUserFormErrors(error, detail) {
     case 'idempotency_key_data_conflict':
       setErr(generalError, 'Něco se nepovedlo.');
       return;
+    case 'user_identifier_taken':
+      setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      return;
+    case 'user_email_taken':
+      setErr(emailError, 'Email už má jiný uživatel.');
+      return;
+    case 'tag_id_taken':
+      setErr(generalError, 'ID karty je už použité pro tuto akci.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
-        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
-      } else if (detail && detail.includes('unique_index_users_email_active')) {
-        setErr(emailError, 'Email už má jiný uživatel.');
-      } else if (detail && detail.includes('unique_index_event_tag_id_active')) {
-        setErr(generalError, 'ID karty je už použité pro tuto akci.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -906,7 +907,7 @@ export function showUserFormErrors(error, detail) {
 }
 
 
-export function showDeleteUserFormErrors(error, detail) {
+export function showDeleteUserFormErrors(error) {
   const generalError = document.querySelector('#delete-user-general-error');
 
   const setErr = (el, text) => {
@@ -953,7 +954,7 @@ export function showDeleteUserFormErrors(error, detail) {
 }
 
 
-export function showEditWalletFormErrors(error, detail) {
+export function showEditWalletFormErrors(error) {
   const changeBalanceByError = document.querySelector('#edit-wallet-change-balance-by-error');
   const setNewBalanceError = document.querySelector('#edit-wallet-set-new-balance-error');
   const generalError = document.querySelector('#edit-wallet-general-error');

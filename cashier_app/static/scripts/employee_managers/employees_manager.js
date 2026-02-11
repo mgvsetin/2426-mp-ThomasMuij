@@ -234,7 +234,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showAddErrors(response.error, response.detail);
+    showAddErrors(response.error);
     return;
   }
 
@@ -277,7 +277,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showEditErrors(response.error, response.detail);
+    showEditErrors(response.error);
     return;
   }
 
@@ -305,7 +305,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showDeleteErrors(response.error, response.detail);
+    showDeleteErrors(response.error);
     return;
   }
 })
@@ -761,7 +761,7 @@ async function openDeleteModal(employeeId) {
 }
 
 
-function showAddErrors(error, detail) {
+function showAddErrors(error) {
   const usernameError = document.querySelector('#add-employee-username-error');
   const emailError = document.querySelector('#add-employee-email-error');
   const passwordError = document.querySelector('#add-employee-password-error');
@@ -784,14 +784,14 @@ function showAddErrors(error, detail) {
     case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
+    case 'username_taken':
+      setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+      return;
+    case 'email_taken':
+      setErr(emailError, 'E-mail už má jiný uživatel.');
+      return;
     case 'db_integrity_error':
-      if (detail?.includes('unique_index_employees_username_active')) {
-        setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
-      } else if (detail?.includes('unique_index_employees_email_active')) {
-        setErr(emailError, 'E-mail už má jiný uživatel.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     case 'missing_username':
       setErr(usernameError, 'Chybí uživatelské jméno.');
@@ -900,7 +900,7 @@ function showAddErrors(error, detail) {
 }
 
 
-function showEditErrors(error, detail) {
+function showEditErrors(error) {
   const idError = document.querySelector('#edit-employee-id-error');
   const usernameError = document.querySelector('#edit-employee-username-error');
   const emailError = document.querySelector('#edit-employee-email-error');
@@ -933,14 +933,14 @@ function showEditErrors(error, detail) {
     case 'invalid_id':
       setErr(idError, 'Id zaměstnance není validní.');
       return;
+    case 'username_taken':
+      setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+      return;
+    case 'email_taken':
+      setErr(emailError, 'E-mail už má jiný uživatel.');
+      return;
     case 'db_integrity_error':
-      if (detail?.includes('unique_index_employees_username_active')) {
-        setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
-      } else if (detail?.includes('unique_index_employees_email_active')) {
-        setErr(emailError, 'E-mail už má jiný uživatel.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     case 'missing_username':
       setErr(usernameError, 'Chybí uživatelské jméno.');
@@ -1047,7 +1047,7 @@ function showEditErrors(error, detail) {
 }
 
 
-function showDeleteErrors(error, detail) {
+function showDeleteErrors(error) {
   const generalError = document.querySelector('#delete-employee-general-error');
 
   const setErr = (el, text) => {
@@ -1103,18 +1103,9 @@ async function addEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_privileges') {
-      return data;
-    }
-
-    if (response.status === 400) {
-      return data;
-    }
-
     if (!response.ok) {
-      throw new Error('unexpected_error');
+      return data;
     }
-
 
     return true;
 
@@ -1135,20 +1126,8 @@ async function editEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_privileges') {
-      return data;
-    }
-
-    if (response.status === 400) {
-      return data;
-    }
-
-    if (response.status === 404 && data.error === 'employee_not_found') {
-      return data;
-    }
-
     if (!response.ok) {
-      throw new Error('unexpected_error');
+      return data;
     }
 
     return true;
@@ -1170,20 +1149,8 @@ async function deleteEmployee(formData) {
 
     const data = await response.json();
 
-    if (response.status === 403 && data.error === 'insufficient_privileges') {
-      return data;
-    }
-
-    if (response.status === 400) {
-      return data // invalid_id, missing_id
-    }
-
-    if (response.status === 404 && data.error === 'employee_not_found') {
-      return data
-    }
-
     if (!response.ok) {
-      throw new Error('unexpected_error');
+      return data;
     }
 
     return true;

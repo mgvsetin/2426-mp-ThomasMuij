@@ -290,20 +290,8 @@ document.addEventListener('click', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-        showPayError('idempotency_key_data_conflict', data.detail);
-        payButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showPayError(data.error || 'invalid_request', data.detail);
-        payButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showPayError('unexpected_error');
+        showPayError(data.error || 'unexpected_error');
         payButton.disabled = false;
         return;
       }
@@ -483,21 +471,14 @@ document.addEventListener('click', async (event) => {
         return;
       }
 
-      if (response.status === 400) {
-        showEditWalletFormErrors(data.error || 'unexpected_error', data.detail);
-        saveButton.disabled = false;
-        returnCardButton.disabled = false;
-        return;
-      }
-
       if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-        showUserFormErrors('idempotency_key_data_conflict', data.detail);
+        showUserFormErrors('idempotency_key_data_conflict');
         payButton.disabled = false;
         return;
       }
 
       if (!response.ok) {
-        showEditWalletFormErrors('unexpected_error');
+        showEditWalletFormErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         returnCardButton.disabled = false;
         return;
@@ -711,14 +692,8 @@ document.addEventListener('submit', async (event) => {
 
         const data = await response.json();
 
-        if (response.status === 400) {
-          showUserFormErrors(data.error || 'unexpected_error', data.detail);
-          saveButton.disabled = false;
-          return;
-        }
-
         if (!response.ok) {
-          showUserFormErrors('unexpected_error');
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
           return;
         }
@@ -741,20 +716,8 @@ document.addEventListener('submit', async (event) => {
 
         const data = await response.json();
 
-        if (response.status === 404 && data.error === 'user_not_found') {
-          showUserFormErrors('user_not_found');
-          saveButton.disabled = false;
-          return;
-        }
-
-        if (response.status === 400) {
-          showUserFormErrors(data.error || 'unexpected_error', data.detail);
-          saveButton.disabled = false;
-          return;
-        }
-
         if (!response.ok) {
-          showUserFormErrors('unexpected_error');
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
           return;
         }
@@ -788,20 +751,14 @@ document.addEventListener('submit', async (event) => {
 
         const data = await response.json();
 
-        if (response.status === 400) {
-          showUserFormErrors(data.error || 'unexpected_error', data.detail);
-          saveButton.disabled = false;
-          return;
-        }
-
         if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          showUserFormErrors('idempotency_key_data_conflict');
           payButton.disabled = false;
           return;
         }
 
         if (!response.ok) {
-          showUserFormErrors('unexpected_error');
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
           return;
         }
@@ -830,20 +787,14 @@ document.addEventListener('submit', async (event) => {
 
         const data = await response.json();
 
-        if (response.status === 400) {
-          showUserFormErrors(data.error || 'unexpected_error', data.detail);
-          saveButton.disabled = false;
-          return;
-        }
-
         if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          showUserFormErrors('idempotency_key_data_conflict');
           payButton.disabled = false;
           return;
         }
 
         if (!response.ok) {
-          showUserFormErrors('unexpected_error');
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
           return;
         }
@@ -872,26 +823,14 @@ document.addEventListener('submit', async (event) => {
 
         const data = await response.json();
 
-        if (response.status === 400) {
-          showUserFormErrors(data.error || 'unexpected_error', data.detail);
-          saveButton.disabled = false;
-          return;
-        }
-
-        if (response.status === 404 && data.error === 'wallet_not_found') {
-          showUserFormErrors('wallet_not_found');
-          saveButton.disabled = false;
-          return;
-        }
-
         if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-          showUserFormErrors('idempotency_key_data_conflict', data.detail);
+          showUserFormErrors('idempotency_key_data_conflict');
           payButton.disabled = false;
           return;
         }
 
         if (!response.ok) {
-          showUserFormErrors('unexpected_error');
+          showUserFormErrors(data.error || 'unexpected_error', data.detail);
           saveButton.disabled = false;
           return;
         }
@@ -940,20 +879,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 404 && data.error === 'user_not_found') {
-        showDeleteUserFormErrors('user_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteUserFormErrors(data.error || 'unexpected_error', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteUserFormErrors('unexpected_error');
+        showDeleteUserFormErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1005,21 +932,14 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 400) {
-        showEditWalletFormErrors(data.error || 'unexpected_error', data.detail);
-        saveButton.disabled = false;
-        returnCardButton.disabled = false;
-        return;
-      }
-
       if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-        showEditWalletFormErrors('idempotency_key_data_conflict', data.detail);
+        showEditWalletFormErrors('idempotency_key_data_conflict');
         payButton.disabled = false;
         return;
       }
 
       if (!response.ok) {
-        showEditWalletFormErrors('unexpected_error');
+        showEditWalletFormErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         returnCardButton.disabled = false;
         return;

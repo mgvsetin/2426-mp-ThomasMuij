@@ -146,7 +146,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showUsernameModalErrors(response.error, response.detail);
+    showUsernameModalErrors(response.error);
     return;
   }
 
@@ -170,7 +170,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showEmailModalErrors(response.error, response.detail);
+    showEmailModalErrors(response.error);
     return;
   }
 
@@ -386,12 +386,8 @@ async function updateProfile(formData) {
 
     const data = await response.json();
 
-    if (response.status === 400 || response.status === 404) {
-      return data;
-    }
-
     if (!response.ok) {
-      throw new UnexpectedError();
+      return data;
     }
 
     return true;
@@ -507,7 +503,7 @@ function testReader(index) {
 
 
 
-function showUsernameModalErrors(error, detail) {
+function showUsernameModalErrors(error) {
   const usernameError = document.querySelector('#modal-username-error');
   const passwordError = document.querySelector('#modal-username-password-error');
   const generalError = document.querySelector('#modal-username-general-error');
@@ -532,12 +528,11 @@ function showUsernameModalErrors(error, detail) {
     case 'invalid_current_password':
       setErr(passwordError, 'Nesprávné heslo.');
       return;
+    case 'username_taken':
+      setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+      return;
     case 'db_integrity_error':
-      if (detail?.includes('unique_index_employees_username_active')) {
-        setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     case 'nothing_to_update':
       setErr(usernameError, 'Chybí uživatelské jméno.');
@@ -580,7 +575,7 @@ function showUsernameModalErrors(error, detail) {
 }
 
 
-function showEmailModalErrors(error, detail) {
+function showEmailModalErrors(error) {
   const emailError = document.querySelector('#modal-email-error');
   const passwordError = document.querySelector('#modal-email-password-error');
   const generalError = document.querySelector('#modal-email-general-error');
@@ -605,12 +600,11 @@ function showEmailModalErrors(error, detail) {
     case 'invalid_current_password':
       setErr(passwordError, 'Nesprávné heslo.');
       return;
+    case 'email_taken':
+      setErr(emailError, 'E-mail už má jiný uživatel.');
+      return;
     case 'db_integrity_error':
-      if (detail?.includes('unique_index_employees_email_active')) {
-        setErr(emailError, 'E-mail už má jiný uživatel.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     case 'nothing_to_update':
       setErr(emailError, 'Chybí email.');

@@ -312,8 +312,16 @@ def add_event():
                     'new_values': convert_dict_to_serializable(dict(new_event))
                 }], logged_employee['id'])
     except IntegrityError as e:
-        # jméno už existuje: detail obsahuje unique_index_events_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_events_name_active':
+            return jsonify(error='event_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200
 
@@ -416,10 +424,16 @@ def edit_event():
                     'new_values': new_values
                 }], logged_employee['id'])
     except IntegrityError as e:
-        # jestli někdy půjde nastavit start_at nebo end_at, když už je jedna hodnotav db,
-        # tak se musí ověření start_at <= end_at vzít z db (detail=events_start_at_before_end_at_check)
-        # jméno už existuje: detail obsahuje unique_index_events_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_events_name_active':
+            return jsonify(error='event_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
@@ -468,6 +482,41 @@ def delete_event():
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
 
+                # Cascade delete all children
+                # 1. Delete link rows (hard delete)
+                cur.execute(
+                    '''DELETE FROM product_booth_link
+                       WHERE booth_id IN (SELECT id FROM booths WHERE event_id = %s AND deleted_at IS NULL)''',
+                    (event_id,))
+                cur.execute(
+                    '''DELETE FROM category_booth_link
+                       WHERE booth_id IN (SELECT id FROM booths WHERE event_id = %s AND deleted_at IS NULL)''',
+                    (event_id,))
+                cur.execute(
+                    '''DELETE FROM category_product_link
+                       WHERE product_id IN (SELECT id FROM products WHERE event_id = %s AND deleted_at IS NULL)
+                       OR category_id IN (SELECT id FROM categories WHERE event_id = %s AND deleted_at IS NULL)''',
+                    (event_id, event_id))
+
+                # 2. Delete employee roles (hard delete)
+                cur.execute(
+                    'DELETE FROM employee_event_booth_roles WHERE event_id = %s',
+                    (event_id,))
+
+                # 3. Soft-delete booths, products, categories
+                cur.execute(
+                    'UPDATE booths SET deleted_at = now() WHERE event_id = %s AND deleted_at IS NULL',
+                    (event_id,))
+                cur.execute(
+                    'UPDATE products SET deleted_at = now() WHERE event_id = %s AND deleted_at IS NULL',
+                    (event_id,))
+                cur.execute(
+                    'UPDATE categories SET deleted_at = now() WHERE event_id = %s AND deleted_at IS NULL',
+                    (event_id,))
+                cur.execute(
+                    'UPDATE wallets SET deleted_at = now() WHERE event_id = %s AND deleted_at IS NULL',
+                    (event_id,))
+
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
     except MultipleRowsAffectedError:
@@ -477,6 +526,129 @@ def delete_event():
         return jsonify(error='event_not_found'), 404
 
     return jsonify(redirect_url=url_for('events.get_events_manager_page')), 200
+
+
+@api_bp.route('/deleted')
+def get_deleted_events():
+    logged_employee = load_logged_in_employee()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if not logged_employee['is_admin']:
+            return jsonify(error='insufficient_privileges'), 403
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            events = cur.execute(
+                '''
+                SELECT id, name, start_at, end_at, deleted_at
+                FROM events
+                WHERE deleted_at IS NOT NULL
+                ORDER BY deleted_at DESC''',
+            ).fetchall()
+
+    return jsonify(events=events), 200
+
+
+@api_bp.route('/restore', methods=('POST',))
+def restore_event():
+    logged_employee = load_logged_in_employee()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if not logged_employee['is_admin']:
+            return jsonify(error='insufficient_privileges'), 403
+
+    try:
+        event_id = UUID(request.form.get('event-id'))
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_event_id'), 400
+
+    force = request.form.get('force') == 'true'
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                event = cur.execute(
+                    '''SELECT deleted_at, name
+                    FROM events WHERE id = %s AND deleted_at IS NOT NULL''',
+                    (event_id,)
+                ).fetchone()
+
+                if event is None:
+                    return jsonify(error='event_not_found'), 404
+
+                event_deleted_at = event['deleted_at']
+
+                if force:
+                    name = event['name']
+
+                    # fix event name uniqueness conflict
+                    existing = cur.execute(
+                        'SELECT 1 FROM events WHERE lower(name) = lower(%s) AND deleted_at IS NULL',
+                        (name,)
+                    ).fetchone()
+                    if existing:
+                        base_name = name
+                        suffix = 1
+                        new_name = f"{base_name}_{suffix}"
+                        while cur.execute(
+                            'SELECT 1 FROM events WHERE lower(name) = lower(%s) AND deleted_at IS NULL',
+                            (new_name,)
+                        ).fetchone():
+                            suffix += 1
+                            new_name = f"{base_name}_{suffix}"
+                        cur.execute('UPDATE events SET name = %s WHERE id = %s', (new_name, event_id))
+
+                # restore the event
+                cur.execute(
+                    'UPDATE events SET deleted_at = NULL WHERE id = %s AND deleted_at IS NOT NULL',
+                    (event_id,)
+                )
+
+                rows_affected = cur.rowcount
+                if rows_affected > 1:
+                    raise MultipleRowsAffectedError()
+                if rows_affected == 0:
+                    raise NoRowsAffectedError()
+
+                # restore children that were deleted as a result of the event deletion
+                cur.execute(
+                    'UPDATE booths SET deleted_at = NULL WHERE event_id = %s AND deleted_at = %s',
+                    (event_id, event_deleted_at)
+                )
+                cur.execute(
+                    'UPDATE products SET deleted_at = NULL, image_id = NULL WHERE event_id = %s AND deleted_at = %s',
+                    (event_id, event_deleted_at)
+                )
+                cur.execute(
+                    'UPDATE categories SET deleted_at = NULL WHERE event_id = %s AND deleted_at = %s',
+                    (event_id, event_deleted_at)
+                )
+                cur.execute(
+                    'UPDATE wallets SET deleted_at = NULL WHERE event_id = %s AND deleted_at = %s',
+                    (event_id, event_deleted_at)
+                )
+    except IntegrityError as e:
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_events_name_active':
+            return jsonify(error='event_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
+    except MultipleRowsAffectedError:
+        current_app.logger.exception('multiple rows restored for event id %s', event_id)
+        return jsonify(error='internal_server_error'), 500
+    except NoRowsAffectedError:
+        return jsonify(error='event_not_found'), 404
+
+    return jsonify(), 200
 
 
 @api_bp.route('/wallets')
@@ -613,8 +785,16 @@ def add_booth():
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
-        # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_booths_event_id_name_active':
+            return jsonify(error='booth_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200
 
@@ -747,8 +927,16 @@ def edit_booth():
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
-        # jméno už existuje: detail obsahuje unique_index_booths_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_booths_event_id_name_active':
+            return jsonify(error='booth_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for booth id %s', booth_id)
         return jsonify(error='internal_server_error'), 500
@@ -1218,8 +1406,17 @@ def add_product():
     except IntegrityError as e:
         if created_image_path:
             remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
-        # jméno už existuje: detail obsahuje unique_index_products_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_products_event_id_name_active':
+            return jsonify(error='product_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except:
         if created_image_path:
             remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
@@ -1401,8 +1598,17 @@ def edit_product():
     except IntegrityError as e:
         if created_image_path:
             remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
-        # jméno už existuje: detail obsahuje unique_index_products_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_products_event_id_name_active':
+            return jsonify(error='product_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         if created_image_path:
             remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
@@ -1606,8 +1812,16 @@ def add_category():
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
     except IntegrityError as e:
-        # jméno už existuje: detail obsahuje unique_index_categories_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_categories_event_id_name_active':
+            return jsonify(error='category_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200
 
@@ -1753,8 +1967,16 @@ def edit_category():
                 save_change(cur, changes, logged_employee['id'])
 
     except IntegrityError as e:
-        # jméno už existuje: detail obsahuje unique_index_categories_event_id_name_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_categories_event_id_name_active':
+            return jsonify(error='category_name_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for category id %s', category_id)
         return jsonify(error='internal_server_error'), 500

@@ -139,6 +139,18 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
+    # 7. Capture wallets
+    wallets = cur.execute(
+        'SELECT * FROM wallets WHERE event_id = %s AND deleted_at IS NULL',
+        (event_id,)
+    ).fetchall()
+    for wallet in wallets:
+        changes.append({
+            'table': 'wallets',
+            'old_values': convert_dict_to_serializable(dict(wallet)),
+            'new_values': None
+        })
+
     return changes
 
 

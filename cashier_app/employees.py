@@ -123,9 +123,18 @@ def add_employee():
                 }], logged_employee['id'])
 
     except IntegrityError as e:
-        # username už existuje: detail obsahuje unique_index_employees_username_active
-        # email už existuje: detail obsahuje unique_index_employees_email_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_employees_username_active':
+            return jsonify(error='username_taken'), 409
+        if constraint == 'unique_index_employees_email_active':
+            return jsonify(error='email_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200
 
@@ -231,9 +240,18 @@ def edit_employee():
                     raise CanNotDeleteLastAdminError()
 
     except IntegrityError as e:
-        # username už existuje: detail obsahuje unique_index_employees_username_active
-        # email už existuje: detail obsahuje unique_index_employees_email_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_employees_username_active':
+            return jsonify(error='username_taken'), 409
+        if constraint == 'unique_index_employees_email_active':
+            return jsonify(error='email_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for employee id %s', edit_employee_id)
         return jsonify(error='internal_server_error'), 500

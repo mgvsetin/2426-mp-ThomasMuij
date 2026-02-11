@@ -345,26 +345,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditEventErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'event_not_found') {
-        showEditEventErrors('event_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditEventErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditEventErrors('unexpected_error');
+        showEditEventErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -407,26 +389,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showDeleteEventErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'event_not_found') {
-        showDeleteEventErrors('event_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteEventErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteEventErrors('unexpected_error');
+        showDeleteEventErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -467,20 +431,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAddBoothErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAddBoothErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAddBoothErrors('unexpected_error');
+        showAddBoothErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -519,26 +471,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditBoothErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'booth_not_found') {
-        showEditBoothErrors('booth_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditBoothErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditBoothErrors('unexpected_error');
+        showEditBoothErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -576,26 +510,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showDeleteBoothErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'booth_not_found') {
-        showDeleteBoothErrors('booth_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteBoothErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteBoothErrors('unexpected_error');
+        showDeleteBoothErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -638,20 +554,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAssignEmployeeErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAssignEmployeeErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAssignEmployeeErrors('unexpected_error');
+        showAssignEmployeeErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -691,20 +595,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditEmployeeErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditEmployeeErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditEmployeeErrors('unexpected_error');
+        showEditEmployeeErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -743,20 +635,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showRemoveEmployeeErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showRemoveEmployeeErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showRemoveEmployeeErrors('unexpected_error');
+        showRemoveEmployeeErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -796,26 +676,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAddProductErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 413 && data.error === 'file_too_large') {
-        showAddProductErrors('file_too_large');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAddProductErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAddProductErrors('unexpected_error');
+        showAddProductErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -854,32 +716,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditProductErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'product_not_found') {
-        showEditProductErrors('product_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 413 && data.error === 'file_too_large') {
-        showEditProductErrors('file_too_large');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditProductErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditProductErrors('unexpected_error');
+        showEditProductErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -917,26 +755,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showDeleteProductErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'product_not_found') {
-        showDeleteProductErrors('product_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteProductErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteProductErrors('unexpected_error');
+        showDeleteProductErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -976,20 +796,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAddCategoryErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAddCategoryErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAddCategoryErrors('unexpected_error');
+        showAddCategoryErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1028,26 +836,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditCategoryErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'category_not_found') {
-        showEditCategoryErrors('category_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditCategoryErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditCategoryErrors('unexpected_error');
+        showEditCategoryErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1085,26 +875,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showDeleteCategoryErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'category_not_found') {
-        showDeleteCategoryErrors('category_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteCategoryErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteCategoryErrors('unexpected_error');
+        showDeleteCategoryErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1147,20 +919,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showAddUserErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showAddUserErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showAddUserErrors('unexpected_error');
+        showAddUserErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1203,26 +963,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showEditUserErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'user_not_found') {
-        showEditUserErrors('user_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showEditUserErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showEditUserErrors('unexpected_error');
+        showEditUserErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -1260,26 +1002,8 @@ document.addEventListener('submit', async (event) => {
 
       const data = await response.json();
 
-      if (response.status === 403 && data.error === 'insufficient_privileges') {
-        showDeleteUserErrors('insufficient_privileges');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 404 && data.error === 'user_not_found') {
-        showDeleteUserErrors('user_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 400) {
-        showDeleteUserErrors(data.error || 'invalid_request', data.detail);
-        saveButton.disabled = false;
-        return;
-      }
-
       if (!response.ok) {
-        showDeleteUserErrors('unexpected_error');
+        showDeleteUserErrors(data.error || 'unexpected_error');
         saveButton.disabled = false;
         return;
       }
@@ -3348,7 +3072,7 @@ async function openDeleteUserModal(userId) {
 // ERROR HANDLING FUNCTIONS
 
 
-function showEditEventErrors(error, detail) {
+function showEditEventErrors(error) {
   const nameError = document.querySelector('#edit-event-name-error');
   const startAtError = document.querySelector('#edit-event-start-at-error');
   const endAtError = document.querySelector('#edit-event-end-at-error');
@@ -3394,12 +3118,11 @@ function showEditEventErrors(error, detail) {
     case 'invalid_start_at_end_at_dates':
       setErr(generalError, 'Začátek musí být dříve než konec.');
       return;
+    case 'event_name_taken':
+      setErr(nameError, 'Název už má jiná akce.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_events_name_active')) {
-        setErr(nameError, 'Název už má jiná akce.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -3440,7 +3163,7 @@ function showEditEventErrors(error, detail) {
 }
 
 
-function showDeleteEventErrors(error, detail) {
+function showDeleteEventErrors(error) {
   const generalError = document.querySelector('#delete-event-general-error');
 
   const setErr = (el, text) => {
@@ -3479,7 +3202,7 @@ function showDeleteEventErrors(error, detail) {
 }
 
 
-function showAddBoothErrors(error, detail) {
+function showAddBoothErrors(error) {
   const nameError = document.querySelector('#add-booth-name-error');
   const typeError = document.querySelector('#add-booth-type-error');
   const productsError = document.querySelector('#add-booth-products-error');
@@ -3535,12 +3258,11 @@ function showAddBoothErrors(error, detail) {
     case 'cashier_cannot_have_products_or_categories':
       setErr(generalError, 'Pokladna nemůže mít přiřazeny produkty nebo kategorie.');
       return;
+    case 'booth_name_taken':
+      setErr(nameError, 'Název už má jiný stánek v této akci.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiný stánek v této akci.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -3581,7 +3303,7 @@ function showAddBoothErrors(error, detail) {
 }
 
 
-function showEditBoothErrors(error, detail) {
+function showEditBoothErrors(error) {
   const nameError = document.querySelector('#edit-booth-name-error');
   const productsError = document.querySelector('#edit-booth-products-error');
   const categoriesError = document.querySelector('#edit-booth-categories-error');
@@ -3633,12 +3355,11 @@ function showEditBoothErrors(error, detail) {
     case 'cashier_cannot_have_products_or_categories':
       setErr(generalError, 'Pokladna nemůže mít přiřazeny produkty nebo kategorie.');
       return;
+    case 'booth_name_taken':
+      setErr(nameError, 'Název už má jiný stánek v této akci.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_booths_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiný stánek v této akci.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -3679,7 +3400,7 @@ function showEditBoothErrors(error, detail) {
 }
 
 
-function showDeleteBoothErrors(error, detail) {
+function showDeleteBoothErrors(error) {
   const generalError = document.querySelector('#delete-booth-general-error');
 
   const setErr = (el, text) => {
@@ -3718,7 +3439,7 @@ function showDeleteBoothErrors(error, detail) {
 }
 
 
-function showAssignEmployeeErrors(error, detail) {
+function showAssignEmployeeErrors(error) {
   const usernameOrEmailError = document.querySelector('#assign-employee-username-or-email-error');
   const boothsError = document.querySelector('#assign-employee-booths-error');
   const generalError = document.querySelector('#assign-employee-general-error');
@@ -3777,7 +3498,7 @@ function showAssignEmployeeErrors(error, detail) {
 }
 
 
-function showEditEmployeeErrors(error, detail) {
+function showEditEmployeeErrors(error) {
   const boothsError = document.querySelector('#edit-employee-booths-error');
   const generalError = document.querySelector('#edit-employee-general-error');
 
@@ -3835,7 +3556,7 @@ function showEditEmployeeErrors(error, detail) {
 }
 
 
-function showRemoveEmployeeErrors(error, detail) {
+function showRemoveEmployeeErrors(error) {
   const generalError = document.querySelector('#remove-employee-general-error');
 
   const setErr = (el, text) => {
@@ -3877,7 +3598,7 @@ function showRemoveEmployeeErrors(error, detail) {
 }
 
 
-function showAddProductErrors(error, detail) {
+function showAddProductErrors(error) {
   const nameError = document.querySelector('#add-product-name-error');
   const priceError = document.querySelector('#add-product-price-error');
   const imageError = document.querySelector('#add-product-image-error');
@@ -3943,12 +3664,11 @@ function showAddProductErrors(error, detail) {
     case 'unable_to_save_file':
       setErr(imageError, 'Nepodařilo se uložit soubor.');
       return;
+    case 'product_name_taken':
+      setErr(nameError, 'Název už má jiný produkt.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_products_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiný produkt.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -3987,7 +3707,7 @@ function showAddProductErrors(error, detail) {
 }
 
 
-function showEditProductErrors(error, detail) {
+function showEditProductErrors(error) {
   const nameError = document.querySelector('#edit-product-name-error');
   const priceError = document.querySelector('#edit-product-price-error');
   const imageError = document.querySelector('#edit-product-image-error');
@@ -4053,12 +3773,11 @@ function showEditProductErrors(error, detail) {
     case 'unable_to_save_file':
       setErr(imageError, 'Nepodařilo se uložit soubor.');
       return;
+    case 'product_name_taken':
+      setErr(nameError, 'Název už má jiný produkt.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_products_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiný produkt.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -4115,7 +3834,7 @@ function showEditProductErrors(error, detail) {
 }
 
 
-function showDeleteProductErrors(error, detail) {
+function showDeleteProductErrors(error) {
   const generalError = document.querySelector('#delete-product-general-error');
 
   const setErr = (el, text) => {
@@ -4154,7 +3873,7 @@ function showDeleteProductErrors(error, detail) {
 }
 
 
-function showAddCategoryErrors(error, detail) {
+function showAddCategoryErrors(error) {
   const nameError = document.querySelector('#add-category-name-error');
   const boothsError = document.querySelector('#add-category-booths-error');
   const productsError = document.querySelector('#add-category-products-error');
@@ -4203,12 +3922,11 @@ function showAddCategoryErrors(error, detail) {
     case 'invalid_product_id':
       setErr(productsError, 'ID produktu není správné.');
       return;
+    case 'category_name_taken':
+      setErr(nameError, 'Název už má jiná kategorie.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_categories_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiná kategorie.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -4231,7 +3949,7 @@ function showAddCategoryErrors(error, detail) {
 }
 
 
-function showEditCategoryErrors(error, detail) {
+function showEditCategoryErrors(error) {
   const nameError = document.querySelector('#edit-category-name-error');
   const boothsError = document.querySelector('#edit-category-booths-error');
   const productsError = document.querySelector('#edit-category-products-error');
@@ -4280,12 +3998,11 @@ function showEditCategoryErrors(error, detail) {
     case 'invalid_product_id':
       setErr(productsError, 'ID produktu není správné.');
       return;
+    case 'category_name_taken':
+      setErr(nameError, 'Název už má jiná kategorie.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_categories_event_id_name_active')) {
-        setErr(nameError, 'Název už má jiná kategorie.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -4308,7 +4025,7 @@ function showEditCategoryErrors(error, detail) {
 }
 
 
-function showDeleteCategoryErrors(error, detail) {
+function showDeleteCategoryErrors(error) {
   const generalError = document.querySelector('#delete-category-general-error');
 
   const setErr = (el, text) => {
@@ -4347,7 +4064,7 @@ function showDeleteCategoryErrors(error, detail) {
 }
 
 
-function showAddUserErrors(error, detail) {
+function showAddUserErrors(error) {
   const firstNameError = document.querySelector('#add-user-first-name-error');
   const lastNameError = document.querySelector('#add-user-last-name-error');
   const emailError = document.querySelector('#add-user-email-error');
@@ -4386,14 +4103,14 @@ function showAddUserErrors(error, detail) {
     case 'at_least_one_of_email_phone_number_other_identifier_is_required':
       setErr(generalError, 'Vyplňte alespoň jeden z: email, telefonní číslo, jiný identifikátor.');
       return;
+    case 'user_email_taken':
+      setErr(emailError, 'Email už má jiný uživatel.');
+      return;
+    case 'user_identifier_taken':
+      setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_users_email_active')) {
-        setErr(emailError, 'Email už má jiný uživatel.');
-      } else if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
-        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -4401,7 +4118,7 @@ function showAddUserErrors(error, detail) {
   setErr(generalError, errorStr);
 }
 
-function showEditUserErrors(error, detail) {
+function showEditUserErrors(error) {
   const firstNameError = document.querySelector('#edit-user-first-name-error');
   const lastNameError = document.querySelector('#edit-user-last-name-error');
   const emailError = document.querySelector('#edit-user-email-error');
@@ -4449,14 +4166,14 @@ function showEditUserErrors(error, detail) {
     case 'at_least_one_of_email_phone_number_other_identifier_is_required':
       setErr(generalError, 'Vyplňte alespoň jeden z: email, telefonní číslo, jiný identifikátor.');
       return;
+    case 'user_email_taken':
+      setErr(emailError, 'Email už má jiný uživatel.');
+      return;
+    case 'user_identifier_taken':
+      setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
+      return;
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_users_email_active')) {
-        setErr(emailError, 'Email už má jiný uživatel.');
-      } else if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
-        setErr(generalError, 'Uživatel se stejnými údaji už existuje.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -4464,7 +4181,7 @@ function showEditUserErrors(error, detail) {
   setErr(generalError, errorStr);
 }
 
-function showDeleteUserErrors(error, detail) {
+function showDeleteUserErrors(error) {
   const generalError = document.querySelector('#delete-user-general-error');
 
   const setErr = (el, text) => {

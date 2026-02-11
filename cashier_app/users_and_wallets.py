@@ -148,9 +148,18 @@ def add_user():
             with conn.cursor() as cur:
                 user_id = cur.execute(sql, query_params).fetchone()['id']
     except IntegrityError as e:
-        # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
-        # email už existuje: unique_index_users_email_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_users_names_email_phone_identifier':
+            return jsonify(error='user_identifier_taken'), 409
+        if constraint == 'unique_index_users_email_active':
+            return jsonify(error='user_email_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(user_id=user_id), 200
 
@@ -251,9 +260,18 @@ def edit_user():
                 #### delete wallets?
 
     except IntegrityError as e:
-        # uživatel se stejnými udáji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
-        # email už existuje: unique_index_users_email_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_users_names_email_phone_identifier':
+            return jsonify(error='user_identifier_taken'), 409
+        if constraint == 'unique_index_users_email_active':
+            return jsonify(error='user_email_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows updated for user id %s', user_id)
         return jsonify(error='internal_server_error'), 500
@@ -397,11 +415,14 @@ def restore_user():
     except (ValueError, TypeError):
         return jsonify(error='invalid_user_id'), 400
 
+    force = request.form.get('force') == 'true'
+
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 user = cur.execute(
-                    'SELECT deleted_at FROM users WHERE id = %s AND deleted_at IS NOT NULL',
+                    '''SELECT deleted_at, first_name, last_name, email, phone_number, other_identifier
+                    FROM users WHERE id = %s AND deleted_at IS NOT NULL''',
                     (user_id,)
                 ).fetchone()
 
@@ -409,6 +430,89 @@ def restore_user():
                     return jsonify(error='user_not_found'), 404
 
                 user_deleted_at = user['deleted_at']
+
+                if force:
+                    email = user['email']
+                    first_name = user['first_name']
+                    last_name = user['last_name']
+                    phone_number = user['phone_number']
+                    other_identifier = user['other_identifier']
+
+                    # fix email uniqueness conflict
+                    if email:
+                        existing = cur.execute(
+                            'SELECT 1 FROM users WHERE email = %s AND deleted_at IS NULL',
+                            (email,)
+                        ).fetchone()
+                        if existing:
+                            base, domain = email.rsplit('@', 1)
+                            suffix = 1
+                            new_email = f"{base}_{suffix}@{domain}"
+                            while cur.execute(
+                                'SELECT 1 FROM users WHERE email = %s AND deleted_at IS NULL',
+                                (new_email,)
+                            ).fetchone():
+                                suffix += 1
+                                new_email = f"{base}_{suffix}@{domain}"
+                            cur.execute('UPDATE users SET email = %s WHERE id = %s', (new_email, user_id))
+                            email = new_email
+
+                    # fix composite index conflict (names + email + phone + identifier)
+                    existing_composite = cur.execute(
+                        '''
+                        SELECT 1 FROM users
+                        WHERE lower(first_name) = lower(%s)
+                          AND lower(last_name) = lower(%s)
+                          AND COALESCE(NULLIF(lower(email), ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(lower(%s), ''), '<<__NULL___2025__>>')
+                          AND COALESCE(NULLIF(phone_number, ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(%s, ''), '<<__NULL___2025__>>')
+                          AND COALESCE(NULLIF(lower(other_identifier), ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(lower(%s), ''), '<<__NULL___2025__>>')
+                          AND deleted_at IS NULL
+                        ''',
+                        (first_name, last_name, email, phone_number, other_identifier)
+                    ).fetchone()
+
+                    if existing_composite:
+                        base_identifier = other_identifier or ''
+                        suffix = 1
+                        new_identifier = f"{base_identifier}_{suffix}"
+                        while cur.execute(
+                            '''
+                            SELECT 1 FROM users
+                            WHERE lower(first_name) = lower(%s)
+                              AND lower(last_name) = lower(%s)
+                              AND COALESCE(NULLIF(lower(email), ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(lower(%s), ''), '<<__NULL___2025__>>')
+                              AND COALESCE(NULLIF(phone_number, ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(%s, ''), '<<__NULL___2025__>>')
+                              AND COALESCE(NULLIF(lower(other_identifier), ''), '<<__NULL___2025__>>') = COALESCE(NULLIF(lower(%s), ''), '<<__NULL___2025__>>')
+                              AND deleted_at IS NULL
+                            ''',
+                            (first_name, last_name, email, phone_number, new_identifier)
+                        ).fetchone():
+                            suffix += 1
+                            new_identifier = f"{base_identifier}_{suffix}"
+                        cur.execute('UPDATE users SET other_identifier = %s WHERE id = %s', (new_identifier, user_id))
+
+                    # fix wallet tag_id conflicts
+                    wallets_to_restore = cur.execute(
+                        'SELECT id, event_id, tag_id FROM wallets WHERE owner_id = %s AND deleted_at = %s',
+                        (user_id, user_deleted_at)
+                    ).fetchall()
+
+                    for wallet in wallets_to_restore:
+                        existing_tag = cur.execute(
+                            'SELECT 1 FROM wallets WHERE event_id = %s AND tag_id = %s AND deleted_at IS NULL',
+                            (wallet['event_id'], wallet['tag_id'])
+                        ).fetchone()
+                        if existing_tag:
+                            base_tag = wallet['tag_id']
+                            suffix = 1
+                            new_tag = f"{base_tag}_{suffix}"
+                            while cur.execute(
+                                'SELECT 1 FROM wallets WHERE event_id = %s AND tag_id = %s AND deleted_at IS NULL',
+                                (wallet['event_id'], new_tag)
+                            ).fetchone():
+                                suffix += 1
+                                new_tag = f"{base_tag}_{suffix}"
+                            cur.execute('UPDATE wallets SET tag_id = %s WHERE id = %s', (new_tag, wallet['id']))
 
                 cur.execute(
                     'UPDATE users SET deleted_at = NULL WHERE id = %s AND deleted_at IS NOT NULL',
@@ -426,10 +530,20 @@ def restore_user():
                     (user_id, user_deleted_at)
                 )
     except IntegrityError as e:
-        # uživatel se stejnými údaji už existuje: detail obsahuje unique_index_users_names_email_phone_identifier
-        # email už existuje: detail obsahuje unique_index_users_email_active
-        # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_users_names_email_phone_identifier':
+            return jsonify(error='user_identifier_taken'), 409
+        if constraint == 'unique_index_users_email_active':
+            return jsonify(error='user_email_taken'), 409
+        if constraint == 'unique_index_event_tag_id_active':
+            return jsonify(error='tag_id_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows restored for user id %s', user_id)
         return jsonify(error='internal_server_error'), 500
@@ -564,9 +678,17 @@ def add_wallet():
         return jsonify(error='idempotency_key_data_conflict'), 409
     except UnexpectedError:
         return jsonify(error='unexpected_error'), 500
-    except IntegrityError as e: #
-        # tag_id pro event_id už existuje: detail obsahuje unique_index_event_tag_id_active
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+    except IntegrityError as e:
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_event_tag_id_active':
+            return jsonify(error='tag_id_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(balance_changed_by=change_balance_by), 200
 

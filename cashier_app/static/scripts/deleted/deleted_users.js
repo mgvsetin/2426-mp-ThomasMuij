@@ -34,7 +34,7 @@ async function loadPage() {
 }
 
 
-document.addEventListener('click', (event) => {
+document.addEventListener('click', async (event) => {
   const closeModalBtn = event.target.closest('.close-modal');
   if (closeModalBtn) {
     closeModal();
@@ -76,6 +76,23 @@ document.addEventListener('click', (event) => {
 
     loadPage();
     return;
+  }
+
+  const forceBtn = event.target.closest('#force-user-restore')
+  if (forceBtn) {
+    forceBtn.disabled = true;
+    const form = document.querySelector('#restore-user-form');
+    if (!form) return;
+    const formData = new FormData(form);
+    formData.append('force', 'true');
+    const response = await restoreUser(formData);
+    if (response === true) {
+      closeModal();
+      resetDeletedUsersCache();
+      loadPage();
+      return;
+    }
+    showRestoreErrors(response.error);
   }
 
   // kliknutí na řádek ho vybere
@@ -125,7 +142,7 @@ document.addEventListener('submit', async (event) => {
       return;
     }
 
-    showRestoreErrors(response.error, response.detail);
+    showRestoreErrors(response.error);
     return;
   }
 });
@@ -348,7 +365,7 @@ async function openRestoreModal(userId) {
 }
 
 
-function showRestoreErrors(error, detail) {
+function showRestoreErrors(error) {
   const generalError = document.querySelector('#restore-general-error');
 
   const setErr = (el, text) => {
@@ -378,16 +395,30 @@ function showRestoreErrors(error, detail) {
     case 'user_conflict':
       setErr(generalError, 'Nelze obnovit: existuje aktivní uživatel s konfliktními údaji (např. stejný email).');
       return;
+    case 'user_identifier_taken':
+    case 'user_email_taken':
+    case 'tag_id_taken': {
+      if (!generalError) return;
+
+      const errorMsgs = {
+        'user_identifier_taken': 'Nelze obnovit: uživatel se stejnými údaji už existuje.',
+        'user_email_taken': 'Nelze obnovit: uživatel se stejným emailem už existuje.',
+        'tag_id_taken': 'Nelze obnovit: id karty uživatele se aktuálně používá.',
+      };
+
+      generalError.innerHTML = `
+        <div>${errorMsgs[errorStr]}</div>
+        <button id="force-user-restore" type="button" class="btn btn-primary">Vynutit obnovení</button>
+        <div class="muted">Pro uživatele: změní email, popřípadě jiný identifikátor</div>
+        <div class="muted">Pro kartu: změní její ID</div>
+        <div class="muted">Konfliktních údajů může být víc než je zmíněno ve vrácené chybě</div>
+      `;
+
+      generalError.classList.add('show-form-error');
+      return;
+    }
     case 'db_integrity_error':
-      if (detail && detail.includes('unique_index_users_names_email_phone_identifier')) {
-        setErr(generalError, 'Nelze obnovit: uživatel se stejnými údaji už existuje.');
-      } else if (detail && detail.includes('unique_index_users_email_active')) {
-        setErr(generalError, 'Nelze obnovit: uživatel se stejným emailem už existuje.');
-      } else if (detail && detail.includes('unique_index_event_tag_id_active')) {
-        setErr(generalError, 'Nelze obnovit: id karty uživatele se aktuálně používá.');
-      } else {
-        setErr(generalError, 'Něco se nepovedlo.');
-      }
+      setErr(generalError, 'Něco se nepovedlo.');
       return;
     default:
       break;
@@ -408,16 +439,8 @@ async function restoreUser(formData) {
 
     const data = await response.json();
 
-    if (response.status === 400) {
-      return data;
-    }
-
-    if (response.status === 404 && data.error === 'user_not_found') {
-      return data;
-    }
-
     if (!response.ok) {
-      throw new Error('unexpected_error');
+      return data;
     }
 
     return true;

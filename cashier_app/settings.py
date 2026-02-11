@@ -110,6 +110,17 @@ def update_profile():
     except NoRowsAffectedError:
         return jsonify(error='employee_not_found'), 404
     except IntegrityError as e:
-        return jsonify(error='db_integrity_error', detail=str(e)), 400
+        constraint = None
+        try:
+            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
+        except Exception:
+            constraint = None
+
+        if constraint == 'unique_index_employees_username_active':
+            return jsonify(error='username_taken'), 409
+        if constraint == 'unique_index_employees_email_active':
+            return jsonify(error='email_taken'), 409
+
+        return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200
