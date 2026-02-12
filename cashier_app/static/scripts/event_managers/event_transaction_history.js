@@ -18,6 +18,8 @@ const totalWithdrawalsEl = document.querySelector('#total-withdrawals');
 const totalWithdrawalsCountEl = document.querySelector('#total-withdrawals-count');
 const totalPaymentsEl = document.querySelector('#total-payments');
 const totalPaymentsCountEl = document.querySelector('#total-payments-count');
+const totalRefundsEl = document.querySelector('#total-refunds');
+const totalRefundsCountEl = document.querySelector('#total-refunds-count');
 const totalBalanceEl = document.querySelector('#total-balance');
 const totalCardsCountEl = document.querySelector('#total-cards-count');
 
@@ -97,7 +99,7 @@ async function loadEventInfo(eventId) {
 
 function renderUsers(transactions) {
   if (!transactions || transactions.length === 0) {
-    usersTableBody.innerHTML = '<tr><td colspan="7" class="empty-message">Žádní uživatelé.</td></tr>';
+    usersTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádní uživatelé.</td></tr>';
     return;
   }
 
@@ -115,6 +117,8 @@ function renderUsers(transactions) {
         withdrawalsTotal: 0,
         paymentsCount: 0,
         paymentsTotal: 0,
+        refundsCount: 0,
+        refundsTotal: 0,
         totalTransactions: 0,
         cardBalances: new Map()
       });
@@ -131,6 +135,9 @@ function renderUsers(transactions) {
     if (transactionType === 'payment') {
       user.paymentsCount++;
       user.paymentsTotal += Math.abs(amountCzk);
+    } else if (transactionType === 'refund') {
+      user.refundsCount++;
+      user.refundsTotal += Math.abs(amountCzk);
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         user.depositsCount++;
@@ -169,6 +176,12 @@ function renderUsers(transactions) {
             <span class="stat-count">transakce: ${user.paymentsCount}×</span>
           </div>
         </td>
+        <td>
+          <div class="stat-group">
+            <span class="stat-amount">${user.refundsTotal} Kč</span>
+            <span class="stat-count">transakce: ${user.refundsCount}×</span>
+          </div>
+        </td>
         <td>${user.totalTransactions}</td>
         <td><strong>${totalBalance} Kč</strong></td>
       </tr>
@@ -180,7 +193,7 @@ function renderUsers(transactions) {
 
 function renderCards(transactions) {
   if (!transactions || transactions.length === 0) {
-    cardsTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádné karty.</td></tr>';
+    cardsTableBody.innerHTML = '<tr><td colspan="9" class="empty-message">Žádné karty.</td></tr>';
     return;
   }
 
@@ -201,6 +214,8 @@ function renderCards(transactions) {
         withdrawalsTotal: 0,
         paymentsCount: 0,
         paymentsTotal: 0,
+        refundsCount: 0,
+        refundsTotal: 0,
         totalTransactions: 0,
         finalBalance: 0
       });
@@ -216,6 +231,9 @@ function renderCards(transactions) {
     if (transactionType === 'payment') {
       card.paymentsCount++;
       card.paymentsTotal += Math.abs(amountCzk);
+    } else if (transactionType === 'refund') {
+      card.refundsCount++;
+      card.refundsTotal += Math.abs(amountCzk);
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         card.depositsCount++;
@@ -256,6 +274,12 @@ function renderCards(transactions) {
             <span class="stat-count">transakce: ${card.paymentsCount}×</span>
           </div>
         </td>
+        <td>
+          <div class="stat-group">
+            <span class="stat-amount">${card.refundsTotal} Kč</span>
+            <span class="stat-count">transakce: ${card.refundsCount}×</span>
+          </div>
+        </td>
         <td>${card.totalTransactions}</td>
         <td><strong>${card.finalBalance} Kč</strong></td>
       </tr>
@@ -277,6 +301,8 @@ function renderTransactions(transactions) {
   let totalWithdrawalsCount = 0;
   let totalPayments = 0;
   let totalPaymentsCount = 0;
+  let totalRefunds = 0;
+  let totalRefundsCount = 0;
   let totalBalance = 0;
 
   const cardBalances = new Map();
@@ -305,6 +331,11 @@ function renderTransactions(transactions) {
       typeDisplay = 'Platba';
       totalPayments += Math.abs(amountCzk);
       totalPaymentsCount++;
+    } else if (transactionType === 'refund') {
+      typeClass = 'refund';
+      typeDisplay = 'Vrácení';
+      totalRefunds += Math.abs(amountCzk);
+      totalRefundsCount++;
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         typeClass = 'deposit';
@@ -367,12 +398,14 @@ function renderTransactions(transactions) {
   totalWithdrawalsCountEl.textContent = `${totalWithdrawalsCount} ${[1, 2, 3, 4].includes(totalWithdrawalsCount) ? 'transakce' : 'transakcí'}`;
   totalPaymentsEl.textContent = `${totalPayments} Kč`;
   totalPaymentsCountEl.textContent = `${totalPaymentsCount} ${[1, 2, 3, 4].includes(totalPaymentsCount) ? 'transakce' : 'transakcí'}`;
+  totalRefundsEl.textContent = `${totalRefunds} Kč`;
+  totalRefundsCountEl.textContent = `${totalRefundsCount} ${[1, 2, 3, 4].includes(totalRefundsCount) ? 'transakce' : 'transakcí'}`;
   totalBalanceEl.textContent = `${totalBalance} Kč`;
   totalCardsCountEl.textContent = `${cardBalances.size} ${cardBalances.size === 1 ? 'karta' : 0 < cardBalances.size && cardBalances.size < 5 ? 'karty' : 'karet'}`;
 }
 
 function showError(message) {
   transactionsTableBody.innerHTML = `<tr><td colspan="10" class="error-message">${escapeHTML(message)}</td></tr>`;
-  cardsTableBody.innerHTML = `<tr><td colspan="8" class="error-message">${escapeHTML(message)}</td></tr>`;
-  usersTableBody.innerHTML = `<tr><td colspan="7" class="error-message">${escapeHTML(message)}</td></tr>`;
+  cardsTableBody.innerHTML = `<tr><td colspan="9" class="error-message">${escapeHTML(message)}</td></tr>`;
+  usersTableBody.innerHTML = `<tr><td colspan="8" class="error-message">${escapeHTML(message)}</td></tr>`;
 }

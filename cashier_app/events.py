@@ -1630,8 +1630,9 @@ def edit_product():
         
 
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
-    if remove_current_image or image_file:
-        delete_unused_images()
+    # teď se děje přes scheduler
+    # if remove_current_image or image_file:
+    #     delete_unused_images()
 
     return jsonify(), 200
 
@@ -1701,7 +1702,8 @@ def delete_product():
         return jsonify(error='product_not_found'), 404
 
     # odstraň předchozí obrázek (popřípadě ostatní, které nejsou používané)
-    delete_unused_images()
+    # teď se děje přes scheduler
+    # delete_unused_images()
 
     return jsonify(), 200
 

@@ -21,7 +21,7 @@ import { BoothNotSelectedError, EventNotSelectedError, UnexpectedError } from ".
 import { order } from "./order.js";
 
 const productSide = document.querySelector('#product-side');
-const productGridContainer = document.querySelector('#product-grid-container');
+const productGrid = document.querySelector('#product-grid');
 const categoriesEl = document.querySelector('#categories');
 const productsSearchBar = document.querySelector('#products-search-bar');
 
@@ -72,7 +72,7 @@ export function findProduct(products, productId) {
 export async function renderProducts() {
   const result = await fetchProductsAndCategories().catch((error) => { // combine awaits here and everywhere else
     if ([EventNotSelectedError, BoothNotSelectedError].some((c) => error instanceof c)) {
-      productGridContainer.innerHTML = `
+      productGrid.innerHTML = `
       <div id="no-products-message">
         K načtení produktů vyberte stánek.
       </div>
@@ -80,7 +80,7 @@ export async function renderProducts() {
       return;
     }
 
-    productGridContainer.innerHTML = `
+    productGrid.innerHTML = `
       <div id="no-products-message">
         Nepovedlo se načíst produkty.
       </div>
@@ -92,7 +92,7 @@ export async function renderProducts() {
   const products = result.products;
 
   if (products.length === 0) {
-    productGridContainer.innerHTML = `
+    productGrid.innerHTML = `
       <div id="no-products-message">
         Stánek nemá přiřazené žádné produkty
       </div>
@@ -145,11 +145,18 @@ export async function renderProducts() {
     `;
   })
 
-  productGridContainer.innerHTML = `
-    <div id="product-grid">
-      ${productsHTML}
-    </div>
-  `;
+  productGrid.innerHTML = productsHTML;
+
+  requestAnimationFrame(() => {
+    const containers = productGrid.querySelectorAll('.product-container');
+    let maxHeight = 0;
+    containers.forEach(c => {
+      maxHeight = Math.max(maxHeight, c.scrollHeight);
+    });
+    if (maxHeight > 0) {
+      grid.style.gridAutoRows = maxHeight + 'px';
+    }
+  });
 }
 
 

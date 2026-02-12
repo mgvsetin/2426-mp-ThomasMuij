@@ -90,24 +90,26 @@ def delete_unused_images():
             with conn.cursor() as cur:
                 cur.execute(sql, query_params)
 
+
+def delete_disk_orphans():
     # smaž soubory na disku, které nemají žádný řádek v DB
-    # image_dir = current_app.config.get('UPLOAD_FOLDER')
-    # if image_dir and os.path.isdir(image_dir):
-    #     filenames_on_disk = {f for f in os.listdir(image_dir)
-    #                         if os.path.isfile(os.path.join(image_dir, f))}
+    image_dir = current_app.config.get('UPLOAD_FOLDER')
+    if image_dir and os.path.isdir(image_dir):
+        filenames_on_disk = {f for f in os.listdir(image_dir)
+                            if os.path.isfile(os.path.join(image_dir, f))}
 
-    #     if filenames_on_disk:
-    #         with get_pool().connection() as conn:
-    #             with conn.cursor() as cur:
-    #                 known_rows = cur.execute(
-    #                     'SELECT image_path FROM product_images'
-    #                 ).fetchall()
-    #                 failed_rows = cur.execute(
-    #                     'SELECT image_path FROM product_images_failed_to_delete'
-    #                 ).fetchall()
+        if filenames_on_disk:
+            with get_pool().connection() as conn:
+                with conn.cursor() as cur:
+                    known_rows = cur.execute(
+                        'SELECT image_path FROM product_images'
+                    ).fetchall()
+                    failed_rows = cur.execute(
+                        'SELECT image_path FROM product_images_failed_to_delete'
+                    ).fetchall()
 
-    #         known_filenames = {os.path.basename(row['image_path'])
-    #                            for row in known_rows + failed_rows}
+            known_filenames = {os.path.basename(row['image_path'])
+                               for row in known_rows + failed_rows}
 
-    #         for filename in filenames_on_disk - known_filenames:
-    #             remove_image_if_exists(Path(image_dir, filename))
+            for filename in filenames_on_disk - known_filenames:
+                remove_image_if_exists(Path(image_dir, filename))

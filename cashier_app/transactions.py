@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, url_for, request
+from flask import Blueprint, jsonify, url_for, request, current_app
 from uuid import UUID
 import json
 from psycopg.errors import RaiseException
@@ -228,3 +228,158 @@ def make_balance_change():
         return jsonify(error='unexpected_error'), 500
             
     return jsonify(balance_changed_by=change_balance_by), 200
+
+
+def _find_last_refundable_payment(wallet_id, booth_id, event_id, time_limit_minutes):
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            return cur.execute(
+                '''
+                SELECT t.id, t.amount_czk, t.products_info, t.occurred_at
+                FROM transactions t
+                WHERE t.wallet_id = %s
+                AND t.booth_id = %s
+                AND t.event_id = %s
+                AND t.transaction_type = 'payment'
+                AND t.occurred_at > now() - make_interval(mins := %s)
+                AND NOT EXISTS (
+                    SELECT 1 FROM transactions r
+                    WHERE r.refunded_transaction_id = t.id
+                )
+                ORDER BY t.occurred_at DESC
+                LIMIT 1''',
+                (wallet_id, booth_id, event_id, time_limit_minutes)).fetchone()
+
+
+@api_bp.route('/last-refundable', methods=('GET',))
+def get_last_refundable():
+    logged_employee = load_logged_in_employee()
+    event = load_selected_event()
+    booth = load_selected_booth()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    if booth is None:
+        return jsonify(error='no_selected_booth'), 400
+
+    if booth['booth_type'] != 'seller':
+        return jsonify(error='invalid_booth_type'), 400
+
+    tag_id = request.args.get('tag-id', '').strip()
+
+    if not tag_id:
+        return jsonify(error='missing_tag_id'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            wallet = cur.execute(
+                '''
+                SELECT id, owner_id, balance_czk
+                FROM wallets
+                WHERE tag_id = %s
+                AND event_id = %s
+                AND deleted_at IS NULL''',
+                (tag_id, event['id'])).fetchone()
+
+            if not wallet:
+                return jsonify(error='wallet_not_found'), 400
+
+    time_limit = current_app.config.get('REFUND_TIME_LIMIT_MINUTES', 5)
+    payment = _find_last_refundable_payment(wallet['id'], booth['id'], event['id'], time_limit)
+
+    if not payment:
+        return jsonify(error='no_refundable_transaction'), 400
+
+    refund_amount = -payment['amount_czk']
+
+    return jsonify(
+        refund_amount=refund_amount,
+        products_info=payment['products_info'],
+        occurred_at=payment['occurred_at'].isoformat()
+    ), 200
+
+
+@api_bp.route('/make-refund', methods=('POST',))
+def make_refund():
+    logged_employee = load_logged_in_employee()
+    event = load_selected_event()
+    booth = load_selected_booth()
+
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if event is None:
+        return jsonify(error='no_selected_event'), 400
+
+    if booth is None:
+        return jsonify(error='no_selected_booth'), 400
+
+    if booth['booth_type'] != 'seller':
+        return jsonify(error='invalid_booth_type'), 400
+
+    tag_id = request.form.get('tag-id', '').strip()
+    idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
+
+    if not idemp_key:
+        return jsonify(error='missing_idempotency_key'), 400
+
+    if not tag_id:
+        return jsonify(error='missing_tag_id'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            wallet = cur.execute(
+                '''
+                SELECT id, owner_id, balance_czk
+                FROM wallets
+                WHERE tag_id = %s
+                AND event_id = %s
+                AND deleted_at IS NULL''',
+                (tag_id, event['id'])).fetchone()
+
+            if not wallet:
+                return jsonify(error='wallet_not_found'), 400
+
+    time_limit = current_app.config.get('REFUND_TIME_LIMIT_MINUTES', 5)
+    payment = _find_last_refundable_payment(wallet['id'], booth['id'], event['id'], time_limit)
+
+    if not payment:
+        return jsonify(error='no_refundable_transaction'), 400
+
+    refund_amount = -payment['amount_czk']
+
+    if wallet['balance_czk'] + refund_amount > 1_000_000:
+        return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
+
+    params = {
+        'tag_id': tag_id,
+        'wallet_id': wallet['id'],
+        'user_id': wallet['owner_id'],
+        'event_id': event['id'],
+        'booth_id': booth['id'],
+        'transaction_type': 'refund',
+        'amount_czk': refund_amount,
+        'performed_by': logged_employee['id'],
+        'products_info': payment['products_info'],
+        'idempotency_key': idemp_key,
+        'refunded_transaction_id': payment['id']
+    }
+
+    try:
+        make_transaction(params)
+    except InsufficientBalanceError:
+        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+    except IdempotencyKeyDataConflict:
+        return jsonify(error='idempotency_key_data_conflict'), 409
+    except UnexpectedError:
+        return jsonify(error='unexpected_error'), 500
+
+    return jsonify(
+        balance_changed_by=refund_amount,
+        refunded_products=payment['products_info'],
+        refunded_amount=refund_amount
+    ), 200

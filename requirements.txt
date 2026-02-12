@@ -5,3 +5,5 @@ psycopg-binary==3.2.12
 psycopg-pool==3.2.7
 email-validator==2.3.0
 python-dateutil==2.9.0.post0
+APScheduler==3.11.0
+filelock==3.17.0

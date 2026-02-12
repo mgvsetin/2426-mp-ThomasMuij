@@ -30,6 +30,9 @@ def create_app(test_config=None):
     """
     app = Flask(__name__, instance_relative_config=True)
 
+    import logging #######
+    app.logger.setLevel(logging.INFO)
+
     app.config.from_mapping(
         SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32)
         DATABASE_CONNINFO = os.environ.get('DATABASE_CONNINFO') or """
@@ -66,6 +69,7 @@ def create_app(test_config=None):
         },
         MAX_UNDO_CHANGES = 30,
         UNDO_TIME_LIMIT_MINUTES = 60,
+        REFUND_TIME_LIMIT_MINUTES = 5,
         UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
         ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},
@@ -79,7 +83,12 @@ def create_app(test_config=None):
 
         SESSION_ENFORCE_UA = False,
         SESSION_ENFORCE_IP = False,
-        SESSION_MAX_INACTIVE_DAYS = 7
+        SESSION_MAX_INACTIVE_DAYS = 7,
+
+        SCHEDULER_ENABLED = True,
+        SCHEDULER_SESSION_CLEANUP_MINUTES = 60,
+        SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES = 180,
+        SCHEDULER_DISK_ORPHANS_CLEANUP_MINUTES = 720,
     )
 
     os.makedirs(app.instance_path, exist_ok=True)
@@ -196,6 +205,9 @@ def create_app(test_config=None):
 
     from cashier_app import deleted
     app.register_blueprint(deleted.bp)
+
+    from cashier_app.scheduler import init_scheduler
+    init_scheduler(app)
 
     # @app.after_request
     # def print_sum(a):

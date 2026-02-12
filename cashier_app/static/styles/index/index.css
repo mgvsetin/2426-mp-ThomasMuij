@@ -4,7 +4,6 @@ body {
 
 .search-div {
   background-color: white;
-  margin: 5px 5px 4px 10px;
   padding: 13px 20px;
   border-radius: 5px;
 }
@@ -27,6 +26,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  margin: 6px 4px 8px 10px;
 }
 
 
@@ -69,9 +69,9 @@ body {
   background-color: white;
   overflow: auto;
   border-radius: 5px;
-  margin: 0 5px 0 10px;
   max-height: 100px;
   padding: 10px 15px;
+  margin-top: 4px;
 }
 
 #categories.show {
@@ -89,7 +89,7 @@ body {
   padding: 4px 5px;
   border: none;
   font-size: 16px;
-  margin: 5px 5px 0 0;
+  margin-top: 5px;
   background-color: rgba(0, 0, 0, 0.04);
 }
 
@@ -106,19 +106,12 @@ body {
   color: white;
 }
 
-
-#product-grid-container {
-  flex: 1;
+#no-products-message {
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  min-height: 0;
 }
-
-/* #no-products-message {
-
-} */
 
 #product-grid {
   flex: 1;
@@ -127,12 +120,14 @@ body {
   grid-auto-rows: max-content;
   column-gap: 18px;
   row-gap: 13px;
+  margin-top: 6px;
   padding: 13px;
+  border-radius: 5px;
   align-content: start;
-  height: calc(100% - 26px);
   min-width: 0;
   justify-content: start;
   overflow: auto;
+  background-color: white;
 }
 
 .product-container {
@@ -145,6 +140,7 @@ body {
   border: 1px solid rgb(205, 205, 205);
   box-shadow: 1px 1px 7px 0 rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  min-height: 80px;
 
   max-width: 550px;
 }
@@ -508,9 +504,8 @@ body {
   height: auto;
   border-radius: 5px;
   overflow: auto;
-  margin: 6px 6px 8px 0;
+  margin: 6px 6px 8px 4px;
   background-color: white;
-  margin-left: 5px;
 }
 
 
@@ -781,7 +776,7 @@ body {
   color: white;
   border: none;
   border-radius: 5px;
-  height: 30px;
+  height: 33px;
 }
 
 #pay-button:enabled:hover {
@@ -794,6 +789,97 @@ body {
 
 #pay-button:disabled {
   opacity: 0.6;
+}
+
+#refund-button {
+  background-color: rgb(220, 80, 60);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  height: 33px;
+  margin-top: 8px;
+}
+
+#refund-button:enabled:hover {
+  background-color: rgb(200, 70, 55);
+}
+
+#refund-button:enabled:active {
+  background-color: rgb(180, 60, 50);
+}
+
+#refund-button:disabled {
+  opacity: 0.6;
+}
+
+#refund-confirmation-modal {
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  padding: 18px 20px;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 6px;
+  max-width: 350px;
+}
+
+#refund-confirmation-message {
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+
+#refund-products-list {
+  width: 100%;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.refund-product-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+#refund-confirmation-total {
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+#refund-confirmation-actions {
+  display: flex;
+  gap: 10px;
+}
+
+#cancel-refund-button {
+  background-color: rgb(234, 234, 234);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  color: black;
+}
+
+#confirm-refund-button {
+  background-color: rgb(220, 80, 60);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+}
+
+#successful-refund-modal {
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  padding: 25px 20px;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 6px;
+}
+
+#successful-refund-message {
+  margin-top: 16px;
+  font-weight: 700;
 }
 
 

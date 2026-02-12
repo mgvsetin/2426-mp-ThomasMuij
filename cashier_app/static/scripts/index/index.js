@@ -315,6 +315,135 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const refundButton = event.target.closest('#refund-button');
+  if (refundButton) {
+    refundButton.disabled = true;
+    setUpCardReading(handleCardRead, true);
+    clearPayError();
+
+    if (!lastReadCardId) {
+      const existing = document.querySelector('.overlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+
+      overlay.innerHTML = `
+        <div id="scan-card-request-modal">
+          <div id="scan-card-request-message">Naskenujte kartu</div>
+          <button id="cancel-scan-card-request-modal">Zrušit</button>
+        </div>
+      `;
+
+      pageContainer.appendChild(overlay);
+      const result = await newCardReadPromise;
+      if (overlay) overlay.remove();
+      if (!result) {
+        refundButton.disabled = false;
+        return;
+      }
+    }
+
+    try {
+      const lookupResponse = await fetch(
+        `/api/transactions/last-refundable?tag-id=${encodeURIComponent(lastReadCardId)}`
+      );
+
+      await handleUnauthorizedRedirect(lookupResponse);
+
+      const lookupData = await lookupResponse.json();
+
+      if (!lookupResponse.ok) {
+        showPayError(lookupData.error || 'unexpected_error');
+        refundButton.disabled = false;
+        return;
+      }
+
+      const refundAmount = lookupData.refund_amount;
+      const products = lookupData.products_info;
+
+      let productsHTML = '';
+      if (products && products.length > 0) {
+        productsHTML = products.map(p =>
+          `<div class="refund-product-item">
+            <span>${escapeHTML(p.name)} (${p.quantity}x)</span>
+            <span>${p.price * p.quantity} Kč</span>
+          </div>`
+        ).join('');
+      }
+
+      const confirmOverlay = document.createElement('div');
+      confirmOverlay.className = 'overlay';
+
+      confirmOverlay.innerHTML = `
+        <div id="refund-confirmation-modal">
+          <div id="refund-confirmation-message">Opravdu chcete vrátit poslední platbu?</div>
+          <div id="refund-products-list">${productsHTML}</div>
+          <div id="refund-confirmation-total">Celkem k vrácení: ${refundAmount} Kč</div>
+          <div id="refund-confirmation-actions">
+            <button id="cancel-refund-button">Zrušit</button>
+            <button id="confirm-refund-button">Vrátit</button>
+          </div>
+        </div>
+      `;
+
+      pageContainer.appendChild(confirmOverlay);
+
+      const confirmed = await new Promise(resolve => {
+        confirmOverlay.querySelector('#confirm-refund-button')
+          .addEventListener('click', () => resolve(true));
+        confirmOverlay.querySelector('#cancel-refund-button')
+          .addEventListener('click', () => resolve(false));
+      });
+
+      confirmOverlay.remove();
+
+      if (!confirmed) {
+        refundButton.disabled = false;
+        return;
+      }
+
+      const idempotencyKey = crypto.randomUUID();
+
+      const formData = new FormData();
+      formData.set('tag-id', lastReadCardId);
+      formData.set('idempotency-key', idempotencyKey);
+
+      const headers = new Headers();
+      headers.set('Idempotency-Key', idempotencyKey);
+
+      const response = await fetch('/api/transactions/make-refund', {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      await handleUnauthorizedRedirect(response);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showPayError(data.error || 'unexpected_error');
+        refundButton.disabled = false;
+        return;
+      }
+
+      showRefundSuccess();
+      resetWalletsCache();
+      removeReadCard();
+      await loadPage({
+        products: true,
+        cardInfo: true,
+        summary: true
+      });
+    } catch (error) {
+      showPayError('unexpected_error');
+    } finally {
+      refundButton.disabled = false;
+    }
+    return;
+  }
+
   const cancelScanCardRequestButton = event.target.closest('#cancel-scan-card-request-modal')
   if (cancelScanCardRequestButton) {
     const overlay = cancelScanCardRequestButton.closest('.overlay');
@@ -1079,6 +1208,9 @@ function showPayError(error) {
     case 'idempotency_key_data_conflict':
       setErr('Něco se nepovedlo.');
       return;
+    case 'no_refundable_transaction':
+      setErr('Nebyla nalezena platba k vrácení.');
+      return;
     default:
       break;
   }
@@ -1108,6 +1240,28 @@ function showPaySuccess() {
     <div id="successful-payment-modal">
       <img id="successful-payment-icon" src="/static/images/icons/checkmark_icon.png">
       <div id="successful-payment-message">Platba proběhla úspěšně.</div>
+    </div>
+  `;
+
+  pageContainer.appendChild(overlay);
+
+  setTimeout(() => {
+    if (overlay) overlay.remove();
+  }, 2000);
+}
+
+
+function showRefundSuccess() {
+  const existing = document.querySelector('.overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+
+  overlay.innerHTML = `
+    <div id="successful-refund-modal">
+      <img id="successful-payment-icon" src="/static/images/icons/checkmark_icon.png">
+      <div id="successful-refund-message">Platba byla vrácena.</div>
     </div>
   `;
 

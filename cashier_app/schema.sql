@@ -851,6 +851,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   occurred_at       timestamptz NOT NULL DEFAULT now(),
   performed_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
   products_info     jsonb DEFAULT '[]'::jsonb, -- id (nezapomeň, že product mohl být smazán/upraven), price, name, quantity 
+  refunded_transaction_id uuid REFERENCES transactions(id) ON DELETE RESTRICT,
 
   idempotency_key   text, -- make uuid?
   request_fingerprint text -- sha256 hex důležitých částí: tag_id, wallet_id, user_id, event_id, booth_id, transaction_type, amount_czk, performed_by, products_info
