@@ -22,7 +22,7 @@ export let newCardReadPromise = new Promise(resolve => {
   newCardReadResolve = resolve;
 });
 
-handleCardRead('newcard'); /////////
+handleCardRead('newcard1'); /////////
 
 
 export async function handleCardRead(cardId) {

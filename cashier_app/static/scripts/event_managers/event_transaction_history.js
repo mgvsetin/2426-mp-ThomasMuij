@@ -4,13 +4,12 @@ import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 
 const transactionsTableBody = document.querySelector('#transactions-table-body');
 const cardsTableBody = document.querySelector('#cards-table-body');
+const usersTableBody = document.querySelector('#users-table-body');
 
-const userFirstNameEl = document.querySelector('#user-first-name');
-const userLastNameEl = document.querySelector('#user-last-name');
-const userEmailEl = document.querySelector('#user-email');
-const userPhoneEl = document.querySelector('#user-phone');
-const userOtherIdentifierEl = document.querySelector('#user-other-identifier');
 const eventNameEl = document.querySelector('#event-name');
+const eventStartAtEl = document.querySelector('#event-start-at');
+const eventEndAtEl = document.querySelector('#event-end-at');
+const eventCreatedAtEl = document.querySelector('#event-created-at');
 
 const totalTransactionsEl = document.querySelector('#total-transactions');
 const totalDepositsEl = document.querySelector('#total-deposits');
@@ -25,26 +24,24 @@ const totalCardsCountEl = document.querySelector('#total-cards-count');
 loadPage();
 
 async function loadPage() {
-  // /events/<event_id>/users/<user_id>/transaction-history
+  // /events/<event_id>/transaction-history
   const pathParts = window.location.pathname.split('/');
   const eventIdIndex = pathParts.indexOf('events') + 1;
-  const userIdIndex = pathParts.indexOf('users') + 1;
-  
-  if (eventIdIndex <= 0 || userIdIndex <= 0) {
+
+  if (eventIdIndex <= 0) {
     showError('Neplatná URL.');
     return;
   }
 
   const eventId = pathParts[eventIdIndex];
-  const userId = pathParts[userIdIndex];
 
-  if (!eventId || !userId) {
-    showError('Chybí ID akce nebo uživatele.');
+  if (!eventId) {
+    showError('Chybí ID akce.');
     return;
   }
 
   try {
-    const response = await fetch(`/api/events/${eventId}/users/${userId}/transaction-history`);
+    const response = await fetch(`/api/events/${eventId}/transaction-history`);
 
     await handleUnauthorizedRedirect(response);
 
@@ -65,11 +62,12 @@ async function loadPage() {
       return;
     }
 
-    await loadUserAndEventInfo(userId, eventId);
+    await loadEventInfo(eventId);
 
-    const transactions = data.user_transaction_history || [];
+    const transactions = data.event_transaction_history || [];
     renderTransactions(transactions);
     renderCards(transactions);
+    renderUsers(transactions);
 
   } catch (err) {
     console.error('Error loading transaction history:', err);
@@ -77,51 +75,126 @@ async function loadPage() {
   }
 }
 
-async function loadUserAndEventInfo(userId, eventId) {
+async function loadEventInfo(eventId) {
   try {
-    const userResponse = await fetch('/api/users');
-    if (userResponse.ok) {
-      const userData = await userResponse.json();
-      const user = userData.users?.find(u => u.id === userId);
-      if (user) {
-        userFirstNameEl.textContent = user.first_name || '-';
-        userLastNameEl.textContent = user.last_name || '-';
-        userEmailEl.textContent = user.email || '-';
-        userPhoneEl.textContent = user.phone_number_international || user.phone_number || '-';
-        userOtherIdentifierEl.textContent = user.other_identifier || '-';
-        
-        document.title = `Historie transakcí - ${user.first_name} ${user.last_name}`;
-      }
-    }
-
     const eventResponse = await fetch('/api/events');
     if (eventResponse.ok) {
       const eventData = await eventResponse.json();
       const event = eventData.events?.find(e => e.id === eventId);
       if (event) {
         eventNameEl.textContent = event.name || '-';
+        eventStartAtEl.textContent = event.start_at ? formatDateTimeISOToDisplay(event.start_at) : '-';
+        eventEndAtEl.textContent = event.end_at ? formatDateTimeISOToDisplay(event.end_at) : '-';
+        eventCreatedAtEl.textContent = event.created_at ? formatDateTimeISOToDisplay(event.created_at) : '-';
+
+        document.title = `Historie transakcí - ${event.name}`;
       }
     }
   } catch (err) {
-    console.error('Error loading user/event info:', err);
+    console.error('Error loading event info:', err);
   }
+}
+
+function renderUsers(transactions) {
+  if (!transactions || transactions.length === 0) {
+    usersTableBody.innerHTML = '<tr><td colspan="7" class="empty-message">Žádní uživatelé.</td></tr>';
+    return;
+  }
+
+  const userMap = new Map();
+
+  transactions.forEach(transaction => {
+    const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
+
+    if (!userMap.has(userName)) {
+      userMap.set(userName, {
+        userName: userName,
+        depositsCount: 0,
+        depositsTotal: 0,
+        withdrawalsCount: 0,
+        withdrawalsTotal: 0,
+        paymentsCount: 0,
+        paymentsTotal: 0,
+        totalTransactions: 0,
+        cardBalances: new Map()
+      });
+    }
+
+    const user = userMap.get(userName);
+    const amountCzk = transaction.amount_czk || 0;
+    const transactionType = transaction.transaction_type || 'unknown';
+    const tagId = transaction.tag_id || 'unknown';
+
+    user.totalTransactions++;
+    user.cardBalances.set(tagId, transaction.balance_after || 0);
+
+    if (transactionType === 'payment') {
+      user.paymentsCount++;
+      user.paymentsTotal += Math.abs(amountCzk);
+    } else if (transactionType === 'balance-change') {
+      if (amountCzk > 0) {
+        user.depositsCount++;
+        user.depositsTotal += Math.abs(amountCzk);
+      } else if (amountCzk < 0) {
+        user.withdrawalsCount++;
+        user.withdrawalsTotal += Math.abs(amountCzk);
+      }
+    }
+  });
+
+  const users = Array.from(userMap.values());
+  let rows = '';
+
+  users.forEach((user, index) => {
+    const totalBalance = Array.from(user.cardBalances.values()).reduce((sum, b) => sum + b, 0);
+    rows += `
+      <tr>
+        <td>${index + 1}</td>
+        <td class="user-name">${escapeHTML(user.userName)}</td>
+        <td>
+          <div class="stat-group">
+            <span class="stat-amount">${user.depositsTotal} Kč</span>
+            <span class="stat-count">transakce: ${user.depositsCount}×</span>
+          </div>
+        </td>
+        <td>
+          <div class="stat-group">
+            <span class="stat-amount">${user.withdrawalsTotal} Kč</span>
+            <span class="stat-count">transakce: ${user.withdrawalsCount}×</span>
+          </div>
+        </td>
+        <td>
+          <div class="stat-group">
+            <span class="stat-amount">${user.paymentsTotal} Kč</span>
+            <span class="stat-count">transakce: ${user.paymentsCount}×</span>
+          </div>
+        </td>
+        <td>${user.totalTransactions}</td>
+        <td><strong>${totalBalance} Kč</strong></td>
+      </tr>
+    `;
+  });
+
+  usersTableBody.innerHTML = rows;
 }
 
 function renderCards(transactions) {
   if (!transactions || transactions.length === 0) {
-    cardsTableBody.innerHTML = '<tr><td colspan="7" class="empty-message">Žádné karty.</td></tr>';
+    cardsTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádné karty.</td></tr>';
     return;
   }
 
   // Group transactions by tag_id
   const cardMap = new Map();
-  
+
   transactions.forEach(transaction => {
     const tagId = transaction.tag_id || 'unknown';
-    
+    const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
+
     if (!cardMap.has(tagId)) {
       cardMap.set(tagId, {
         tagId: tagId,
+        userName: userName,
         depositsCount: 0,
         depositsTotal: 0,
         withdrawalsCount: 0,
@@ -132,14 +205,14 @@ function renderCards(transactions) {
         finalBalance: 0
       });
     }
-    
+
     const card = cardMap.get(tagId);
     const amountCzk = transaction.amount_czk || 0;
     const transactionType = transaction.transaction_type || 'unknown';
-    
+
     card.totalTransactions++;
     card.finalBalance = transaction.balance_after || 0;
-    
+
     if (transactionType === 'payment') {
       card.paymentsCount++;
       card.paymentsTotal += Math.abs(amountCzk);
@@ -158,12 +231,13 @@ function renderCards(transactions) {
 
   const cards = Array.from(cardMap.values());
   let rows = '';
-  
+
   cards.forEach((card, index) => {
     rows += `
       <tr>
         <td>${index + 1}</td>
         <td class="card-tag">${escapeHTML(card.tagId)}</td>
+        <td class="user-name">${escapeHTML(card.userName)}</td>
         <td>
           <div class="stat-group">
             <span class="stat-amount">${card.depositsTotal} Kč</span>
@@ -193,7 +267,7 @@ function renderCards(transactions) {
 
 function renderTransactions(transactions) {
   if (!transactions || transactions.length === 0) {
-    transactionsTableBody.innerHTML = '<tr><td colspan="9" class="empty-message">Žádné transakce.</td></tr>';
+    transactionsTableBody.innerHTML = '<tr><td colspan="10" class="empty-message">Žádné transakce.</td></tr>';
     return;
   }
 
@@ -221,10 +295,11 @@ function renderTransactions(transactions) {
     const balanceAfter = transaction.balance_after || 0;
     const tagId = transaction.tag_id || '-';
     const performedByUsername = transaction.performed_by_username || '-';
+    const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
 
     let typeClass = '';
     let typeDisplay = '';
-    
+
     if (transactionType === 'payment') {
       typeClass = 'payment';
       typeDisplay = 'Platba';
@@ -271,6 +346,7 @@ function renderTransactions(transactions) {
       <tr>
         <td>${index + 1}</td>
         <td class="datetime">${occurredAt}</td>
+        <td class="user-name">${escapeHTML(userName)}</td>
         <td class="card-tag">${escapeHTML(tagId)}</td>
         <td><span class="transaction-type ${typeClass}">${typeDisplay}</span></td>
         <td class="${amountClass}">${amountDisplay}</td>
@@ -296,6 +372,7 @@ function renderTransactions(transactions) {
 }
 
 function showError(message) {
-  transactionsTableBody.innerHTML = `<tr><td colspan="9" class="error-message">${escapeHTML(message)}</td></tr>`;
-  cardsTableBody.innerHTML = `<tr><td colspan="7" class="error-message">${escapeHTML(message)}</td></tr>`;
+  transactionsTableBody.innerHTML = `<tr><td colspan="10" class="error-message">${escapeHTML(message)}</td></tr>`;
+  cardsTableBody.innerHTML = `<tr><td colspan="8" class="error-message">${escapeHTML(message)}</td></tr>`;
+  usersTableBody.innerHTML = `<tr><td colspan="7" class="error-message">${escapeHTML(message)}</td></tr>`;
 }

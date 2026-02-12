@@ -324,216 +324,216 @@ document.addEventListener('click', async (event) => {
 
   const returnButton = event.target.closest('#return-to-event-picker-button');
   if (returnButton) {
-    try {
-      await unselectEventBooth();
-      renderEventPicker();
-      loadPage({
-        categories: true,
-        products: true,
-        summary: true,
-        cardInfo: true,
-        users: true,
-        // sidebar: true,
-        header: true
-      });
-    }
-    catch {
-      const errorMessageEl = document.querySelector('.booth-submit-error-message');
-      errorMessageEl.innerHTML = 'Něco se nepovedlo, zkuste to prosím později.';
-      errorMessageEl.classList.add('display-block');
-    }
-    return;
-  }
+    // try {
+    await unselectEventBooth().catch(() => {});
+    renderEventPicker();
+    // loadPage({
+    //   products: true,
+    //   summary: true,
+    //   categories: true,
+    //   cardInfo: true,
+    //   users: true,
+    //   // sidebar: true,
+    //   header: true
+    // });
+    // }
+  // catch {
+  //   const errorMessageEl = document.querySelector('.booth-submit-error-message');
+  //   errorMessageEl.innerHTML = 'Něco se nepovedlo, zkuste to prosím později.';
+  //   errorMessageEl.classList.add('display-block');
+  // }
+  return;
+}
 
   if (event.target.matches('#choose-card-reader')) {
-    await setUpCardReading(handleCardRead, true);
-  }
+  await setUpCardReading(handleCardRead, true);
+}
 
-  const closeChoosingReader = event.target.closest('#close-choosing-reader');
-  if (closeChoosingReader) {
-    const modal = document.querySelector('#select-reader-modal');
-    if (modal) modal.remove();
-  }
+const closeChoosingReader = event.target.closest('#close-choosing-reader');
+if (closeChoosingReader) {
+  const modal = document.querySelector('#select-reader-modal');
+  if (modal) modal.remove();
+}
 
-  // header protože je jen pro index:
-  if (event.target.matches('#choose-new-event-button')) {
-    if (selectingEvent) {
+// header protože je jen pro index:
+if (event.target.matches('#choose-new-event-button')) {
+  if (selectingEvent) {
+    return;
+  }
+  await unselectEventBooth();
+  chooseAndLoadPage();
+  return;
+}
+
+if (event.target.matches('#choose-new-booth-button')) {
+  if (selectingEvent) {
+    return;
+  }
+  await unselectBooth();
+  chooseAndLoadPage();
+  return;
+}
+
+// upravit uživatele
+const editUserBtn = event.target.closest('.edit-user');
+if (editUserBtn) {
+  const row = editUserBtn.closest('tr[id]');
+  if (row) {
+    if (row.classList.contains('selected-for-update')) {
+      await unselectUserForUpdate();
+    } else {
+      await selectUserForUpdate(row.id);
+    }
+  }
+  return;
+}
+
+const toggleUserSearch = event.target.closest('#user-inputs-search-table-toggle');
+if (toggleUserSearch) {
+  toggleUserSearch.toggleAttribute('search-users');
+  renderUsers();
+  return;
+}
+
+// smazat uživatele
+const deleteUserBtn = event.target.closest('.delete-user');
+if (deleteUserBtn) {
+  const row = deleteUserBtn.closest('tr[id]');
+  await openDeleteUserModal(row);
+  return;
+}
+
+const closeModalBtn = event.target.closest('.close-modal');
+if (closeModalBtn) {
+  closeModal();
+  return;
+}
+
+const cancelUserFormBtn = event.target.closest('#cancel-user-form');
+if (cancelUserFormBtn) {
+  await unselectUserForUpdate();
+  return;
+}
+
+if (event.target.matches('#open-more-user-options')) {
+  const userId = userIdInput.value.trim();
+  if (userId) {
+    openMoreUserOptionsModal(userId);
+    return;
+  }
+}
+
+if (event.target.matches('#open-user-cards-modal')) {
+  closeModal();
+  const userId = userIdInput.value.trim();
+  if (userId) {
+    openUserCardsModal(userId);
+    return;
+  }
+}
+
+const userWalletLi = event.target.closest('li[tag-id]');
+if (userWalletLi) {
+  openUserCardModal(userWalletLi);
+  return;
+}
+
+const backToUserCardsBtn = event.target.closest('#back-to-user-cards');
+if (backToUserCardsBtn) {
+  openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'), backToUserCardsBtn.closest('.modal'));
+  return;
+}
+
+if (event.target.matches('#return-card-button')) {
+  event.preventDefault();
+  const returnCardButton = event.target;
+  const editWalletForm = returnCardButton.closest('#edit-wallet-form');
+  const saveButton = editWalletForm.querySelector('button[type=submit]');
+  saveButton.disabled = true;
+  returnCardButton.disabled = true;
+
+  clearFormErrors();
+
+  const formData = new FormData(editWalletForm);
+
+  const idempotencyKey = crypto.randomUUID();
+  formData.set('idempotency-key', idempotencyKey);
+
+  const headers = new Headers();
+  headers.set('Idempotency-Key', idempotencyKey);
+
+  try {
+    const response = await fetch('/api/users/wallets/return', {
+      method: 'post',
+      headers,
+      body: formData
+    });
+
+    await handleUnauthorizedRedirect(response);
+
+    const data = await response.json();
+
+    if (response.status === 404 && data.error === 'wallet_not_found') {
+      showUserFormErrors('wallet_not_found');
+      saveButton.disabled = false;
       return;
     }
-    await unselectEventBooth();
-    chooseAndLoadPage();
-    return;
-  }
 
-  if (event.target.matches('#choose-new-booth-button')) {
-    if (selectingEvent) {
+    if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
+      showUserFormErrors('idempotency_key_data_conflict');
+      payButton.disabled = false;
       return;
     }
-    await unselectBooth();
-    chooseAndLoadPage();
-    return;
-  }
 
-  // upravit uživatele
-  const editUserBtn = event.target.closest('.edit-user');
-  if (editUserBtn) {
-    const row = editUserBtn.closest('tr[id]');
-    if (row) {
-      if (row.classList.contains('selected-for-update')) {
-        await unselectUserForUpdate();
-      } else {
-        await selectUserForUpdate(row.id);
-      }
-    }
-    return;
-  }
-
-  const toggleUserSearch = event.target.closest('#user-inputs-search-table-toggle');
-  if (toggleUserSearch) {
-    toggleUserSearch.toggleAttribute('search-users');
-    renderUsers();
-    return;
-  }
-
-  // smazat uživatele
-  const deleteUserBtn = event.target.closest('.delete-user');
-  if (deleteUserBtn) {
-    const row = deleteUserBtn.closest('tr[id]');
-    await openDeleteUserModal(row);
-    return;
-  }
-
-  const closeModalBtn = event.target.closest('.close-modal');
-  if (closeModalBtn) {
-    closeModal();
-    return;
-  }
-
-  const cancelUserFormBtn = event.target.closest('#cancel-user-form');
-  if (cancelUserFormBtn) {
-    await unselectUserForUpdate();
-    return;
-  }
-
-  if (event.target.matches('#open-more-user-options')) {
-    const userId = userIdInput.value.trim();
-    if (userId) {
-      openMoreUserOptionsModal(userId);
-      return;
-    }
-  }
-
-  if (event.target.matches('#open-user-cards-modal')) {
-    closeModal();
-    const userId = userIdInput.value.trim();
-    if (userId) {
-      openUserCardsModal(userId);
-      return;
-    }
-  }
-
-  const userWalletLi = event.target.closest('li[tag-id]');
-  if (userWalletLi) {
-    openUserCardModal(userWalletLi);
-    return;
-  }
-
-  const backToUserCardsBtn = event.target.closest('#back-to-user-cards');
-  if (backToUserCardsBtn) {
-    openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'), backToUserCardsBtn.closest('.modal'));
-    return;
-  }
-
-  if (event.target.matches('#return-card-button')) {
-    event.preventDefault();
-    const returnCardButton = event.target;
-    const editWalletForm = returnCardButton.closest('#edit-wallet-form');
-    const saveButton = editWalletForm.querySelector('button[type=submit]');
-    saveButton.disabled = true;
-    returnCardButton.disabled = true;
-
-    clearFormErrors();
-
-    const formData = new FormData(editWalletForm);
-
-    const idempotencyKey = crypto.randomUUID();
-    formData.set('idempotency-key', idempotencyKey);
-
-    const headers = new Headers();
-    headers.set('Idempotency-Key', idempotencyKey);
-
-    try {
-      const response = await fetch('/api/users/wallets/return', {
-        method: 'post',
-        headers,
-        body: formData
-      });
-
-      await handleUnauthorizedRedirect(response);
-
-      const data = await response.json();
-
-      if (response.status === 404 && data.error === 'wallet_not_found') {
-        showUserFormErrors('wallet_not_found');
-        saveButton.disabled = false;
-        return;
-      }
-
-      if (response.status === 409 && data.error === 'idempotency_key_data_conflict') {
-        showUserFormErrors('idempotency_key_data_conflict');
-        payButton.disabled = false;
-        return;
-      }
-
-      if (!response.ok) {
-        showEditWalletFormErrors(data.error || 'unexpected_error');
-        saveButton.disabled = false;
-        returnCardButton.disabled = false;
-        return;
-      }
-
-      showMoneyToExchangeModal(data.balance_changed_by);
-    } catch (err) {
-      showEditWalletFormErrors('unexpected_error');
+    if (!response.ok) {
+      showEditWalletFormErrors(data.error || 'unexpected_error');
       saveButton.disabled = false;
       returnCardButton.disabled = false;
       return;
     }
 
-    closeModal();
-    resetWalletsCache();
-    if (lastReadCardId === formData.get('tag-id').trim()) {
-      editUserFormOnChange();
-    }
+    showMoneyToExchangeModal(data.balance_changed_by);
+  } catch (err) {
+    showEditWalletFormErrors('unexpected_error');
     saveButton.disabled = false;
     returnCardButton.disabled = false;
     return;
   }
 
-  // klinutí na span v záhlaví
-  // nastavuje řazení
-  const headerEl = event.target.closest('th');
-  if (headerEl && event.target.matches('span')) {
-    setOrder(headerEl);
-    loadPage({
-      users: true
-    });
-    return;
+  closeModal();
+  resetWalletsCache();
+  if (lastReadCardId === formData.get('tag-id').trim()) {
+    editUserFormOnChange();
   }
+  saveButton.disabled = false;
+  returnCardButton.disabled = false;
+  return;
+}
 
-  // kliknutí na řádek ho vybere (musí být pod ostatníma, aby nebral kliknutí na jiné věci)
-  const row = event.target.closest('tr[id]');
-  if (row) {
-    handleRowSelection(event);
-    return;
-  }
+// klinutí na span v záhlaví
+// nastavuje řazení
+const headerEl = event.target.closest('th');
+if (headerEl && event.target.matches('span')) {
+  setOrder(headerEl);
+  loadPage({
+    users: true
+  });
+  return;
+}
 
-  const interactableEl = event.target.closest('input') || event.target.closest('button');
-  if (interactableEl || document.querySelector('.modal')) {
-    return;
-  }
-  // kliknutí na "nic" odvybere řádek
-  unselectRows();
+// kliknutí na řádek ho vybere (musí být pod ostatníma, aby nebral kliknutí na jiné věci)
+const row = event.target.closest('tr[id]');
+if (row) {
+  handleRowSelection(event);
+  return;
+}
+
+const interactableEl = event.target.closest('input') || event.target.closest('button');
+if (interactableEl || document.querySelector('.modal')) {
+  return;
+}
+// kliknutí na "nic" odvybere řádek
+unselectRows();
 });
 
 

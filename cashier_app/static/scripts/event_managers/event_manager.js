@@ -108,6 +108,12 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  // zobrazit historii transakcí akce
+  if (event.target.matches('#view-event-transactions')) {
+    window.open(`/events/${encodeURIComponent(eventId)}/transaction-history`, '_blank');
+    return;
+  }
+
   // smazat akci
   const deleteEventBtn = event.target.closest('#delete-event');
   if (deleteEventBtn) {

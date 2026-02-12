@@ -66,6 +66,11 @@ def get_user_transaction_history_page(event_id, user_id):
     return current_app.send_static_file('html/index/user_transaction_history.html')
 
 
+@bp.route('/<uuid:event_id>/transaction-history')
+def get_event_transaction_history_page(event_id):
+    return current_app.send_static_file('html/event_managers/event_transaction_history.html')
+
+
 api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
 
 
@@ -2088,9 +2093,10 @@ def get_user_transaction_history_for_event(event_id, user_id):
         with conn.cursor() as cur:
             user_transaction_history = cur.execute(
                 '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info
+                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info, e.username AS performed_by_username
                 FROM transactions t
                 JOIN users u ON u.id = t.user_id
+                JOIN employees e ON e.id = t.performed_by
                 WHERE t.user_id = %s
                 AND t.event_id = %s
                 -- AND u.deleted_at IS NULL
@@ -2100,6 +2106,40 @@ def get_user_transaction_history_for_event(event_id, user_id):
             
     return jsonify(user_transaction_history=user_transaction_history), 200
 
+
+@api_bp.route('/<uuid:event_id>/transaction-history')
+def get_event_transaction_history(event_id):
+    logged_employee = load_logged_in_employee()
+    if logged_employee is None:
+        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
+
+    if not event_id:
+        return jsonify(error='missing_event_id'), 400
+
+    try:
+        event_id = UUID(str(event_id))
+    except (TypeError, ValueError):
+        return jsonify(error='invalid_event_id'), 400
+
+    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+        return jsonify(error='insufficient_privileges'), 403
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            event_transaction_history = cur.execute(
+                '''
+                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
+                       e.username AS performed_by_username,
+                       u.first_name AS user_first_name, u.last_name AS user_last_name
+                FROM transactions t
+                JOIN employees e ON e.id = t.performed_by
+                LEFT JOIN users u ON u.id = t.user_id
+                WHERE t.event_id = %s
+                ORDER BY t.occurred_at
+                ''',
+                (event_id,)).fetchall()
+
+    return jsonify(event_transaction_history=event_transaction_history), 200
 
 
 @api_bp.route('/<uuid:event_id>/statistics')
