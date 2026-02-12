@@ -1,5 +1,5 @@
 body {
-  padding: var(--base-padding);
+  padding: var(--body-padding-top) var(--base-padding) var(--base-padding) var(--base-padding);
   background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
   color: #102a43;
 }
@@ -12,7 +12,7 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 2 * var(--base-padding));
+  height: calc(100vh - var(--base-padding) - var(--body-padding-top));
 }
 
 #topbar {

@@ -86,6 +86,8 @@ def select_event():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     event_id_raw = request.form.get('event')
+    if not event_id_raw:
+        return jsonify(error='missing_event_id'), 400
     try:
         event_id = str(UUID(event_id_raw))
     except (TypeError, ValueError):
@@ -254,6 +256,9 @@ def select_booth():
         return jsonify(error='no_selected_event'), 400
 
     booth_id_raw = request.form.get('booth')
+
+    if not booth_id_raw:
+        return jsonify(error='missing_booth_id'), 400
 
     try:
         booth_id = str(UUID(booth_id_raw))

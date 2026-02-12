@@ -126,6 +126,10 @@ export async function pickEvent(formData) {
 
     const data = await response.json();
 
+    if (response.status === 400 && data.error === 'missing_event_id') {
+      throw new Error('missing_event_id')
+    }
+
     if ((response.status === 400 && data.error === 'invalid_event_id')
       || (response.status === 404 && data.error === 'event_not_found_or_inactive')
       || (response.status === 403 && data.error === 'employee_not_linked_to_event')) {
@@ -138,7 +142,9 @@ export async function pickEvent(formData) {
 
   } catch (error) {
     const errorMessageEl = document.querySelector('.event-submit-error-message');
-    if (error.message === 'bad_event') {
+    if (error.message === 'missing_event_id') {
+      errorMessageEl.innerHTML = 'Není vybraná žádná akce.'
+    } else if (error.message === 'bad_event') {
       errorMessageEl.innerHTML = 'Něco se nepovedlo. Zkuste načíst stránku a vybrat akci ještě jednou.';
     } else {
       errorMessageEl.innerHTML = 'Něco se nepovedlo. Zkuste to prosím později.';
@@ -158,7 +164,7 @@ export async function renderBoothPicker() {
     const response = await fetch('/api/employees/me/events/booths/active');
 
     await handleUnauthorizedRedirect(response);
-  
+
     data = await response.json();
 
     if (response.status === 400 && data.error === 'no_selected_event') {
@@ -237,6 +243,10 @@ export async function pickBooth(formData) {
       throw new Error('no_selected_event');
     }
 
+    if (response.status === 400 && data.error === 'missing_booth_id') {
+      throw new Error('missing_booth_id')
+    }
+
     if ((response.status === 400 && data.error === 'invalid_booth_id')
       || (response.status === 404 && data.error === 'booth_not_found')
       || (response.status === 400 && data.error === 'employee_not_linked_to_event')
@@ -260,7 +270,10 @@ export async function pickBooth(formData) {
       return null;
     }
     const errorMessageEl = document.querySelector('.booth-submit-error-message');
-    if (error.message === 'bad_booth') {
+
+    if (error.message === 'missing_booth_id') {
+      errorMessageEl.innerHTML = 'Není vybraný žádný stánek.';
+    } else if (error.message === 'bad_booth') {
       errorMessageEl.innerHTML = 'Něco se nepovedlo. Zkuste vybrat akci nebo stánek ještě jednou.';
     } else {
       errorMessageEl.innerHTML = 'Něco se nepovedlo. Zkuste to prosím později.';
@@ -276,17 +289,12 @@ export async function pickBooth(formData) {
 
 export async function unselectEventBooth() {
   order.reset();
-  try {
-    const response = await fetch('/api/employees/me/events/remove', {
-      method: 'DELETE'
-    });
+  const response = await fetch('/api/employees/me/events/remove', {
+    method: 'DELETE'
+  });
 
-    if (!response.ok) {
-      throw new UnexpectedError();
-    }
-
-  } catch (error) {
-
+  if (!response.ok) {
+    throw new UnexpectedError();
   }
 
   await Promise.all([

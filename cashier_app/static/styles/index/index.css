@@ -358,19 +358,6 @@ body {
   padding: 7px 15px;
 }
 
-
-.overlay {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.45);
-  position: absolute;
-  inset: 0;
-  z-index: 999;
-  pointer-events: auto;
-  /* transition: opacity 180ms ease; */
-}
-
 /* #product-side.disable-children > *:not(.overlay) {
   pointer-events: none;
   filter: blur(4px);
@@ -379,80 +366,132 @@ body {
 
 #event-selector-form-container,
 #booth-selector-form-container {
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  padding: 18px 20px;
+  box-shadow: 0 8px 32px rgba(68, 68, 235, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 28px 32px 24px 32px;
   background-color: white;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-radius: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(68, 68, 235, 0.1);
+  min-width: 260px;
 }
 
 #event-selector-form,
 #booth-selector-form {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
 }
 
 #event-selector-label,
 #booth-selector-label {
-  font-weight: bold;
-  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #1a1a2e;
+  margin-bottom: 16px;
+  text-align: center;
+  letter-spacing: -0.2px;
 }
 
 #event-selector,
 #booth-selector {
-  height: 30px;
-  border: none;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+  height: 40px;
+  border: 1.5px solid #e2e6f0;
+  border-radius: 8px;
+  box-shadow: none;
   outline: none;
-  width: 150px;
+  width: 100%;
   text-overflow: ellipsis;
   cursor: pointer;
+  padding: 0 10px;
+  font-size: 14px;
+  background-color: #fafbff;
+  color: #1a1a2e;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  appearance: auto;
+}
+
+#event-selector:focus,
+#booth-selector:focus {
+  border-color: rgb(68, 68, 235);
+  box-shadow: 0 0 0 3px rgba(68, 68, 235, 0.1);
+  background-color: #fff;
 }
 
 #submit-event-choice,
 #submit-booth-choice {
-  border-radius: 5px;
+  border-radius: 8px;
   border: none;
-  background-color: black;
+  background: linear-gradient(135deg, rgb(68, 68, 235), rgb(85, 85, 245));
   color: white;
-  margin-top: 13px;
-  padding: 7px 15px;
+  margin-top: 16px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(68, 68, 235, 0.3);
+  transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+  width: 100%;
+}
+
+#submit-event-choice:hover,
+#submit-booth-choice:hover {
+  background: linear-gradient(135deg, rgb(58, 58, 228), rgb(75, 75, 238));
+  box-shadow: 0 6px 18px rgba(68, 68, 235, 0.4);
+  /* transform: translateY(-1px); */
+}
+
+#submit-event-choice:active,
+#submit-booth-choice:active {
+  background: linear-gradient(135deg, rgb(50, 50, 220), rgb(65, 65, 230));
+  /* transform: translateY(0); */
 }
 
 #return-to-event-picker-button {
   margin-top: 10px;
-  background-color: rgb(234, 234, 234);
-  border: none;
-  padding: 4px;
-  border-radius: 2px;
-  color: black;
-  background-color: rgb(234, 234, 234);
+  background-color: transparent;
+  border: 1.5px solid #e2e6f0;
+  padding: 8px 20px;
+  border-radius: 8px;
+  color: #4a4a6a;
+  font-size: 13px;
+  font-weight: 500;
+  width: 100%;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+#return-to-event-picker-button:hover {
+  background-color: #f4f6ff;
+  border-color: #c8cce8;
+}
+
+#return-to-event-picker-button:active {
+  background-color: #eaedff;
 }
 
 #event-error-message,
 #booth-error-message {
-  padding: 11px 10px 9px;
-  border-radius: 5px;
-  line-height: 1.35;
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
   text-align: center;
-  width: 200px;
+  width: 100%;
 }
 
 .event-submit-error-message,
 .booth-submit-error-message {
-  color: rgb(194, 14, 26);
-  background-color: rgb(250, 219, 221);
-  padding: 11px 10px 9px;
-  border-radius: 5px;
-  font-size: 14px;
-  line-height: 1.35;
+  color: rgb(185, 28, 28);
+  background-color: rgb(254, 242, 242);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
   text-align: center;
-  width: 157px;
+  width: 100%;
   display: none;
-  margin-top: 13px;
+  margin-top: 14px;
 }
 
 .display-block {

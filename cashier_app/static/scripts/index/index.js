@@ -324,16 +324,24 @@ document.addEventListener('click', async (event) => {
 
   const returnButton = event.target.closest('#return-to-event-picker-button');
   if (returnButton) {
-    await unselectEventBooth();
-    loadPage({
-      categories: true,
-      products: true,
-      summary: true,
-      cardInfo: true,
-      users: true,
-      // sidebar: true,
-      header: true
-    });
+    try {
+      await unselectEventBooth();
+      renderEventPicker();
+      loadPage({
+        categories: true,
+        products: true,
+        summary: true,
+        cardInfo: true,
+        users: true,
+        // sidebar: true,
+        header: true
+      });
+    }
+    catch {
+      const errorMessageEl = document.querySelector('.booth-submit-error-message');
+      errorMessageEl.innerHTML = 'Něco se nepovedlo, zkuste to prosím později.';
+      errorMessageEl.classList.add('display-block');
+    }
     return;
   }
 

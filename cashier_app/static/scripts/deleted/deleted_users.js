@@ -1,8 +1,10 @@
 import { handleUnauthorizedRedirect } from '../general/api_utils.js';
 import { cacheFunctionFactory } from '../general/cache_factory.js';
 import { formatDateTimeISOToDisplay } from '../general/date_utils.js';
+import { headerClickListeners, renderHeader } from '../general/header.js';
 import { escapeHTML } from '../general/html_display_utils.js';
 import { clearModalErrors, closeModal, openModal } from '../general/modals_forms.js';
+import { renderSidebar, sidebarClickListeners } from '../general/sidebar.js';
 import { handleRowSelection, markSelectedRows, unselectRows } from '../general/table_utils.js';
 
 
@@ -26,15 +28,29 @@ const [fetchDeletedUsers, resetDeletedUsersCache] = cacheFunctionFactory(async (
   return resData.users;
 })
 
-loadPage();
+loadPage({
+  table: true,
+  header: true,
+  sidebar: true
+});
 
-
-async function loadPage() {
-  await renderTable();
+async function loadPage({
+  table = false,
+  header = false,
+  sidebar = false } = {}) {
+  const toLoad = [];
+  if (table) toLoad.push(renderTable());
+  if (header) toLoad.push(renderHeader());
+  if (sidebar) toLoad.push(renderSidebar());
+  await Promise.all(toLoad);
 }
 
 
 document.addEventListener('click', async (event) => {
+  const headerClick = headerClickListeners(event);
+  const sidebarClick = sidebarClickListeners(event);
+  if (headerClick || sidebarClick) return;
+
   const closeModalBtn = event.target.closest('.close-modal');
   if (closeModalBtn) {
     closeModal();
@@ -74,7 +90,7 @@ document.addEventListener('click', async (event) => {
       headerEl.querySelector('div').appendChild(orderByArrow);
     }
 
-    loadPage();
+    loadPage({ table: true });
     return;
   }
 
@@ -89,7 +105,7 @@ document.addEventListener('click', async (event) => {
     if (response === true) {
       closeModal();
       resetDeletedUsersCache();
-      loadPage();
+      loadPage({ table: true });
       return;
     }
     showRestoreErrors(response.error);
@@ -138,7 +154,7 @@ document.addEventListener('submit', async (event) => {
     if (response === true) {
       closeModal();
       resetDeletedUsersCache();
-      loadPage();
+      loadPage({ table: true });
       return;
     }
 
@@ -149,7 +165,7 @@ document.addEventListener('submit', async (event) => {
 
 
 usersSearchBar.addEventListener('input', () => {
-  loadPage();
+  loadPage({ table: true });
 });
 
 
