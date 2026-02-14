@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nastavení</title>
 
-  <link rel="stylesheet" href="/static/styles/general/general.css">
-  <link rel="stylesheet" href="/static/styles/general/header.css">
-  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/general/modals_forms.css">
-  <link rel="stylesheet" href="/static/styles/settings/settings.css">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/settings/settings.css') }}">
 </head>
 
 <body>
@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  <script src="/static/scripts/settings/settings.js" type="module"></script>
+  <script src="{{ versioned_static('scripts/settings/settings.js') }}" type="module"></script>
 </body>
 
 </html>

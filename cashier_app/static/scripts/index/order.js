@@ -99,6 +99,8 @@ class Order {
       throw new Error('Item quantity has to be a number')
     }
 
+    quantity = Math.min(quantity, 999);
+
     let item = this.getItem(productId);
 
     if (item) {

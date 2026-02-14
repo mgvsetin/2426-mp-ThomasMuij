@@ -1,7 +1,7 @@
-from flask import Blueprint, current_app
+from flask import Blueprint, render_template
 
 bp = Blueprint('index', __name__, url_prefix='/')
 
 @bp.route('')
 def get_index_page():
-    return current_app.send_static_file('html/index/index.html')
+    return render_template('index/index.html')

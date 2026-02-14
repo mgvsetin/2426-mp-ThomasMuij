@@ -462,12 +462,11 @@ export async function editUserFormOnChange(inputEvent = null) {
 
 
 
-export async function openDeleteUserModal(row) {
-  const id = row.id;
+export async function openDeleteUserModal(userId) {
   const users = await fetchUsers().catch(() => { });
   if (!users) return;
 
-  const user = users.find(user => user.id === id);
+  const user = users.find(user => user.id === userId);
   if (!user) return;
 
   const html = `
@@ -481,7 +480,7 @@ export async function openDeleteUserModal(row) {
         </button>
       </header>
       <form id="delete-user-form">
-        <input type="hidden" name="user-id" value="${id}"/>
+        <input type="hidden" name="user-id" value="${userId}"/>
         <div class="form-row">
           <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
         </div>
@@ -1056,6 +1055,7 @@ export function showEditWalletFormErrors(error) {
 
 
 export function showMoneyToExchangeModal(balanceChangedBy) {
+  document.querySelector('.overlay')?.remove();
   let html = '';
 
   if (balanceChangedBy <= 0) {

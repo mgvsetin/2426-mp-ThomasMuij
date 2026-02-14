@@ -41,15 +41,9 @@ body {
   min-height: 0;
 }
 
-/* Size to content, shrink if needed, don't overflow parent */
 .table-wrap {
   flex: 0 1 auto;
   min-height: 120px;
-}
-
-/* Slightly larger header padding for this page */
-thead th {
-  padding: 14px 14px;
 }
 
 tbody tr {

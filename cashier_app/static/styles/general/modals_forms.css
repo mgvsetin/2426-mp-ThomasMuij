@@ -47,7 +47,7 @@
 }
 
 .cross-close:hover {
-  background-color: rgb(245, 245, 245);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .modal header {
@@ -170,22 +170,8 @@ input[type=checkbox] {
   /* border: 1px solid rgba(0, 0, 0, 0.16); */
   margin-right: 16px;
   /* transition: background-color 200ms; */
-
-  /*
-      This is a hack to change the button label. 
-      I'm hiding the default label and then 
-      manually applying the width based on 
-      updated icon and label.
-    */
   width: 145px;
   color: transparent;
-
-  /*
-      Firefox doesn't support the pseudo ::before 
-      or ::after elements on this input field so 
-      we need to use the @supports rule to enable 
-      default styles fallback for Firefox.
-    */
   @supports (-moz-appearance: none) {
     color: #0964b0;
   }
@@ -199,7 +185,6 @@ input[type=checkbox] {
   background-color: #e5e7eb;
 } */
 
-/* Faked label styles and icon */
 .form-row input[type="file"]::before {
   position: absolute;
   pointer-events: none;

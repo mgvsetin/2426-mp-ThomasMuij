@@ -1,22 +1,11 @@
-/* ==========================================================================
-   Shared Table Styles
-
-   Tables can be sized in two ways:
-   1. Flexbox: Parent is flex column, .table-wrap uses flex: 1 (preferred)
-   2. Max-height: Set --table-max-height variable on .table-wrap
-   ========================================================================== */
-
-/* Table container - scrollable wrapper */
 .table-wrap {
   overflow: auto;
   border-radius: 8px;
   border: 1px solid #e6eef6;
   min-width: 100px;
-  /* max-height only applies when --table-max-height is set */
   max-height: var(--table-max-height, none);
 }
 
-/* Collapsible table support */
 .table-wrap.closed {
   max-height: 0;
   overflow: hidden;
@@ -28,14 +17,12 @@
   }
 }
 
-/* Base table */
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-/* Header */
 thead th {
   position: sticky;
   top: 0;
@@ -64,7 +51,6 @@ thead th .order-by-arrow {
   padding: 3px;
 }
 
-/* Body cells */
 tbody td {
   padding: 8px 10px;
   vertical-align: middle;
@@ -73,7 +59,6 @@ tbody td {
   white-space: nowrap;
 }
 
-/* Row states */
 tbody tr {
   scroll-margin-top: 45px;
 }
@@ -98,7 +83,6 @@ tbody tr.selected-for-update {
   background: #def0fa;
 }
 
-/* Common cell patterns */
 .truncate-name {
   max-width: 200px;
   overflow: hidden;
@@ -117,7 +101,6 @@ tbody tr.selected-for-update {
   white-space: nowrap;
 }
 
-/* Actions column */
 .actions {
   min-width: 90px;
   text-align: right;
@@ -130,7 +113,7 @@ tbody tr.selected-for-update {
   text-align: left;
 }
 
-/* Linked pills (for booths, categories, etc.) */
+/* (pro booths, categories,...) */
 .linked-pills-cell {
   max-width: 244px;
 }
@@ -159,7 +142,6 @@ tbody tr.selected-for-update {
   color: rgb(19, 50, 109);
 }
 
-/* Table image cells */
 .image-cell {
   padding: 2px 3px;
   /* text-align: center; */
@@ -183,7 +165,6 @@ tbody tr.selected-for-update {
   display: block;
 }
 
-/* Badge/pill for status indicators */
 .badge {
   display: inline-block;
   padding: 6px 10px;
@@ -206,7 +187,6 @@ tbody tr.selected-for-update {
   border: 1px solid rgba(99, 102, 241, 0.02);
 }
 
-/* Clickable row elements */
 span[data-direct-to] {
   cursor: pointer;
   line-height: 1.4;

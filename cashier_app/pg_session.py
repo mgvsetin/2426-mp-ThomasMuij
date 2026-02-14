@@ -18,16 +18,9 @@ from werkzeug.datastructures import CallbackDict
 from psycopg.types.json import Json
 from flask import current_app, request, session as flask_session
 
+from cashier_app.utils.general import client_ip_from_request
+
 from cashier_app.db import get_pool
-
-# 1) Sliding vs fixed expiry
-
-# The example uses session.permanent + app.permanent_session_lifetime. 
-# If you want sliding expiry (extend expires_at on activity), 
-# update modified_at and set expires_at to now() + lifetime on each 
-# save_session (we already set expires_at to computed value, 
-# you can choose to set it to datetime.utcnow() + lifetime 
-# on each save to slide).
 
 
 # 3) Revoking all user sessions
@@ -39,6 +32,7 @@ from cashier_app.db import get_pool
 
 # You might expose this behind an admin action (e.g. “Log out everywhere”).
 
+###########
 
 # 4) Protect X-Forwarded-For
 
@@ -83,29 +77,6 @@ def short_ua_hash(user_agent: str) -> str:
     if not user_agent:
         return ''
     return hashlib.sha256(user_agent.encode('utf-8')).hexdigest()[:16]
-
-
-def client_ip_from_request() -> str:
-    """Získej klientskou IP adresu z požadavku.
-
-
-    Nejprve se pokusí použít hlavičku X-Forwarded-For (první IP v seznamu),
-    pokud není nastavena, použije `request.remote_addr`.
-    
-    
-    POZOR: pokud přijímáte požadavky přes reverzní proxy, je nezbytné
-    zajistit, aby proxy správně předávala tuto hlavičku a aby jí bylo důvěřováno.
-    """
-    # If you are behind a reverse proxy, ensure that Flask/your proxy
-    # is configured to pass the correct header and that you trust it.
-    xff = request.headers.get('X-Forwarded-For', '')
-    if xff:
-        # take the first IP in X-Forwarded-For (the originating IP)
-        ips = [p.strip() for p in xff.split(',') if p.strip()]
-        if ips:
-            return ips[0]
-    # fallback to remote_addr
-    return request.remote_addr or ''
 
 
 class PgSessionInterface(SessionInterface):
@@ -303,14 +274,12 @@ class PgSessionInterface(SessionInterface):
 
 
 # --- small helper to delete expired sessions (callable from CLI/cron) ------
-def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> int:
+def delete_expired_sessions(max_inactive_days: int | None = None) -> int:
     """Smaže z DB expirované sessiony a (volitelně) staré řádky bez expires_at.
 
 
     Parametry
     ---------
-    conn: psycopg.Connection | None
-    Volitelný pool pro DB. Pokud None, použije se get_pool().
     max_inactive_days: int | None
     Pokud je zadáno, smaže i řádky kde expires_at IS NULL a upraveno bylo
     více než `max_inactive_days` dní.
@@ -327,11 +296,6 @@ def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> 
     If max_inactive_days is None, reads app.config['SESSION_MAX_INACTIVE_DAYS'] when run under app context,
     otherwise uses provided value. If the final threshold is None, only deletes rows with a non-null expires_at.
     """
-    close_conn = False
-    if pool is None:
-        pool = get_pool()
-        close_conn = True
-
     if max_inactive_days is None:
         try:
             from flask import current_app, has_app_context
@@ -342,7 +306,7 @@ def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> 
 
     deleted = 0
 
-    with pool.connection() as conn:
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -363,11 +327,6 @@ def delete_expired_sessions(pool=None, max_inactive_days: int | None = None) -> 
                     """)
                 deleted += len(cur.fetchall())
 
-    if close_conn:
-        try:
-            conn.close()
-        except Exception:
-            pass
     return deleted
 
 import click
@@ -378,68 +337,3 @@ def clear_sessions_command():
     """Delete expired sessions from DB."""
     deleted = delete_expired_sessions()
     click.echo(f"Deleted {deleted} expired sessions.")
-
-
-# Option A — Cron (recommended for many simple deployments)
-
-# Create a small shell script that runs your Flask CLI command (this assumes you added the clear-sessions CLI command described earlier).
-
-# Create /usr/local/bin/clear_sessions.sh (adjust paths/user):
-
-# #!/usr/bin/env bash
-# # /usr/local/bin/clear_sessions.sh
-# # Runs the Flask CLI 'clear-sessions' command for the cashier_app
-# # Make sure this file is executable: sudo chmod 755 /usr/local/bin/clear_sessions.sh
-
-# # environment: change these to match your deployment
-# export PATH="/home/deploy/.local/bin:/home/deploy/venv/bin:$PATH"   # ensure python & flask in PATH
-# export VENV="/home/deploy/venv"               # optional: path to virtualenv
-# export FLASK_APP="cashier_app"
-# # if you need DB or other env vars set for create_app() to work:
-# export CASHIER_APP_SECRET="replace-with-real-secret"
-# export DATABASE_CONNINFO="dbname=cashier_app host=localhost user=postgres password=heslo123 port=5432"
-# # add any other env vars your app depends on
-
-# # activate venv (optional)
-# if [ -f "$VENV/bin/activate" ]; then
-#   # shellcheck source=/dev/null
-#   . "$VENV/bin/activate"
-# fi
-
-# # run the command and capture output
-# LOGFILE="/var/log/clear_sessions.log"
-# echo "=== $(date -Iseconds) Starting clear-sessions ===" >> "$LOGFILE"
-# # run using flask CLI
-# flask --app "$FLASK_APP" clear-sessions >> "$LOGFILE" 2>&1
-# STATUS=$?
-# echo "=== $(date -Iseconds) Done clear-sessions exit=$STATUS ===" >> "$LOGFILE"
-# exit $STATUS
-
-
-# Make it executable:
-
-# sudo chmod +x /usr/local/bin/clear_sessions.sh
-# sudo chown deploy:deploy /usr/local/bin/clear_sessions.sh  # set appropriate owner
-# sudo touch /var/log/clear_sessions.log
-# sudo chown deploy:deploy /var/log/clear_sessions.log
-
-
-# Add a crontab entry for the deploy user (run crontab -e as that user). Example: run every hour:
-
-# 0 * * * * /usr/local/bin/clear_sessions.sh
-
-
-# Or every 15 minutes:
-
-# */15 * * * * /usr/local/bin/clear_sessions.sh
-
-
-# Crontab logging: the script logs to /var/log/clear_sessions.log so you can inspect what happened.
-
-# Notes
-
-# Ensure flask and your virtualenv are on PATH, or call it with full path (/home/deploy/venv/bin/flask).
-
-# Set any necessary environment vars (DB conn info, secrets) in the script or in the user crontab.
-
-# Run as a non-root user (e.g., deploy or www-data) that has permission to use your DB.

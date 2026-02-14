@@ -5,15 +5,6 @@ from cashier_app.auth import load_logged_in_employee
 
 api_bp = Blueprint('session_api', __name__, url_prefix='/api/session')
 
-# {
-#   "sub": "user-id-uuid",
-#   "email": "user@example.com",
-#   "is_system_admin": false,
-#   "active_event_id": "event-uuid",
-#   "role_for_active_event": "cashier",
-#   "iat": 169XXX,
-#   "exp": 169YYY
-# }
 
 @api_bp.route('')
 def session_info():
@@ -55,16 +46,3 @@ def session_info():
         }
     
     return jsonify(employee=employee, event=event, booth=booth), 200
-
-
-# @bp.route('/booth-is-registered')
-# def booth_is_registered():
-#     event = load_selected_event()
-#     booth = load_selected_booth()
-
-#     # return jsonify(event and booth and event['id'] == booth['event_id']), 200
-#     # nejde, protože to může být None
-#     if event and booth and event['id'] == booth['event_id']:
-#         return jsonify(True), 200
-#     else:
-#         return jsonify(False), 200

@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, request, url_for
+from flask import Blueprint, current_app, jsonify, request, url_for, render_template
 from argon2 import PasswordHasher
 from cashier_app.auth import load_logged_in_employee, employee_password_is_correct
 from cashier_app.db import get_pool
@@ -13,7 +13,7 @@ bp = Blueprint('settings', __name__, url_prefix='/settings')
 
 @bp.route('')
 def get_settings_page():
-    return current_app.send_static_file('html/settings/settings.html')
+    return render_template('settings/settings.html')
 
 
 api_bp = Blueprint('settings_api', __name__, url_prefix='/api/settings')
@@ -52,7 +52,7 @@ def update_profile():
         return jsonify(error='missing_current_password'), 400
 
     if not (new_username or new_email or new_password or confirm_password):
-        return jsonify(error='nothing_to_update'), 400 # add error, remove individual errors for user, email
+        return jsonify(error='nothing_to_update'), 400
     
 
     if not employee_password_is_correct(logged_employee['id'], current_password):

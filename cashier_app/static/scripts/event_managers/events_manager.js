@@ -104,11 +104,9 @@ document.addEventListener('click', (event) => {
   // kliknutí na úpravu akce --> /events/id akce/manager/
   const editButton = event.target.closest('.edit.icon-btn');
   if (editButton) {
-    const row = editButton.closest('tr[data-event]');
+    const row = editButton.closest('tr[id]');
     if (!row) return;
-    const eventData = safeParse(row.getAttribute('data-event'));
-    if (!eventData) return;
-    window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
+    window.location.href = `/events/${encodeURIComponent(row.id)}/manager`;
     return;
   }
 
@@ -133,11 +131,9 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('dblclick', (event) => {
-  const row = event.target.closest('tr[data-event]');
+  const row = event.target.closest('tr[id]');
   if (!row) return;
-  const eventData = safeParse(row.getAttribute('data-event'));
-  if (!eventData) return;
-  window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
+  window.location.href = `/events/${encodeURIComponent(row.id)}/manager`;
 });
 
 
@@ -233,12 +229,10 @@ document.addEventListener('keydown', (event) => {
   });
 
   if (event.key === 'Enter' && !document.querySelector('.modal')) {
-    const selectedRows = document.querySelectorAll('tr[data-event][selected]');
+    const selectedRows = document.querySelectorAll('tr[id][selected]');
     if (selectedRows.length === 1) {
       const row = selectedRows[0];
-      const eventData = safeParse(row.getAttribute('data-event'));
-      if (!eventData) return;
-      window.location.href = `/events/${encodeURIComponent(eventData.id)}/manager`;
+      window.location.href = `/events/${encodeURIComponent(row.id)}/manager`;
     }
   }
 
@@ -330,10 +324,9 @@ function renderRowsFromList(list, tbody) {
     const createdAtStr = formatDateTimeISOToDisplay(ev.created_at);
     const startAtStr = formatDateTimeISOToDisplay(ev.start_at);
     const endAtStr = formatDateTimeISOToDisplay(ev.end_at);
-    const safeEv = escapeHTML(JSON.stringify(ev));
 
     rows += `
-        <tr id="${escapeHTML(String(ev.id))}" data-event='${safeEv}'>
+        <tr id="${escapeHTML(String(ev.id))}">
           <td>${idx}</td>
           <td class="event-name truncate-name" title="${escapeHTML(ev.name || '-')}">${escapeHTML(ev.name || '-')}</td>
           <td class="datetime">${startAtStr}</td>

@@ -65,16 +65,16 @@ def make_payment():
     
     if not amount_czk.is_integer():
         return jsonify(error='amount_czk_must_be_a_whole_number'), 400
+    
+    if wallet['balance_czk'] + amount_czk < 0:
+        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+    if wallet['balance_czk'] + amount_czk > 1_000_000:
+        return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
 
     if amount_czk < -1_000_000:
         return jsonify(error='amount_czk_must_be_more_than_or_equal_to_-1000000'), 400
     if amount_czk > 1_000_000:
         return jsonify(error='amount_czk_must_be_less_than_or_equal_to_1000000'), 400
-
-    if wallet['balance_czk'] + amount_czk < 0:
-        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
-    if wallet['balance_czk'] + amount_czk > 1_000_000:
-        return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
 
     try:
         products_info = json.loads(products_info)
@@ -153,7 +153,7 @@ def make_balance_change():
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
     if not idemp_key:
-        return jsonify(error='missing_idempotency_key'), 400 ##### do on frontend errs
+        return jsonify(error='missing_idempotency_key'), 400
 
     if not tag_id:
         return jsonify(error='missing_tag_id'), 400
@@ -192,10 +192,6 @@ def make_balance_change():
     
     if not new_balance.is_integer():
         return jsonify(error='new_balance_must_be_a_whole_number'), 400
-    if new_balance < -1_000_000:
-        return jsonify(error=f"new_balance_must_be_more_than_or_equal_to_-1000000"), 400
-    if new_balance > 1_000_000:
-        return jsonify(error=f"new_balance_must_be_less_than_or_equal_to_1000000"), 400
     
     if wallet['balance_czk'] + change_balance_by != new_balance:
         return jsonify(error='changes_do_not_match_balance_czk'), 400
@@ -204,6 +200,11 @@ def make_balance_change():
         return jsonify(error='wallet_balance_czk_is_not_enough'), 400
     if wallet['balance_czk'] + change_balance_by > 1_000_000:
         return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
+    
+    if new_balance < -1_000_000:
+        return jsonify(error=f"new_balance_must_be_more_than_or_equal_to_-1000000"), 400
+    if new_balance > 1_000_000:
+        return jsonify(error=f"new_balance_must_be_less_than_or_equal_to_1000000"), 400
 
     params = {
     'tag_id': tag_id,

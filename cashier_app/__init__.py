@@ -3,12 +3,21 @@ Obsahuje funkci create_app, ktera vytvori a nakonfiguruje Flask aplikaci,
 registruje blueprinty a nastavuje session interface.
 """
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request, Response
 from werkzeug.exceptions import RequestEntityTooLarge
 import os
+import hashlib
 from datetime import datetime, date, timezone
 from flask.json.provider import DefaultJSONProvider
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_limiter import Limiter
+from cashier_app.utils.general import client_ip_from_request
+
+limiter = Limiter(
+    key_func=client_ip_from_request,
+    storage_uri="memory://",
+    default_limits=["300 per minute"],
+)
 
 
 # název funkce je důležitý, aby ji flask spustil
@@ -30,8 +39,8 @@ def create_app(test_config=None):
     """
     app = Flask(__name__, instance_relative_config=True)
 
-    import logging #######
-    app.logger.setLevel(logging.INFO)
+    # import logging #####
+    # app.logger.setLevel(logging.INFO)
 
     app.config.from_mapping(
         SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32)
@@ -76,7 +85,7 @@ def create_app(test_config=None):
         ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'},
         MAX_CONTENT_LENGTH = 16 * 1024 * 1024,  # 16MB
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
-        SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can
+        SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can, if swtich to None add csrf protection
         SESSION_COOKIE_SECURE = False,
         # SESSION_COOKIE_SECURE should be True in production when using HTTPS
         # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
@@ -101,11 +110,12 @@ def create_app(test_config=None):
     else:
         app.config.from_mapping(test_config)
 
+    limiter.init_app(app)
 
-    # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
-    app.wsgi_app = ProxyFix(
-    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
-    )
+    # # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
+    # app.wsgi_app = ProxyFix(
+    # app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+    # )
 
 
     # @app.before_request
@@ -157,7 +167,11 @@ def create_app(test_config=None):
     def handle_too_large(e):
         return jsonify(error="file_too_large"), 413
 
-    # make sure nginx does this
+    @app.errorhandler(429)
+    def handle_rate_limit(e):
+        return jsonify(error="too_many_requests"), 429
+
+    ### make sure nginx does this
     @app.route('/uploads/products/<path:filename>')
     def uploaded_product_image(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -171,7 +185,6 @@ def create_app(test_config=None):
 
     from cashier_app import index
     app.register_blueprint(index.bp)
-    # maybe make a general index for employees and users
 
     from cashier_app import employee_events_booths
     app.register_blueprint(employee_events_booths.api_bp)
@@ -208,6 +221,33 @@ def create_app(test_config=None):
 
     from cashier_app.scheduler import init_scheduler
     init_scheduler(app)
+
+    _static_hash_cache = {}
+
+    def versioned_static(filename):
+        if filename not in _static_hash_cache:
+            filepath = os.path.join(app.static_folder, filename)
+            try:
+                with open(filepath, 'rb') as f:
+                    _static_hash_cache[filename] = hashlib.md5(f.read()).hexdigest()[:10]
+            except FileNotFoundError:
+                _static_hash_cache[filename] = '0'
+        return f'/static/{filename}?v={_static_hash_cache[filename]}'
+
+    app.jinja_env.globals['versioned_static'] = versioned_static
+
+    
+    @app.after_request
+    def set_cache_headers(response: Response):
+        if request.path.startswith('/static/'):
+            if request.args.get('v'):
+                # versioned files: cache for 1 year, never revalidate
+                response.cache_control.max_age = 60 * 60 * 24 * 365
+                response.cache_control.public = True
+            else:
+                # non-versioned files (JS module imports): always revalidate
+                response.cache_control.no_cache = True
+        return response
 
     # @app.after_request
     # def print_sum(a):

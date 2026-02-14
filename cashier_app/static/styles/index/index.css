@@ -499,7 +499,7 @@ body {
 #summary-side {
   display: flex;
   flex-direction: column;
-  flex: 0 1 260px;
+  flex: 0 1 290px;
   min-width: 170px;
   height: auto;
   border-radius: 5px;
@@ -621,6 +621,7 @@ body {
 .summary-product-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   flex: 1 1 auto;
 }
 
@@ -775,8 +776,9 @@ body {
   background-color: rgb(68, 68, 235);
   color: white;
   border: none;
-  border-radius: 5px;
-  height: 33px;
+  border-radius: 8px;
+  font-weight: 600;
+  height: 43px;
 }
 
 #pay-button:enabled:hover {
@@ -789,48 +791,37 @@ body {
 
 #pay-button:disabled {
   opacity: 0.6;
+  cursor: default;
 }
 
 #refund-button {
-  background-color: rgb(220, 80, 60);
-  color: white;
-  border: none;
-  border-radius: 5px;
-  height: 33px;
-  margin-top: 8px;
+  background-color: rgb(255, 243, 243);
+  border: 1px solid rgba(182, 0, 0, 0.1);
+  border-radius: 7px;
+  height: 29px;
+  margin-top: 12px;
 }
 
-#refund-button:enabled:hover {
-  background-color: rgb(200, 70, 55);
+#refund-button:hover {
+  background-color: rgb(255, 239, 239);
 }
 
-#refund-button:enabled:active {
-  background-color: rgb(180, 60, 50);
+#refund-button:active {
+  background-color: rgb(255, 236, 236);
 }
+
 
 #refund-button:disabled {
   opacity: 0.6;
+  cursor: default;
 }
 
-#refund-confirmation-modal {
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  padding: 18px 20px;
-  background-color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-radius: 6px;
-  max-width: 350px;
-}
-
-#refund-confirmation-message {
-  margin-bottom: 12px;
-  text-align: center;
-  font-weight: 700;
-}
 
 #refund-products-list {
-  width: 100%;
+  max-width: 100%;
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
   margin-bottom: 12px;
   font-size: 14px;
 }
@@ -838,7 +829,9 @@ body {
 .refund-product-item {
   display: flex;
   justify-content: space-between;
+  column-gap: 20px;
   padding: 2px 0;
+  min-width: 0;
 }
 
 #refund-confirmation-total {
@@ -846,25 +839,15 @@ body {
   font-weight: 700;
 }
 
-#refund-confirmation-actions {
-  display: flex;
-  gap: 10px;
+.refund-item-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-#cancel-refund-button {
-  background-color: rgb(234, 234, 234);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  color: black;
-}
-
-#confirm-refund-button {
-  background-color: rgb(220, 80, 60);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+.refund-item-price {
+  flex: 0 0 auto;
 }
 
 #successful-refund-modal {

@@ -4,40 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Historie transakcí</title>
+  <title>Historie transakcí akce</title>
 
-  <link rel="stylesheet" href="/static/styles/general/general.css">
-  <link rel="stylesheet" href="/static/styles/index/user_transaction_history.css">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/event_managers/event_transaction_history.css') }}">
 </head>
 
 <body>
   <div id="container">
     <div id="header">
-      <h1>Historie transakcí</h1>
-      <div id="user-info">
+      <h1>Historie transakcí akce</h1>
+      <div id="event-info">
         <div class="info-item">
-          <span class="info-label">Jméno</span>
-          <span class="info-value" id="user-first-name">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Příjmení</span>
-          <span class="info-value" id="user-last-name">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Email</span>
-          <span class="info-value" id="user-email">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Telefon</span>
-          <span class="info-value" id="user-phone">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Jiný identifikátor</span>
-          <span class="info-value" id="user-other-identifier">-</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Akce</span>
+          <span class="info-label">Název akce</span>
           <span class="info-value" id="event-name">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Začátek</span>
+          <span class="info-value" id="event-start-at">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Konec</span>
+          <span class="info-value" id="event-end-at">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Vytvořena</span>
+          <span class="info-value" id="event-created-at">-</span>
         </div>
       </div>
     </div>
@@ -74,13 +66,37 @@
       </div>
     </div>
 
+    <div id="users-section">
+      <h2>Uživatelé</h2>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th class="counter-header">#</th>
+            <th>Uživatel</th>
+            <th>Vklady</th>
+            <th>Výběry</th>
+            <th>Platby</th>
+            <th>Vrácení</th>
+            <th>Celkem transakcí</th>
+            <th>Celkový zůstatek</th>
+          </tr>
+        </thead>
+        <tbody id="users-table-body">
+          <tr>
+            <td colspan="8" class="empty-message">Načítání...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div id="cards-section">
-      <h2>Karty uživatele</h2>
+      <h2>Karty</h2>
       <table id="cards-table">
         <thead>
           <tr>
             <th class="counter-header">#</th>
             <th>ID karty</th>
+            <th>Uživatel</th>
             <th>Vklady</th>
             <th>Výběry</th>
             <th>Platby</th>
@@ -91,7 +107,7 @@
         </thead>
         <tbody id="cards-table-body">
           <tr>
-            <td colspan="8" class="empty-message">Načítání...</td>
+            <td colspan="9" class="empty-message">Načítání...</td>
           </tr>
         </tbody>
       </table>
@@ -104,6 +120,7 @@
           <tr>
             <th class="counter-header">#</th>
             <th>Datum a čas</th>
+            <th>Uživatel</th>
             <th>ID karty</th>
             <th>Typ</th>
             <th>Částka (Kč)</th>
@@ -115,14 +132,14 @@
         </thead>
         <tbody id="transactions-table-body">
           <tr>
-            <td colspan="9" class="empty-message">Načítání...</td>
+            <td colspan="10" class="empty-message">Načítání...</td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <script type="module" src="/static/scripts/index/user_transaction_history.js"></script>
+  <script type="module" src="{{ versioned_static('scripts/event_managers/event_transaction_history.js') }}"></script>
 </body>
 
 </html>

@@ -1102,6 +1102,16 @@ document.addEventListener('keydown', (event) => {
       return;
     }
   }
+
+  if (event.key === 'Delete') {
+    const selectedRows = document.querySelectorAll('tr[selected]');
+    if (selectedRows.length === 1) {
+      const row = selectedRows[0];
+      if (row) {
+        openRowModal(row, 'delete');
+      }
+    }
+  }
 });
 
 
@@ -1953,7 +1963,7 @@ function multiSelectClearAll(container) {
 }
 
 
-function closeOtherMultiSelectDropdowns(dropdownsToNotClose=[]) {
+function closeOtherMultiSelectDropdowns(dropdownsToNotClose = []) {
   document.querySelectorAll('.multi-select-dropdown.active').forEach(dropdown => {
     if (dropdownsToNotClose.includes(dropdown)) return;
     dropdown.classList.remove('active');

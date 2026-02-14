@@ -93,8 +93,8 @@ document.addEventListener('click', (event) => {
       toggleOrder('email');
     } else if (headerEl.id === "is-admin-header") {
       toggleOrder('is_admin');
-    // } else if (headerEl.id === "created-by-header") {
-    //   toggleOrder('created_by');
+      // } else if (headerEl.id === "created-by-header") {
+      //   toggleOrder('created_by');
     } else if (headerEl.id === "created-at-header") {
       toggleOrder('created_at');
     } else {
@@ -222,7 +222,7 @@ document.addEventListener('submit', async (event) => {
     }
 
     const response = await addEmployee(formData);
-  
+
     saveButton.disabled = false;
 
     if (response === true) {
@@ -345,6 +345,13 @@ document.addEventListener('keydown', (event) => {
     if (overlay) {
       overlay.remove();
       return;
+    }
+  }
+
+  if (event.key === 'Delete') {
+    const selectedRows = document.querySelectorAll('tr[id][selected]');
+    if (selectedRows.length === 1) {
+      openDeleteModal(selectedRows[0].id);
     }
   }
 });

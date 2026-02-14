@@ -19,7 +19,6 @@ def _cleanup_old_history(cur: Cursor, employee_id):
     - Rows older than UNDO_TIME_LIMIT_HOURS
     - Rows beyond MAX_UNDO_CHANGES (keeping only the most recent ones)
     """
-    # Delete rows older than time limit (and their undo records)
 
     # tento delete se stane přes cascade v DELETE FROM change_history
     # cur.execute(

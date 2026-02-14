@@ -11,6 +11,7 @@ from flask import Blueprint, request, render_template, current_app, session, red
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
 from cashier_app.db import get_pool
+from cashier_app import limiter
 
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -18,15 +19,11 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @bp.route('/login')
 def get_login_page():
-    return current_app.send_static_file('html/login/login.html')
+    return render_template('login/login.html')
 
 
 api_bp = Blueprint('auth_api', __name__, url_prefix='/api/auth')
 
-# CSRF protection
-# No brute-force protection / rate-limiting / logging of failed attempts
-# Add IP-based rate limiting (e.g. Flask-Limiter) and/or account lockouts after N failed attempts. Log failed login attempts with limited detail (don't log the password).
-# db error handling
 
 
 def get_employee_id(username_or_email: str) -> str | UUID | None:
@@ -82,6 +79,7 @@ def employee_password_is_correct(employee_id: str, password: str):
 
 
 @api_bp.route('/login', methods=('POST',))
+@limiter.limit("10 per 15 minutes")
 def login():
     # if request.method == 'POST':
     username_or_email = request.form.get('username-email', '').strip()
@@ -103,8 +101,6 @@ def login():
 
     session.clear()
     return jsonify(error='invalid_credentials'), 401
-
-    # letwebserver (nginx?) serve static files for performance; Flask can still send_static_file during development.
 
     # return current_app.send_static_file('html/login/login.html')
 

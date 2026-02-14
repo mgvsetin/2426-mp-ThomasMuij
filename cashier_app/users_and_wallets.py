@@ -256,8 +256,6 @@ def edit_user():
                     raise MultipleRowsAffectedError()
                 if rows_affected == 0:
                     raise NoRowsAffectedError()
-                
-                #### delete wallets?
 
     except IntegrityError as e:
         constraint = None
@@ -615,7 +613,7 @@ def add_wallet():
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
     if not idemp_key:
-        return jsonify(error='missing_idempotency_key'), 400 ##### do on frontend errs
+        return jsonify(error='missing_idempotency_key'), 400
 
     try:
         change_balance_by = float(change_balance_by)
@@ -719,7 +717,7 @@ def return_wallet():
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
     if not idemp_key:
-        return jsonify(error='missing_idempotency_key'), 400 ##### do on frontend errs
+        return jsonify(error='missing_idempotency_key'), 400
 
     try:
         with get_pool().connection() as conn:
@@ -732,6 +730,9 @@ def return_wallet():
                     AND event_id = %s
                     AND deleted_at IS NULL''',
                     (tag_id, selected_event['id'])).fetchone()
+                
+                if not wallet:
+                    return jsonify(error='wallet_not_found'), 404
                 
                 change_balance_by = -wallet['balance_czk']
 

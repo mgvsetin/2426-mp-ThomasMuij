@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Správa akcí</title>
 
-  <link rel="stylesheet" href="/static/styles/general/general.css">
-  <link rel="stylesheet" href="/static/styles/general/table.css">
-  <link rel="stylesheet" href="/static/styles/general/header.css">
-  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/general/modals_forms.css">
-  <link rel="stylesheet" href="/static/styles/event_managers/events_manager.css">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/event_managers/events_manager.css') }}">
 </head>
 
 <body>
@@ -21,7 +21,7 @@
         <div class="search-bar-container">
           <input class="search-bar" placeholder="Vyhledávání" />
           <div class="search-icon-container">
-            <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+            <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@
     </div>
   </div>
 
-  <script type="module" src="/static/scripts/event_managers/events_manager.js"></script>
+  <script type="module" src="{{ versioned_static('scripts/event_managers/events_manager.js') }}"></script>
 </body>
 
 </html>

@@ -29,7 +29,7 @@ export let selectingEvent = false;
 
 function makeEventBoothOverlay(container) {
   const existing = document.querySelector('.overlay');
-  if (existing) container.removeChild(existing);
+  existing?.remove();
 
   const overlay = document.createElement('div')
   overlay.className = 'overlay';

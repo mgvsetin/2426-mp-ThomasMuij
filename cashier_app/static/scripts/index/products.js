@@ -25,6 +25,7 @@ const productGrid = document.querySelector('#product-grid');
 const categoriesEl = document.querySelector('#categories');
 const productsSearchBar = document.querySelector('#products-search-bar');
 
+let measureRaf = null;
 
 export const [fetchProductsAndCategories, resetProductsCache] = cacheFunctionFactory(async () => {
   const response = await fetch('/api/events/booths/products-categories');
@@ -147,14 +148,22 @@ export async function renderProducts() {
 
   productGrid.innerHTML = productsHTML;
 
-  requestAnimationFrame(() => {
+  if (measureRaf) cancelAnimationFrame(measureRaf);
+  measureRaf = requestAnimationFrame(() => {
+    measureRaf = null;
+
+    productGrid.style.gridAutoRows = "";
+
     const containers = productGrid.querySelectorAll('.product-container');
+
     let maxHeight = 0;
     containers.forEach(c => {
-      maxHeight = Math.max(maxHeight, c.scrollHeight);
+      const h = Math.ceil(c.getBoundingClientRect().height);
+      if (h > maxHeight) maxHeight = h;
     });
+
     if (maxHeight > 0) {
-      grid.style.gridAutoRows = maxHeight + 'px';
+      productGrid.style.gridAutoRows = maxHeight + 'px';
     }
   });
 }

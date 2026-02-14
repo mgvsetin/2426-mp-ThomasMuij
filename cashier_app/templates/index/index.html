@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Objednávky</title>
 
-  <link rel="stylesheet" href="/static/styles/general/general.css">
-  <link rel="stylesheet" href="/static/styles/general/table.css">
-  <link rel="stylesheet" href="/static/styles/general/header.css">
-  <link rel="stylesheet" href="/static/styles/general/sidebar.css">
-  <link rel="stylesheet" href="/static/styles/general/modals_forms.css">
-  <link rel="stylesheet" href="/static/styles/index/index.css">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/index/index.css') }}">
 </head>
 
 <body>
@@ -22,7 +22,7 @@
           <div class="search-bar-container">
             <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání">
             <div class="search-icon-container">
-              <img class="search-icon" src="/static/images/icons/search_icon.png">
+              <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
             </div>
           </div>
         </div>
@@ -36,7 +36,7 @@
           <div id="customer-details-title">
             <div>Zákazník</div>
             <button class="remove-card-button">
-              <img class="remove-card-icon" src="/static/images/icons/trash_icon.png">
+              <img class="remove-card-icon" src="{{ versioned_static('images/icons/trash_icon.png') }}">
             </button>
           </div>
           <div id="tag-id">
@@ -84,7 +84,7 @@
             <div class="search-bar-container">
               <input class="search-bar" id="users-search-bar" placeholder="Vyhledávání" />
               <div class="search-icon-container">
-                <img class="search-icon" src="/static/images/icons/search_icon.png" alt="search" />
+                <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
               </div>
             </div>
           </div>
@@ -124,7 +124,7 @@
           <div id="card-info-title">
             <div>Karta</div>
             <button class="remove-card-button">
-              <img class="remove-card-icon" src="/static/images/icons/trash_icon.png">
+              <img class="remove-card-icon" src="{{ versioned_static('images/icons/trash_icon.png') }}">
             </button>
           </div>
           <div id="cashier-tag-id">
@@ -139,7 +139,7 @@
           <header>
             <h2>Uživatel</h2>
             <button id="user-inputs-search-table-toggle" search-users="">
-              <img class="search-icon" src="/static/images/icons/search_icon.png">
+              <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
             </button>
           </header>
           <form id="user-form" autocomplete="off">
@@ -217,7 +217,7 @@
     </div>
   </div>
 
-  <script src="/static/scripts/index/index.js" type="module"></script>
+  <script src="{{ versioned_static('scripts/index/index.js') }}" type="module"></script>
 </body>
 
 </html>

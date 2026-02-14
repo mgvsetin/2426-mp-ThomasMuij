@@ -2,58 +2,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto; -- pro gen_random_uuid()
 -- CREATE EXTENSION IF NOT EXISTS citext; -- case-insensitive text
 
 
--- // metadata / reference_id / notes
--- // Add indexes on tag_id, account_id, and time like columns. Consider partitioning transactions by time if volume is very high.
--- // Consider row-level security/audit logging if needed.
-
 -- make sure all the trigger constraints work (in tests?)
-
--- make soft deletes cascade on other deletes/soft deletes?
-
--- add logs tables (maybe not tables, outside db)
-
--- allow negative balances here, but forbid them in the backend code
-
--- add wallet expiration after some time if there is no owner
-
-
-
--- -- enum for clarity (optional)
--- CREATE TYPE account_type AS ENUM ('user','employee');
-
--- CREATE TABLE accounts (
---   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
---   account_type  account_type NOT NULL,
---   username      text NOT NULL,
---   email         citext NOT NULL,
---   password_hash text NOT NULL,
---   created_at    timestamptz NOT NULL DEFAULT now(),
---   deleted_at    timestamptz
--- );
-
--- -- Unique constraints: choose global uniqueness or per-type.
--- -- Global:
--- CREATE UNIQUE INDEX unique_accounts_username_active ON accounts (LOWER(username)) WHERE deleted_at IS NULL;
--- CREATE UNIQUE INDEX unique_accounts_email_active ON accounts (email) WHERE deleted_at IS NULL;
-
--- -- If you prefer per-type uniqueness:
--- -- CREATE UNIQUE INDEX unique_accounts_username_per_type_active ON accounts (account_type, LOWER(username)) WHERE deleted_at IS NULL;
--- Employee-specific table:
-
--- sql
--- Copy code
--- CREATE TABLE employee_profiles (
---   account_id   uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
---   is_admin     boolean NOT NULL DEFAULT FALSE,
---   created_by   uuid REFERENCES accounts(id), -- should reference an employee account
---   created_at   timestamptz NOT NULL DEFAULT now()
--- );
--- -- optionally add CHECK to ensure associated account is employee
--- ALTER TABLE employee_profiles
---   ADD CONSTRAINT employee_profiles_only_for_employees
---   CHECK (
---     (SELECT account_type FROM accounts WHERE accounts.id = employee_profiles.account_id) = 'employee'
---   );
 
 
 
@@ -114,7 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name        text NOT NULL,
   last_name         text NOT NULL,
-  email             text, -- add verification
+  email             text,
   phone_number      text, -- +[country code][number] (CZ: +420123456789) E.164 format
   other_identifier  text,
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -235,8 +184,6 @@ CREATE TABLE IF NOT EXISTS events (
   deleted_at timestamptz,
   CONSTRAINT events_start_at_before_end_at_check
     CHECK (start_at IS NULL OR end_at IS NULL OR start_at <= end_at)
-  -- deletion? (through deleted_at or actually delete it and all (or some) related stuff but make sure there is a big warning or no deletion allowed)
-  -- or only allow deletion for events with nothing import referencing it or stuff that references it
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_events_name_active ON events (LOWER(name)) WHERE deleted_at IS NULL;
 
@@ -357,12 +304,6 @@ CREATE TABLE IF NOT EXISTS product_images (
   CONSTRAINT image_mime_type_check
     CHECK (image_mime_type IN ('image/jpeg', 'image/png', 'image/webp'))
 );
-
--- <img alt="..." src="/static/uploads/products/uid_thumb.jpg"
---      srcset="/static/uploads/products/uid_small.jpg 300w,
---              /static/uploads/products/uid_medium.jpg 800w,
---              /static/uploads/products/uid_large.jpg 1200w"
---      sizes="(max-width:600px) 300px, (max-width:1200px) 800px, 1200px" loading="lazy">
 
 
 
@@ -799,7 +740,6 @@ CREATE TABLE IF NOT EXISTS wallets (
   deleted_at                    timestamptz
 );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_event_tag_id_active ON wallets (event_id, tag_id) WHERE deleted_at IS NULL;
--- CREATE UNIQUE INDEX IF NOT EXISTS unique_index_owner_id_active ON wallets (owner_id) WHERE deleted_at IS NULL;
 
 -- blokuje delete a změnu created_at
 CREATE OR REPLACE FUNCTION wallets_block_delete_limit_update()
@@ -850,7 +790,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   balance_after     int NOT NULL, -- dělá trigger
   occurred_at       timestamptz NOT NULL DEFAULT now(),
   performed_by      uuid NOT NULL REFERENCES employees(id) ON DELETE RESTRICT,
-  products_info     jsonb DEFAULT '[]'::jsonb, -- id (nezapomeň, že product mohl být smazán/upraven), price, name, quantity 
+  products_info     jsonb DEFAULT '[]'::jsonb, -- id (product mohl být smazán/upraven), price, name, quantity 
   refunded_transaction_id uuid REFERENCES transactions(id) ON DELETE RESTRICT,
 
   idempotency_key   text, -- make uuid?
@@ -866,7 +806,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   CONSTRAINT transaction_type_check
     CHECK (transaction_type IN ('payment', 'balance-change', 'refund'))
 );
--- add the refund stuff
 CREATE UNIQUE INDEX IF NOT EXISTS unique_index_transactions_idempotency_key
   ON transactions (idempotency_key);
 

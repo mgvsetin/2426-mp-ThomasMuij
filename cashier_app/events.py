@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 from datetime import timezone
 from dateutil import parser
-from flask import Blueprint, current_app, jsonify, url_for, session, request
+from flask import Blueprint, current_app, jsonify, url_for, session, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
 from psycopg.errors import ForeignKeyViolation
@@ -45,7 +45,7 @@ def get_events_manager_page():
     # # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
     # #     return jsonify(error='insufficient_privileges'), 403
 
-    return current_app.send_static_file('html/event_managers/events_manager.html')
+    return render_template('event_managers/events_manager.html')
 
 
 @bp.route('/<uuid:event_id>/manager')
@@ -58,17 +58,17 @@ def get_event_manager_page(event_id):
     # if not employee['is_admin'] and not is_manager(employee['id'], event_id):
     #     return jsonify(error='insufficient_privileges'), 403
 
-    return current_app.send_static_file('html/event_managers/event_manager.html')
+    return render_template('event_managers/event_manager.html')
 
 
 @bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
 def get_user_transaction_history_page(event_id, user_id):
-    return current_app.send_static_file('html/index/user_transaction_history.html')
+    return render_template('index/user_transaction_history.html')
 
 
 @bp.route('/<uuid:event_id>/transaction-history')
 def get_event_transaction_history_page(event_id):
-    return current_app.send_static_file('html/event_managers/event_transaction_history.html')
+    return render_template('event_managers/event_transaction_history.html')
 
 
 api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
@@ -149,7 +149,6 @@ def get_event(event_id):
                 ORDER BY em.created_at''',
                 (event_id,)).fetchall()
             
-            # i need to show and allow uploads/changes of images on the frontend
             products = cur.execute(
                 '''
                 SELECT p.id, p.name, p.price, img.image_path, img.image_filename,
@@ -183,20 +182,6 @@ def get_event(event_id):
                 WHERE event_id = %s
                 AND deleted_at IS NULL
                 ORDER BY created_at''',
-                # '''
-                # SELECT b.id, b.name, b.booth_type,
-                #     COALESCE(jsonb_agg(
-                #         DISTINCT jsonb_build_object('category_id', link.category_id, 'category_name', cat.name)
-                #         ) FILTER (WHERE link.category_id IS NOT NULL), -- filter, aby nebyly null values, když nemá category
-                #         '[]'
-                #     ) AS categories
-                # FROM booths AS b
-                # LEFT JOIN category_booth_link AS link ON link.booth_id = b.id
-                # LEFT JOIN categories AS cat ON cat.id = link.category_id
-                # WHERE b.event_id = %s
-                # AND b.deleted_at IS NULL
-                # GROUP BY b.id,
-                # ORDER BY b.created_at''',
                 (event_id,)).fetchall()
             
             categories = cur.execute(
@@ -395,9 +380,7 @@ def edit_event():
             return jsonify(error='invalid_start_at_end_at_dates'), 400
 
     sql, query_params = build_update_statement('events', params, event_id, returning='*')
-    # validate start_at end_at from db?
 
-    # add editing event info from other tables
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
@@ -1005,6 +988,11 @@ def delete_booth():
                 
                 sync_booth_product_links(cur, booth_id, [])
                 sync_booth_category_links(cur, booth_id, [])
+                
+                cur.execute(
+                    'DELETE FROM employee_event_booth_roles WHERE booth_id = %s',
+                    (booth_id,)
+                )
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])
@@ -1178,7 +1166,7 @@ def assign_employee():
             if not event:
                 return jsonify(error='event_not_found'), 400
             
-            for booth_id in booth_ids: ##### change this to ANY(%s)
+            for booth_id in booth_ids:
                 booth = cur.execute(
                     '''
                     SELECT 1

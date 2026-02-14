@@ -53,7 +53,6 @@ body.no-scroll {
   box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
 }
 
-/* Event header */
 #event-head {
   display: flex;
   align-items: center;
@@ -111,16 +110,10 @@ body.no-scroll {
   cursor: pointer;
 }
 
-/* Collapsible table support with transition */
 .table-wrap {
   --table-max-height: var(--max-height);
   max-height: var(--table-max-height);
   transition: max-height 200ms ease;
-}
-
-/* Slightly narrower truncation for this page */
-.truncate-name {
-  max-width: 180px;
 }
 
 /* Image container for product editing (non-table context) */

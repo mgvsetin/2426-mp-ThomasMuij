@@ -15,7 +15,7 @@ import atexit
 
 logger = logging.getLogger(__name__)
 
-# check the pool.get_stats() and tune params
+#### check the pool.get_stats() and tune params
 
 
 # # přemění hodnotu tak, aby se dala provnávat
@@ -138,7 +138,7 @@ logger = logging.getLogger(__name__)
 def get_pool() -> ConnectionPool:
     # vždy použij pool/get_pool().connection() as ...:
     # = context manager, aby se connection vrátilo
-    pool = current_app.extensions.get('db_pool')
+    pool: ConnectionPool = current_app.extensions.get('db_pool')
     if pool is None:
         raise RuntimeError("db pool not initialized")
     return pool
@@ -181,8 +181,6 @@ def init_app(app: Flask):
         # check=ConnectionPool.check_connection,
         open=True) # if process can be preloaded and then forked, use open=False and call pool.open() after fork
     app.extensions['db_pool'] = pool
-    # with open('prints.txt', 'a', encoding='utf-8') as f:
-    #     print(app.extensions['db_pool'].get_stats(), file=f)
 
     # není nutné
     def _close_pool():

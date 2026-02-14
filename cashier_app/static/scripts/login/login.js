@@ -53,12 +53,18 @@ if (form) {
         throw new Error('invalid_credentials')
       }
 
+      if (response.status === 429) {
+        throw new Error('too_many_requests');
+      }
+
       if (!response.ok) {
         throw new Error('unexpected_error');
       }
     } catch (error) {
       if (error.message === 'invalid_credentials') {
         errorMessageElement.innerHTML = 'Neplatné uživatelské jméno nebo heslo.'
+      } else if (error.message === 'too_many_requests') {
+        errorMessageElement.innerHTML = 'Příliš mnoho pokusů o přihlášení. Zkuste to znovu za pár minut.';
       } else {
         errorMessageElement.innerHTML = 'Při přihlašování nastala chyba. Zkuste to později.';
       }
@@ -86,12 +92,3 @@ showPassword.addEventListener('click', () => {
   showPassword.classList.toggle('state-show', !isShow);
   showPassword.classList.toggle('state-hide', isShow);
 })
-
-// if ('serviceWorker' in navigator) {
-//   navigator.serviceWorker
-//     .register(
-//       '/static/scripts/login/service_worker.js'
-//     ).then(() => {
-//       console.log('service worker registered')
-//     })
-// }

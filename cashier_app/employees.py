@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, url_for, session, request
+from flask import Blueprint, current_app, jsonify, url_for, session, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
 from argon2 import PasswordHasher
@@ -24,7 +24,7 @@ def get_employees_manager_page():
 
     # if not employee['is_admin']:
     #     return jsonify(error='admin_required'), 403
-    return current_app.send_static_file('html/employee_managers/employees_manager.html')
+    return render_template('employee_managers/employees_manager.html')
 
 
 api_bp = Blueprint('employees_api', __name__, url_prefix='/api/employees')
@@ -310,6 +310,11 @@ def delete_employee():
 
                 if not an_admin_exists:
                     raise CanNotDeleteLastAdminError()
+                
+                cur.execute(
+                    'DELETE FROM employee_event_booth_roles WHERE employee_id = %s',
+                    (delete_employee_id,)
+                )
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])

@@ -299,6 +299,7 @@ async function pasteCopied(calledWithin) {
     const resData = await response.json();
 
     if (response.status === 403 && resData.error === 'insufficient_privileges') {
+      makeMessage('Nemáte oprávnění provést tuto úpravu.');
       throw new ForbiddenError();
     }
 

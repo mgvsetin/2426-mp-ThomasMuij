@@ -40,6 +40,11 @@ input[type=submit] {
   cursor: pointer
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .btn-primary {
   background: #0f766e;
   color: white;
