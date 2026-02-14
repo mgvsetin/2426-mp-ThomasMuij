@@ -6,6 +6,7 @@ from cashier_app.utils.employees_users import validate_username, validate_email,
 from psycopg import IntegrityError
 from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
 from cashier_app.utils.query_builder import build_update_statement
+from cashier_app.utils.general import get_constraint_name
 
 
 bp = Blueprint('settings', __name__, url_prefix='/settings')
@@ -110,11 +111,7 @@ def update_profile():
     except NoRowsAffectedError:
         return jsonify(error='employee_not_found'), 404
     except IntegrityError as e:
-        constraint = None
-        try:
-            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
-        except Exception:
-            constraint = None
+        constraint = get_constraint_name(e)
 
         if constraint == 'unique_index_employees_username_active':
             return jsonify(error='username_taken'), 409

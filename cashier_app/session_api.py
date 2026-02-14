@@ -1,4 +1,4 @@
-from flask import Blueprint, session, jsonify
+from flask import Blueprint, jsonify
 from cashier_app.db import get_pool
 from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
 from cashier_app.auth import load_logged_in_employee
@@ -9,6 +9,10 @@ api_bp = Blueprint('session_api', __name__, url_prefix='/api/session')
 @api_bp.route('')
 def session_info():
     employee = load_logged_in_employee()
+
+    if employee is None:
+        return jsonify(employee=None, event=None, booth=None), 200
+
     event = load_selected_event()
     booth = load_selected_booth()
     

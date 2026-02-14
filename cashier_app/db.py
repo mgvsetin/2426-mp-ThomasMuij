@@ -5,11 +5,10 @@ Funkce get_db zajišťuje znovupoužití existujícího spojeni uloženého v `g
 parametry připojení souhlasí, jinak vytvoří nové.
 """
 
-from flask import g, current_app
+from flask import current_app
 import click
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
-import types
 import logging
 import atexit
 

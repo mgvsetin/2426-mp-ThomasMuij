@@ -11,7 +11,7 @@ import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
 import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, fetchUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
-import { getWalletByTag, fetchWallets, resetWalletsCache } from "./wallets.js";
+import { resetWalletsCache } from "./wallets.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { setUpCardReading } from "../general/card_reader.js";
 

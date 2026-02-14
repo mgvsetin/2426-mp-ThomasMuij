@@ -1,5 +1,4 @@
 import { handleUnauthorizedRedirect } from "./api_utils.js";
-import { cloneData } from "./cache.js";
 import { cacheFunctionFactory } from "./cache_factory.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnexpectedError } from "./errors.js";
 

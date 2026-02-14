@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   modified_at   timestamptz NOT NULL DEFAULT now(),
   expires_at    timestamptz
 );
--- CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions (expires_at);
+
 
 
 CREATE OR REPLACE FUNCTION sessions_update_modified_at()
@@ -997,6 +997,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS unique_index_undo_change_history_change_histor
 
 
 
+-- Transactions: queries filter by wallet_id, booth_id, event_id, transaction_type, occurred_at
+CREATE INDEX idx_transactions_wallet_id ON transactions (wallet_id);
+CREATE INDEX idx_transactions_event_id_occurred_at ON transactions (event_id, occurred_at DESC);
+CREATE INDEX idx_transactions_booth_id ON transactions (booth_id);
+
+-- Wallets: frequently queried by (event_id, tag_id) and (owner_id)
+CREATE INDEX idx_wallets_owner_id ON wallets (owner_id) WHERE deleted_at IS NULL;
+
+-- Employee roles: frequently queried by employee_id, event_id
+CREATE INDEX idx_employee_event_booth_roles_employee_id ON employee_event_booth_roles (employee_id);
+CREATE INDEX idx_employee_event_booth_roles_event_id ON employee_event_booth_roles (event_id);
+
+-- Products, categories, booths: by event_id (used in almost every query)
+CREATE INDEX idx_products_event_id ON products (event_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_categories_event_id ON categories (event_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_booths_event_id ON booths (event_id) WHERE deleted_at IS NULL;
+
+-- Sessions: for cleanup job
+CREATE INDEX idx_sessions_expires_at ON sessions (expires_at) WHERE expires_at IS NOT NULL;
+CREATE INDEX idx_sessions_employee_id ON sessions (employee_id);
+
+-- Change history: for undo/redo queries
+CREATE INDEX idx_change_history_performed_by_occurred_at ON change_history (performed_by, occurred_at DESC);
+
+
 -- -- update these:
 
 -- development values
@@ -1163,11 +1188,3 @@ VALUES
 ('80000000000000000000000000000004', '30000000000000000000000000000002', 'ev_2','01000000000000000000000000000004', 9348, '10000000000000000000000000000003'),
 ('80000000000000000000000000000005', '30000000000000000000000000000001', '005AC02800000000','01000000000000000000000000000005', 111, '10000000000000000000000000000003'),
 ('80000000000000000000000000000006', '30000000000000000000000000000002', '005AC02800000000','01000000000000000000000000000005', 222, '10000000000000000000000000000003');
-
-
--- maybe?
--- maybe add indexes for frequently queried columns:
--- CREATE INDEX ix_transactions_tag_occurred_at ON transactions (tag_id, occurred_at DESC);
--- CREATE INDEX ix_transactions_account_occurred_at ON transactions (account_id, occurred_at DESC);
--- transactions (performed_by, occurred_at DESC)
--- consider event_id indexes.

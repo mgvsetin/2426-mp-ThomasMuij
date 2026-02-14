@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, url_for, session, request, render_template
+from flask import Blueprint, current_app, jsonify, url_for, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
 from argon2 import PasswordHasher
@@ -10,6 +10,7 @@ from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, C
 from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 from cashier_app.undo_and_redo import save_change
 from cashier_app.utils.cascade_capture import capture_employee_cascade, convert_dict_to_serializable
+from cashier_app.utils.general import get_constraint_name
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
 
@@ -123,11 +124,7 @@ def add_employee():
                 }], logged_employee['id'])
 
     except IntegrityError as e:
-        constraint = None
-        try:
-            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
-        except Exception:
-            constraint = None
+        constraint = get_constraint_name(e)
 
         if constraint == 'unique_index_employees_username_active':
             return jsonify(error='username_taken'), 409
@@ -146,13 +143,15 @@ def edit_employee():
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
-    try:
-        edit_employee_id = UUID(request.form.get('id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400
+    edit_employee_id = request.form.get('id')
 
     if not edit_employee_id:
         return jsonify(error='missing_id'), 400
+
+    try:
+        edit_employee_id = UUID(edit_employee_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400    
 
     if not logged_employee['is_admin']:
         return jsonify(error='insufficient_privileges'), 403
@@ -200,9 +199,20 @@ def edit_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                # pro zabránění odendání posledního admina
+                cur.execute(
+                    '''
+                    SELECT id
+                    FROM employees
+                    WHERE is_admin IS TRUE
+                      AND deleted_at IS NULL
+                    FOR UPDATE
+                    '''
+                ).fetchall()
+
                 # Capture old values before update
                 old_employee = cur.execute(
-                    'SELECT * FROM employees WHERE id = %s AND deleted_at IS NULL',
+                    'SELECT * FROM employees WHERE id = %s AND deleted_at IS NULL FOR UPDATE',
                     (edit_employee_id,)
                 ).fetchone()
 
@@ -240,11 +250,7 @@ def edit_employee():
                     raise CanNotDeleteLastAdminError()
 
     except IntegrityError as e:
-        constraint = None
-        try:
-            constraint = getattr(e, 'diag', None) and e.diag.constraint_name
-        except Exception:
-            constraint = None
+        constraint = get_constraint_name(e)
 
         if constraint == 'unique_index_employees_username_active':
             return jsonify(error='username_taken'), 409
@@ -270,13 +276,15 @@ def delete_employee():
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
-    try:
-        delete_employee_id = UUID(request.form.get('id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400
+    delete_employee_id = request.form.get('id')
 
     if not delete_employee_id:
         return jsonify(error='missing_id'), 400
+
+    try:
+        delete_employee_id = UUID(delete_employee_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400
 
     if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
         return jsonify(error='insufficient_privileges'), 403
@@ -286,6 +294,24 @@ def delete_employee():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    SELECT id
+                    FROM employees
+                    WHERE is_admin IS TRUE
+                      AND deleted_at IS NULL
+                    FOR UPDATE
+                    '''
+                ).fetchall()
+
+                target_row = cur.execute(
+                    'SELECT id FROM employees WHERE id = %s AND deleted_at IS NULL FOR UPDATE',
+                    (delete_employee_id,)
+                ).fetchone()
+
+                if not target_row:
+                    raise NoRowsAffectedError()
+
                 # Capture all data before delete (employee + roles)
                 changes = capture_employee_cascade(cur, delete_employee_id)
 
@@ -315,6 +341,13 @@ def delete_employee():
                     'DELETE FROM employee_event_booth_roles WHERE employee_id = %s',
                     (delete_employee_id,)
                 )
+                
+                cur.execute(
+                    '''
+                    DELETE FROM sessions
+                    WHERE employee_id = %s''',
+                    (delete_employee_id,))
+                
 
                 # Save change for undo
                 save_change(cur, changes, logged_employee['id'])

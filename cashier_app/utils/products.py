@@ -2,9 +2,8 @@ from typing import List, Tuple
 import unicodedata
 import os
 from pathlib import Path
-import shutil
 import uuid
-from flask import Flask, request, url_for, jsonify, current_app
+from flask import url_for, current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from werkzeug.exceptions import RequestEntityTooLarge

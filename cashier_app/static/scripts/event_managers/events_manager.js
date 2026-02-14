@@ -2,7 +2,7 @@ import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { formatDateTimeISOToDisplay, isValidDate } from "../general/date_utils.js";
 import { fetchEvents, resetEventsCache } from "../general/events.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
-import { escapeHTML, safeParse } from "../general/html_display_utils.js";
+import { escapeHTML } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";

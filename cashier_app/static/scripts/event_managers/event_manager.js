@@ -3,12 +3,10 @@ import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay, formatForDatetimeLocalInput, isValidDate } from "../general/date_utils.js";
 import { directTo, handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
-import { cloneData } from "../general/cache.js";
 import { fetchEmployees } from "../general/employees.js";
-import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnauthorizedRedirectError, UnexpectedError } from "../general/errors.js";
+import { MissingEventIdError, UnauthorizedRedirectError } from "../general/errors.js";
 import { changeSelectedCode, initValues, phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners, renderDropdown } from "../index/phone_number_input.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
-import { cacheFunctionFactory } from "../general/cache_factory.js";
 import { fetchEventData as getEventDataOriginal, getEventIdFromPath, resetEventDataCache } from "../general/events.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 
@@ -71,7 +69,6 @@ async function getEventData() {
       </div>`);
 
     resetEventDataCache();
-    console.log(resetEventDataCache);
     throw new err;
   }
 }

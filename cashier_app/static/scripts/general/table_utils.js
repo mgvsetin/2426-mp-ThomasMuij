@@ -1,5 +1,5 @@
 import { handleUnauthorizedRedirect } from "./api_utils.js";
-import { ForbiddenError, UnauthorizedRedirectError, UnexpectedError } from "./errors.js";
+import { ForbiddenError, UnexpectedError } from "./errors.js";
 import { isPlainObject, isTypingInEditable, isUUID, mod } from "./utils.js";
 
 const selectedRowIds = new Set(); // pro markSelectedRows
@@ -317,7 +317,7 @@ async function pasteCopied(calledWithin) {
       throw new UnexpectedError();
     }
   } catch (error) {
-    console.log(error);
+    makeMessage('Něco se nepovedlo. Zkuste to prosím později.');
   }
 }
 
@@ -351,7 +351,7 @@ async function undoGeneral() {
 
     return true;
   } catch (error) {
-    console.log(error);
+    makeMessage('Něco se nepovedlo. Zkuste to prosím později.');
     return false;
   }
 }
@@ -386,7 +386,7 @@ async function redoGeneral() {
 
     return true;
   } catch (error) {
-    console.log(error);
+    makeMessage('Něco se nepovedlo. Zkuste to prosím později.');
     return false;
   }
 }

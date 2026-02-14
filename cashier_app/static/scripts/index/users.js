@@ -1,9 +1,8 @@
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
-import { cloneData } from "../general/cache.js";
 import { cacheFunctionFactory } from "../general/cache_factory.js";
 import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
-import { clearModalErrors, openModal } from "../general/modals_forms.js";
+import { clearModalErrors } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { markSelectedRows } from "../general/table_utils.js";
 import { lastReadCardId, removeReadCard, renderCard } from "./cards.js";

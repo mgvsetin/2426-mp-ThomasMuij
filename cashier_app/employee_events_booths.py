@@ -6,11 +6,10 @@ Obsahuje dva blueprinty: 'events' (hlavní) a 'booths' (pod '/booths').
 
 # import functools
 from uuid import UUID
-from flask import Blueprint, request, session, g, jsonify, make_response, url_for
+from flask import Blueprint, request, session, g, jsonify, url_for
 from cashier_app.db import get_pool
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.utils.employees_users import is_manager
-from cashier_app.utils.products import convert_image_paths_from_relative
 
 api_bp = Blueprint('employee_events_api', __name__, url_prefix='/api/employees/me/events')
 
@@ -152,6 +151,9 @@ def load_selected_event() -> dict | None:
 
     if event_id is None:
         g.event = None
+        return g.event
+    
+    if g.get('event') and g.event['id'] == event_id:
         return g.event
     
     with get_pool().connection() as conn:

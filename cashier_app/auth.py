@@ -4,8 +4,6 @@ Obsahuje blueprint /auth s routami pro login, logout a pomocné funkce pro nahr�
 přihlášeného zaměstnance.
 """
 
-import functools
-from urllib.parse import urlparse, urljoin
 from uuid import UUID
 from flask import Blueprint, request, render_template, current_app, session, redirect, url_for, g, jsonify
 from argon2 import PasswordHasher

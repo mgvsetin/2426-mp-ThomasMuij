@@ -1,8 +1,6 @@
 import re
 import unicodedata
-import string
 from typing import List, Tuple
-from email_validator import validate_email as _validate_email, EmailNotValidError
 
 
 def validate_event_or_booth_name(

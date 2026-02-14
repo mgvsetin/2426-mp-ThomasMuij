@@ -346,37 +346,37 @@ def capture_employee_cascade(cur: Cursor, employee_id) -> list[dict]:
     return changes
 
 
-def capture_user_cascade(cur: Cursor, user_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting a user.
-    Returns list of change dicts for undo tracking.
+# def capture_user_cascade(cur: Cursor, user_id) -> list[dict]:
+#     """
+#     Captures all data that will be affected by deleting a user.
+#     Returns list of change dicts for undo tracking.
 
-    Captures: user, wallets
-    """
-    changes = []
+#     Captures: user, wallets
+#     """
+#     changes = []
 
-    # 1. Capture the user
-    user = cur.execute(
-        'SELECT * FROM users WHERE id = %s AND deleted_at IS NULL',
-        (user_id,)
-    ).fetchone()
-    if user:
-        changes.append({
-            'table': 'users',
-            'old_values': convert_dict_to_serializable(dict(user)),
-            'new_values': None
-        })
+#     # 1. Capture the user
+#     user = cur.execute(
+#         'SELECT * FROM users WHERE id = %s AND deleted_at IS NULL',
+#         (user_id,)
+#     ).fetchone()
+#     if user:
+#         changes.append({
+#             'table': 'users',
+#             'old_values': convert_dict_to_serializable(dict(user)),
+#             'new_values': None
+#         })
 
-    # 2. Capture wallets (they get soft-deleted when user is deleted)
-    wallets = cur.execute(
-        'SELECT * FROM wallets WHERE user_id = %s AND deleted_at IS NULL',
-        (user_id,)
-    ).fetchall()
-    for wallet in wallets:
-        changes.append({
-            'table': 'wallets',
-            'old_values': convert_dict_to_serializable(dict(wallet)),
-            'new_values': None
-        })
+#     # 2. Capture wallets (they get soft-deleted when user is deleted)
+#     wallets = cur.execute(
+#         'SELECT * FROM wallets WHERE owner_id = %s AND deleted_at IS NULL',
+#         (user_id,)
+#     ).fetchall()
+#     for wallet in wallets:
+#         changes.append({
+#             'table': 'wallets',
+#             'old_values': convert_dict_to_serializable(dict(wallet)),
+#             'new_values': None
+#         })
 
-    return changes
+#     return changes

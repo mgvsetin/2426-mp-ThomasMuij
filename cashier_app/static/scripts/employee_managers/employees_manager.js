@@ -2,7 +2,7 @@ import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
 import { fetchEmployees, resetEmployeesCache } from "../general/employees.js";
 import { headerClickListeners, renderHeader } from "../general/header.js";
-import { escapeHTML, safeParse } from "../general/html_display_utils.js";
+import { escapeHTML } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { directTo, handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";

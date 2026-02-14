@@ -9,7 +9,6 @@ import os
 import hashlib
 from datetime import datetime, date, timezone
 from flask.json.provider import DefaultJSONProvider
-from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from cashier_app.utils.general import client_ip_from_request
 
@@ -121,18 +120,7 @@ def create_app(test_config=None):
     # @app.before_request
     # def simulate_slow_connection():
     #     import time
-    #     time.sleep(2)
-
-
-
-    @app.route('/test', methods=('POST', 'GET'))
-    def test():
-        from flask import url_for, jsonify, request
-        with open('prints.txt', 'a', encoding='utf-8') as f:
-            print(request.form.get('remove-image'), file=f)
-
-        return jsonify(), 200
-
+    #     time.sleep(1)
         
 
     # není nutné, ale js teoreticky bere pouze ISO 8601

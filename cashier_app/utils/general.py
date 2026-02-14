@@ -1,6 +1,7 @@
 from uuid import UUID
 from typing import Any
 import hashlib
+from psycopg import IntegrityError
 from flask import request
 
 def convert_uuids_to_str(obj: Any) -> Any:
@@ -69,3 +70,11 @@ def client_ip_from_request() -> str:
             return ips[0]
     # fallback to remote_addr
     return request.remote_addr or ''
+
+
+def get_constraint_name(integrity_error: IntegrityError):
+    constraint = None
+    try:
+        constraint = getattr(integrity_error, 'diag', None) and integrity_error.diag.constraint_name
+    except Exception:
+        constraint = None

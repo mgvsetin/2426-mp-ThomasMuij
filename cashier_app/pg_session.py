@@ -9,16 +9,22 @@ session data do tabulky (defaultně `sessions`) jako jsonb.
 pro čištění/odstranění expirovaných session z databáze.
 """
 
+from typing import Callable, Optional, Dict, Any
+from psycopg_pool import ConnectionPool
 import json
 import secrets
 import datetime
 import hashlib
+from flask import Flask
 from flask.sessions import SessionInterface, SessionMixin
+from flask.wrappers import Request, Response
 from werkzeug.datastructures import CallbackDict
+from psycopg import sql
 from psycopg.types.json import Json
-from flask import current_app, request, session as flask_session
+from flask import request
 
 from cashier_app.utils.general import client_ip_from_request
+from cashier_app.utils.query_builder import build_delete_statement
 
 from cashier_app.db import get_pool
 
@@ -57,7 +63,7 @@ class PgSession(CallbackDict, SessionMixin):
     new: bool
     True pokud jde o nově vytvořenou session.
     """
-    def __init__(self, initial=None, sid=None, new=False):
+    def __init__(self, initial: Optional[Dict[str, Any]] = None, sid: Optional[str] = None, new: bool = False) -> None:
         def _on_update(self):
             self.modified = True
         super().__init__(initial or {}, _on_update)
@@ -98,11 +104,11 @@ class PgSessionInterface(SessionInterface):
     serializer = json
     session_class = PgSession
 
-    def __init__(self, get_db_pool=get_pool, table='sessions'):
+    def __init__(self, get_db_pool: Callable[[], "ConnectionPool"] = get_pool, table: str = 'sessions') -> None:
         self.get_pool = get_db_pool
         self.table = table
 
-    def generate_sid(self):
+    def generate_sid(self) -> str:
         """Vygeneruje náhodné SID použité jako hodnota cookie.
 
 
@@ -110,7 +116,7 @@ class PgSessionInterface(SessionInterface):
         """
         return secrets.token_urlsafe(32)
 
-    def get_expiration_time(self, app, session):
+    def get_expiration_time(self, app: Flask, session: SessionMixin) -> Optional[datetime.datetime]:
         """Vrátí datetime expirace pro cookie nebo None.
 
 
@@ -122,7 +128,7 @@ class PgSessionInterface(SessionInterface):
             return datetime.datetime.now(datetime.timezone.utc) + app.permanent_session_lifetime
         return None
     
-    def open_session(self, app, request):
+    def open_session(self, app: Flask, request: Request) -> PgSession:
         """Načte session z DB na základě cookie SID.
 
 
@@ -138,10 +144,12 @@ class PgSessionInterface(SessionInterface):
         with pool.connection() as conn:
             with conn.cursor() as cur:
                 row = cur.execute(
-                    f'''
+                    sql.SQL('''
                     SELECT data, employee_id, ip, ua_hash, expires_at
-                    FROM {self.table}
-                    WHERE id = %s''',
+                    FROM {table}
+                    WHERE id = %s''').format(
+                        table=sql.Identifier(self.table)
+                    ),
                     (sid,)).fetchone()
         if not row:
             return self.session_class(sid=None, new=True)
@@ -150,11 +158,9 @@ class PgSessionInterface(SessionInterface):
             # expired
             with pool.connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(
-                        f'''
-                        DELETE FROM {self.table}
-                        WHERE id = %s''',
-                        (sid,))
+                    query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
+                    cur.execute(query, query_params)
+
             return self.session_class(sid=None, new=True)
         
         enforce_ua = app.config.get('SESSION_ENFORCE_UA', False)
@@ -166,22 +172,25 @@ class PgSessionInterface(SessionInterface):
 
             if enforce_ua and row['ua_hash'] and row['ua_hash'] != actual_ua_hash:
                 # UA mismatch -> invalidate session
-                with conn.transaction():
+                with pool.connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute(f"DELETE FROM {self.table} WHERE id = %s", (sid,))
+                        query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
+                        cur.execute(query, query_params)
+
                 return self.session_class(sid=None, new=True)
 
             if enforce_ip and row['ip'] and row['ip'] != actual_ip:
                 # IP mismatch -> invalidate
-                with conn.transaction():
+                with pool.connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute(f"DELETE FROM {self.table} WHERE id = %s", (sid,))
+                        query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
+                        cur.execute(query, query_params)
                 return self.session_class(sid=None, new=True)
         
         data = row['data'] or {}
         return self.session_class(initial=data, sid=sid, new=False)
     
-    def save_session(self, app, session, response):
+    def save_session(self, app: Flask, session: PgSession, response: Response) -> None:
         """Uloží session do DB a nastaví cookie v odpovědi.
 
 
@@ -201,11 +210,8 @@ class PgSessionInterface(SessionInterface):
                 pool = self.get_pool()
                 with pool.connection() as conn:
                     with conn.cursor() as cur:
-                        cur.execute(
-                            f'''
-                            DELETE FROM {self.table}
-                            WHERE id = %s''',
-                            (session.sid,))
+                        query, query_params = build_delete_statement(self.table, session.sid, soft_delete=False)
+                        cur.execute(query, query_params)
 
             response.delete_cookie(
                 app.config.get("SESSION_COOKIE_NAME", "session"),
@@ -233,8 +239,8 @@ class PgSessionInterface(SessionInterface):
         with pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"""
-                    INSERT INTO {self.table} (id, data, employee_id, ip, ua_hash, modified_at, expires_at)
+                    sql.SQL("""
+                    INSERT INTO {table} (id, data, employee_id, ip, ua_hash, modified_at, expires_at)
                     VALUES (%s, %s, %s, %s, %s, now(), %s)
                     ON CONFLICT (id) DO UPDATE
                     SET data = EXCLUDED.data,
@@ -243,16 +249,15 @@ class PgSessionInterface(SessionInterface):
                     ua_hash = EXCLUDED.ua_hash,
                     modified_at = now(),
                     expires_at = EXCLUDED.expires_at
-                    """,
+                    """).format(
+                        table=sql.Identifier(self.table)
+                    ),
                     (new_sid, Json(data), employee_id, ip, ua_hash, expires))
 
                 if (new_sid != sid) and sid:
                     try:
-                        cur.execute(
-                            f"""
-                            DELETE FROM {self.table}
-                            WHERE id = %s""",
-                            (sid,))
+                        query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
+                        cur.execute(query, query_params)
                     except Exception:
                         # Ignore delete errors — not fatal; transaction still succeeds.
                         pass
@@ -319,12 +324,13 @@ def delete_expired_sessions(max_inactive_days: int | None = None) -> int:
             if max_inactive_days is not None:
                 days = float(max_inactive_days)
                 cur.execute(
-                    f"""
+                    """
                     DELETE FROM sessions
                     WHERE expires_at IS NULL
-                      AND modified_at < now() - interval '{days} days'
+                      AND modified_at < now() - make_interval(days => %s)
                     RETURNING id;
-                    """)
+                    """,
+                    (days,))
                 deleted += len(cur.fetchall())
 
     return deleted
