@@ -42,7 +42,7 @@ def create_app(test_config=None):
     # app.logger.setLevel(logging.INFO)
 
     app.config.from_mapping(
-        SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'dev', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32)
+        SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'Bghkdj07SUzko7eO85TYPjkvOg-zrWOVN4rsMTUjhZU', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32),   python -c "import secrets; print(secrets.token_urlsafe(32))"
         DATABASE_CONNINFO = os.environ.get('DATABASE_CONNINFO') or """
             dbname=cashier_app
             host=localhost
@@ -86,7 +86,7 @@ def create_app(test_config=None):
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
         SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can, if swtich to None add csrf protection
         SESSION_COOKIE_SECURE = False,
-        # SESSION_COOKIE_SECURE should be True in production when using HTTPS
+        # SESSION_COOKIE_SECURE should be True in production when using HTTPS ######
         # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
 
         SESSION_ENFORCE_UA = False,

@@ -29,24 +29,6 @@ from cashier_app.utils.query_builder import build_delete_statement
 from cashier_app.db import get_pool
 
 
-# 3) Revoking all user sessions
-
-# Because we have employee_id column, you can revoke all sessions for an employee quickly:
-
-# DELETE FROM sessions WHERE employee_id = '...';
-
-
-# You might expose this behind an admin action (e.g. “Log out everywhere”).
-
-###########
-
-# 4) Protect X-Forwarded-For
-
-# If using X-Forwarded-For you must ensure your reverse proxy (nginx)
-#  sets it and Flask is aware/trusted. 
-# If you don't control it properly, an attacker can forge IPs.
-
-
 class PgSession(CallbackDict, SessionMixin):
     """Reprezentuje jednu flaskovou session uloženou v Postgresu.
 
