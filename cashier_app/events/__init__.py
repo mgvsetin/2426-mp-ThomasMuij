@@ -245,6 +245,10 @@ def add_event():
 
         params['end_at'] = end_at_utc
 
+    if start_at_utc and end_at_utc:
+        if start_at_utc > end_at_utc:
+            return jsonify(error='invalid_start_at_end_at_dates'), 400
+
     sql, query_params = build_insert_statement('events', params, returning='*')
 
     try:
@@ -639,10 +643,11 @@ def get_user_transaction_history_for_event(event_id, user_id):
         with conn.cursor() as cur:
             user_transaction_history = cur.execute(
                 '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info, e.username AS performed_by_username
+                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info, e.username AS performed_by_username, b.name AS booth_name
                 FROM transactions t
                 JOIN users u ON u.id = t.user_id
                 JOIN employees e ON e.id = t.performed_by
+                JOIN booths b ON b.id = t.booth_id
                 WHERE t.user_id = %s
                 AND t.event_id = %s
                 ORDER BY t.occurred_at
@@ -675,9 +680,11 @@ def get_event_transaction_history(event_id):
                 '''
                 SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
                        e.username AS performed_by_username,
-                       u.first_name AS user_first_name, u.last_name AS user_last_name
+                       u.first_name AS user_first_name, u.last_name AS user_last_name,
+                       b.name AS booth_name
                 FROM transactions t
                 JOIN employees e ON e.id = t.performed_by
+                JOIN booths b ON b.id = t.booth_id
                 LEFT JOIN users u ON u.id = t.user_id
                 WHERE t.event_id = %s
                 ORDER BY t.occurred_at
@@ -727,13 +734,16 @@ def get_event_statistics(event_id):
                     COUNT(DISTINCT user_id) as unique_users,
                     SUM(CASE WHEN transaction_type = 'payment' THEN 1 ELSE 0 END) as payment_count,
                     SUM(CASE WHEN transaction_type = 'balance-change' THEN 1 ELSE 0 END) as balance_change_count,
-                    SUM(CASE WHEN transaction_type = 'refund' THEN 1 ELSE 0 END) as refund_count,
                     SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as total_revenue_czk,
                     SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as total_deposits_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk < 0 THEN -amount_czk ELSE 0 END) as total_withdrawals_czk,
-                    SUM(CASE WHEN transaction_type = 'refund' THEN amount_czk ELSE 0 END) as total_refunds_czk
-                FROM transactions
+                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk < 0 THEN -amount_czk ELSE 0 END) as total_withdrawals_czk
+                FROM transactions t
                 WHERE event_id = %s
+                AND transaction_type != 'refund'
+                AND NOT EXISTS (
+                    SELECT 1 FROM transactions r
+                    WHERE r.refunded_transaction_id = t.id
+                )
                 ''',
                 (event_id,)
             ).fetchone()
@@ -747,13 +757,16 @@ def get_event_statistics(event_id):
                     COUNT(t.id) as transaction_count,
                     SUM(CASE WHEN t.transaction_type = 'payment' THEN 1 ELSE 0 END) as payment_count,
                     SUM(CASE WHEN t.transaction_type = 'balance-change' THEN 1 ELSE 0 END) as balance_change_count,
-                    SUM(CASE WHEN t.transaction_type = 'refund' THEN 1 ELSE 0 END) as refund_count,
                     SUM(CASE WHEN t.transaction_type = 'payment' THEN -t.amount_czk ELSE 0 END) as revenue_czk,
                     SUM(CASE WHEN t.transaction_type = 'balance-change' AND t.amount_czk > 0 THEN t.amount_czk ELSE 0 END) as deposits_czk,
-                    SUM(CASE WHEN t.transaction_type = 'balance-change' AND t.amount_czk < 0 THEN -t.amount_czk ELSE 0 END) as withdrawals_czk,
-                    SUM(CASE WHEN t.transaction_type = 'refund' THEN t.amount_czk ELSE 0 END) as refunds_czk
+                    SUM(CASE WHEN t.transaction_type = 'balance-change' AND t.amount_czk < 0 THEN -t.amount_czk ELSE 0 END) as withdrawals_czk
                 FROM booths b
                 LEFT JOIN transactions t ON t.booth_id = b.id
+                    AND t.transaction_type != 'refund'
+                    AND NOT EXISTS (
+                        SELECT 1 FROM transactions r
+                        WHERE r.refunded_transaction_id = t.id
+                    )
                 WHERE b.event_id = %s AND b.deleted_at IS NULL
                 GROUP BY b.id, b.name, b.booth_type
                 ORDER BY revenue_czk DESC NULLS LAST
@@ -774,6 +787,10 @@ def get_event_statistics(event_id):
                     AND t.transaction_type = 'payment'
                     AND t.products_info IS NOT NULL
                     AND jsonb_array_length(t.products_info) > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM transactions r
+                        WHERE r.refunded_transaction_id = t.id
+                    )
                 )
                 SELECT
                     product_item->>'name' as product_name,
@@ -796,8 +813,13 @@ def get_event_statistics(event_id):
                     COUNT(*) as transaction_count,
                     SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as revenue_czk,
                     SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as deposits_czk
-                FROM transactions
+                FROM transactions t
                 WHERE event_id = %s
+                AND transaction_type != 'refund'
+                AND NOT EXISTS (
+                    SELECT 1 FROM transactions r
+                    WHERE r.refunded_transaction_id = t.id
+                )
                 GROUP BY DATE_TRUNC('hour', occurred_at)
                 ORDER BY hour ASC
                 ''',
@@ -812,8 +834,13 @@ def get_event_statistics(event_id):
                     SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as revenue_czk,
                     SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as deposits_czk,
                     SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk < 0 THEN -amount_czk ELSE 0 END) as withdrawals_czk
-                FROM transactions
+                FROM transactions t
                 WHERE event_id = %s
+                AND transaction_type != 'refund'
+                AND NOT EXISTS (
+                    SELECT 1 FROM transactions r
+                    WHERE r.refunded_transaction_id = t.id
+                )
                 GROUP BY DATE_TRUNC('day', occurred_at)
                 ORDER BY day ASC
                 ''',
@@ -830,6 +857,10 @@ def get_event_statistics(event_id):
                     AND t.transaction_type = 'payment'
                     AND t.products_info IS NOT NULL
                     AND jsonb_array_length(t.products_info) > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM transactions r
+                        WHERE r.refunded_transaction_id = t.id
+                    )
                 )
                 SELECT
                     product_item->>'name' as product_name,
@@ -870,6 +901,10 @@ def get_event_statistics(event_id):
                     AND t.transaction_type = 'payment'
                     AND t.products_info IS NOT NULL
                     AND jsonb_array_length(t.products_info) > 0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM transactions r
+                        WHERE r.refunded_transaction_id = t.id
+                    )
                 )
                 SELECT
                     booth_id,
@@ -900,11 +935,9 @@ def get_event_statistics(event_id):
             'unique_users': overall_stats['unique_users'] or 0,
             'payment_count': overall_stats['payment_count'] or 0,
             'balance_change_count': overall_stats['balance_change_count'] or 0,
-            'refund_count': overall_stats['refund_count'] or 0,
             'total_revenue_czk': overall_stats['total_revenue_czk'] or 0,
             'total_deposits_czk': overall_stats['total_deposits_czk'] or 0,
-            'total_withdrawals_czk': overall_stats['total_withdrawals_czk'] or 0,
-            'total_refunds_czk': overall_stats['total_refunds_czk'] or 0
+            'total_withdrawals_czk': overall_stats['total_withdrawals_czk'] or 0
         },
         booth_statistics=[{
             'booth_id': b['booth_id'],
@@ -913,11 +946,9 @@ def get_event_statistics(event_id):
             'transaction_count': b['transaction_count'] or 0,
             'payment_count': b['payment_count'] or 0,
             'balance_change_count': b['balance_change_count'] or 0,
-            'refund_count': b['refund_count'] or 0,
             'revenue_czk': b['revenue_czk'] or 0,
             'deposits_czk': b['deposits_czk'] or 0,
-            'withdrawals_czk': b['withdrawals_czk'] or 0,
-            'refunds_czk': b['refunds_czk'] or 0
+            'withdrawals_czk': b['withdrawals_czk'] or 0
         } for b in booth_stats],
         product_statistics=[{
             'product_name': p['product_name'],

@@ -78,3 +78,5 @@ def get_constraint_name(integrity_error: IntegrityError):
         constraint = getattr(integrity_error, 'diag', None) and integrity_error.diag.constraint_name
     except Exception:
         constraint = None
+
+    return constraint

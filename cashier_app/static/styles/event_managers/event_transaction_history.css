@@ -36,6 +36,11 @@ body {
   margin-top: 20px;
 }
 
+tbody td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .info-item {
   display: flex;
   flex-direction: column;

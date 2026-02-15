@@ -60,7 +60,7 @@ def validate_product_price(
 
     Possible error messages (one or more may be returned):
     - "price must be a number"
-    - "price must must be a whole number"
+    - "price must be a whole number"
     - "price must be more than or equal to {min_price}"
     - "price must be less than or equal to {max_price}"
     """
@@ -72,7 +72,7 @@ def validate_product_price(
         return False, ["price must be a number"]
     
     if not price.is_integer():
-        errors.append("price must must be a whole number")
+        errors.append("price must be a whole number")
 
     # if price < 0:
     #     errors.append("price must be positive")
@@ -85,29 +85,45 @@ def validate_product_price(
     return (len(errors) == 0), errors
 
 
-ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'jpg', 'png', 'webp'}
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000
+
+
+def _get_allowed_exts():
+    v = current_app.config.get('ALLOWED_IMAGE_EXTENSIONS')
+    if not v:
+        return set(ALLOWED_IMAGE_EXTENSIONS)
+    return {str(x).lower() for x in (v if isinstance(v, (set, list, tuple)) else [v])}
+
+def _get_allowed_mime_types():
+    v = current_app.config.get('ALLOWED_IMAGE_MIME_TYPES')
+    if not v:
+        return set(ALLOWED_MIME_TYPES)
+    return {str(x).lower() for x in (v if isinstance(v, (set, list, tuple)) else [v])}
 
 
 def image_extension_is_allowed(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in (current_app.config.get('ALLOWED_IMAGE_EXTENSIONS') if current_app.config.get('ALLOWED_IMAGE_EXTENSIONS') else ALLOWED_IMAGE_EXTENSIONS)
+    if '.' not in filename:
+        return False
+
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in _get_allowed_exts()
 
 
 def verify_image_file_get_info(file_obj, pixel_limit=None):
     if pixel_limit is None:
         try:
-            pixel_limit = current_app.config.get('UPLOAD_IMAGE_PIXEL_LIMIT')
+            pixel_limit = current_app.config.get('UPLOAD_IMAGE_PIXEL_LIMIT', UPLOAD_IMAGE_PIXEL_LIMIT)
         except Exception:
-            pass
+            pixel_limit = UPLOAD_IMAGE_PIXEL_LIMIT
 
-    file_obj.stream.seek(0)
+    Image.MAX_IMAGE_PIXELS = pixel_limit
+
     try:
-        with Image.open(file_obj.stream) as img:
-            img.verify() # verify -> musíme otevřít znovu
-
         file_obj.stream.seek(0)
         with Image.open(file_obj.stream) as img:
-            img.load()
+            img.verify() # verify -> musíme otevřít znovu
 
         file_obj.stream.seek(0)
         with Image.open(file_obj.stream) as image_file:
@@ -117,19 +133,22 @@ def verify_image_file_get_info(file_obj, pixel_limit=None):
 
             mime_from_pillow = Image.MIME.get(image_format.upper())  # např. 'image/jpeg'
 
-            if mime_from_pillow not in (current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') if current_app.config.get('ALLOWED_IMAGE_MIME_TYPES') else ALLOWED_MIME_TYPES):
+            if mime_from_pillow not in _get_allowed_mime_types():
                 return False, {}
             
-            if pixel_limit:
-                width, height = image_file.size
-                if width * height > pixel_limit:
-                    return False, {}
+            width, height = image_file.size
+            if width * height > pixel_limit:
+                return False, {}
                 
             info = {
                 'height': image_file.height,
                 'width': image_file.width,
                 'mime_type': mime_from_pillow
             }
+
+        file_obj.stream.seek(0)
+        with Image.open(file_obj.stream) as img:
+            img.load()
 
         file_obj.stream.seek(0)
         return True, info
@@ -165,6 +184,16 @@ def save_unique_stream(file_obj, dest_dir, secure_name, max_attempts=1000):
     base, ext = os.path.splitext(secure_name)
     if not ext:
         ext = ''
+
+    # nemělo by se nikdy stát:
+    if os.path.basename(secure_name) != secure_name:
+        raise RuntimeError("filename_is_not_secure")
+    
+    if not dest_dir:
+        raise RuntimeError("no dest_dir")
+    dest_dir = os.path.abspath(dest_dir)
+    if not os.path.isdir(dest_dir):
+        raise RuntimeError("dest_dir folder not found")
 
     MAX_BYTES = None
     try:
@@ -246,6 +275,11 @@ def convert_image_paths_from_relative(products):
 
 def save_image_get_params(image_file):
     safe_filename = secure_filename(image_file.filename)
+
+    max_filename_len = current_app.config.get('MAX_FILENAME_LEN', 255)
+    if len(safe_filename) > max_filename_len:
+        base, ext = os.path.splitext(safe_filename)
+        safe_filename = base[:max_filename_len - len(ext)] + ext
 
     if not image_extension_is_allowed(safe_filename):
         return {'error': 'disallowed_image_extension', 'code': 400}

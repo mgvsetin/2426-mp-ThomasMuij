@@ -532,5 +532,5 @@ function showAddEventErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }

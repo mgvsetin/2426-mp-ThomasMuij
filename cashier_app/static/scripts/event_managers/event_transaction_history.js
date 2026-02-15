@@ -134,17 +134,17 @@ function renderUsers(transactions) {
 
     if (transactionType === 'payment') {
       user.paymentsCount++;
-      user.paymentsTotal += Math.abs(amountCzk);
+      user.paymentsTotal += amountCzk;
     } else if (transactionType === 'refund') {
       user.refundsCount++;
-      user.refundsTotal += Math.abs(amountCzk);
+      user.refundsTotal += amountCzk;
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         user.depositsCount++;
-        user.depositsTotal += Math.abs(amountCzk);
+        user.depositsTotal += amountCzk;
       } else if (amountCzk < 0) {
         user.withdrawalsCount++;
-        user.withdrawalsTotal += Math.abs(amountCzk);
+        user.withdrawalsTotal += amountCzk;
       }
     }
   });
@@ -193,7 +193,7 @@ function renderUsers(transactions) {
 
 function renderCards(transactions) {
   if (!transactions || transactions.length === 0) {
-    cardsTableBody.innerHTML = '<tr><td colspan="9" class="empty-message">Žádné karty.</td></tr>';
+    cardsTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádné karty.</td></tr>';
     return;
   }
 
@@ -202,12 +202,12 @@ function renderCards(transactions) {
 
   transactions.forEach(transaction => {
     const tagId = transaction.tag_id || 'unknown';
-    const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
+    // const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
 
     if (!cardMap.has(tagId)) {
       cardMap.set(tagId, {
         tagId: tagId,
-        userName: userName,
+        // userName: userName,
         depositsCount: 0,
         depositsTotal: 0,
         withdrawalsCount: 0,
@@ -230,17 +230,17 @@ function renderCards(transactions) {
 
     if (transactionType === 'payment') {
       card.paymentsCount++;
-      card.paymentsTotal += Math.abs(amountCzk);
+      card.paymentsTotal += amountCzk;
     } else if (transactionType === 'refund') {
       card.refundsCount++;
-      card.refundsTotal += Math.abs(amountCzk);
+      card.refundsTotal += amountCzk;
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         card.depositsCount++;
-        card.depositsTotal += Math.abs(amountCzk);
+        card.depositsTotal += (amountCzk);
       } else if (amountCzk < 0) {
         card.withdrawalsCount++;
-        card.withdrawalsTotal += Math.abs(amountCzk);
+        card.withdrawalsTotal += amountCzk;
       }
       // if amountCzk === 0, nepatří do deposists ani withdrawals
     }
@@ -255,7 +255,7 @@ function renderCards(transactions) {
       <tr>
         <td>${index + 1}</td>
         <td class="card-tag">${escapeHTML(card.tagId)}</td>
-        <td class="user-name">${escapeHTML(card.userName)}</td>
+        <!-- <td class="user-name">${escapeHTML(card.userName)}</td> -->
         <td>
           <div class="stat-group">
             <span class="stat-amount">${card.depositsTotal} Kč</span>
@@ -291,7 +291,7 @@ function renderCards(transactions) {
 
 function renderTransactions(transactions) {
   if (!transactions || transactions.length === 0) {
-    transactionsTableBody.innerHTML = '<tr><td colspan="10" class="empty-message">Žádné transakce.</td></tr>';
+    transactionsTableBody.innerHTML = '<tr><td colspan="11" class="empty-message">Žádné transakce.</td></tr>';
     return;
   }
 
@@ -320,6 +320,7 @@ function renderTransactions(transactions) {
     const balanceBefore = transaction.balance_before || 0;
     const balanceAfter = transaction.balance_after || 0;
     const tagId = transaction.tag_id || '-';
+    const boothName = transaction.booth_name || '-';
     const performedByUsername = transaction.performed_by_username || '-';
     const userName = `${transaction.user_first_name || '?'} ${transaction.user_last_name || '?'}`;
 
@@ -329,23 +330,23 @@ function renderTransactions(transactions) {
     if (transactionType === 'payment') {
       typeClass = 'payment';
       typeDisplay = 'Platba';
-      totalPayments += Math.abs(amountCzk);
+      totalPayments += amountCzk;
       totalPaymentsCount++;
     } else if (transactionType === 'refund') {
       typeClass = 'refund';
       typeDisplay = 'Vrácení';
-      totalRefunds += Math.abs(amountCzk);
+      totalRefunds += amountCzk;
       totalRefundsCount++;
     } else if (transactionType === 'balance-change') {
       if (amountCzk > 0) {
         typeClass = 'deposit';
         typeDisplay = 'Vklad';
-        totalDeposits += Math.abs(amountCzk);
+        totalDeposits += amountCzk;
         totalDepositsCount++;
       } else if (amountCzk < 0) {
         typeClass = 'withdrawal';
         typeDisplay = 'Výběr';
-        totalWithdrawals += Math.abs(amountCzk);
+        totalWithdrawals += amountCzk;
         totalWithdrawalsCount++;
       } else {
         typeClass = 'no-change';
@@ -383,6 +384,7 @@ function renderTransactions(transactions) {
         <td class="${amountClass}">${amountDisplay}</td>
         <td>${balanceBefore}</td>
         <td>${balanceAfter}</td>
+        <td>${escapeHTML(boothName)}</td>
         <td>${escapeHTML(performedByUsername)}</td>
         <td>${productsHtml}</td>
       </tr>

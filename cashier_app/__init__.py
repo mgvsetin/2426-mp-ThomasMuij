@@ -5,6 +5,7 @@ registruje blueprinty a nastavuje session interface.
 
 from flask import Flask, jsonify, send_from_directory, request, Response
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import hashlib
 from datetime import datetime, date, timezone
@@ -43,6 +44,24 @@ def create_app(test_config=None):
 
     app.config.from_mapping(
         SECRET_KEY = os.environ.get('CASHIER_APP_SECRET') or 'Bghkdj07SUzko7eO85TYPjkvOg-zrWOVN4rsMTUjhZU', # ?$ python -c 'import secrets; print(secrets.token_hex())'?, secrets.token_urlsafe(32),   python -c "import secrets; print(secrets.token_urlsafe(32))"
+        PROXY_FIX = {
+            'x_for': 0,
+            'x_proto': 0,
+            'x_host': 0,
+            'x_port': 0,
+            'x_prefix': 0,
+            'trusted_hosts': None,
+        },
+        # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
+        # nastavte jednotlivé hodnoty, podle toho co porxy nastavuje
+        # PROXY_FIX = {
+        #     'x_for': 1,      # propustí 1 hodnotu z X-Forwarded-For -> skutečná klientská IP
+        #     'x_proto': 1,    # vezme X-Forwarded-Proto -> http/https
+        #     'x_host': 0,     # pokud potřebujete brát host z X-Forwarded-Host, nastavte 1
+        #     'x_port': 0,     # většinou 0
+        #     'x_prefix': 1,   # pokud nginx přidává X-Forwarded-Prefix (opakovaně), jinak 0
+        #     'trusted_hosts': ['127.0.0.1', '::1']  # IP/hosty vašich proxy (důrazně doporučeno)
+        # },
         DATABASE_CONNINFO = os.environ.get('DATABASE_CONNINFO') or """
             dbname=cashier_app
             host=localhost
@@ -80,7 +99,7 @@ def create_app(test_config=None):
         REFUND_TIME_LIMIT_MINUTES = 5,
         UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'products'),
         UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000,
-        ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'png', 'webp'},
+        ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'jpg', 'png', 'webp'},
         ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'},
         MAX_CONTENT_LENGTH = 16 * 1024 * 1024,  # 16MB
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
@@ -111,10 +130,44 @@ def create_app(test_config=None):
 
     limiter.init_app(app)
 
-    # # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
-    # app.wsgi_app = ProxyFix(
-    # app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
-    # )
+
+    # pouze když je nastavený nginx (nebo jiný proxy server), nastavení x_for=1... musí být přesná
+    # ProxyFix: použije se pouze pokud je to explicitně nastavené v konfiguraci.
+    # Konfigurace by měla být slovník s klíči x_for, x_proto, x_host, x_port, x_prefix
+    # (číselné hodnoty) a volitelně trusted_hosts (list nebo str).
+    proxy_cfg = app.config.get('PROXY_FIX', None)
+    if proxy_cfg:
+        try:
+            x_for = int(proxy_cfg.get('x_for', 0))
+            x_proto = int(proxy_cfg.get('x_proto', 0))
+            x_host = int(proxy_cfg.get('x_host', 0))
+            x_port = int(proxy_cfg.get('x_port', 0))
+            x_prefix = int(proxy_cfg.get('x_prefix', 0))
+        except Exception:
+            app.logger.warning("Invalid PROXY_FIX config, skipping ProxyFix.")
+            x_for = x_proto = x_host = x_port = x_prefix = 0
+
+        trusted = proxy_cfg.get('trusted_hosts', None)
+        if isinstance(trusted, (list, tuple)):
+            trusted_hosts = list(trusted)
+        elif isinstance(trusted, str):
+            trusted_hosts = [trusted]
+        else:
+            trusted_hosts = None
+
+        if any(v > 0 for v in (x_for, x_proto, x_host, x_port, x_prefix)):
+            app.wsgi_app = ProxyFix(
+                app.wsgi_app,
+                x_for=x_for,
+                x_proto=x_proto,
+                x_host=x_host,
+                x_port=x_port,
+                x_prefix=x_prefix,
+                trusted_hosts=trusted_hosts,
+            )
+            app.logger.info(f"ProxyFix enabled: x_for={x_for} x_proto={x_proto} x_host={x_host} x_port={x_port} x_prefix={x_prefix} trusted_hosts={trusted_hosts}")
+        else:
+            app.logger.info("ProxyFix not enabled (all x_* are 0).")
 
 
     # @app.before_request

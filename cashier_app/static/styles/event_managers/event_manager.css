@@ -209,6 +209,33 @@ body.no-scroll {
   color: rgb(30, 30, 30);
 }
 
+.stat-sub {
+  font-size: 11px;
+  color: rgb(130, 130, 130);
+  margin-top: 4px;
+}
+
+.stat-card--refund {
+  border-color: rgb(220, 53, 69, 0.4);
+  background: rgb(255, 248, 248);
+}
+
+.stat-card--refund .stat-value {
+  color: rgb(180, 30, 30);
+}
+
+.stat-refund-badge {
+  color: rgb(180, 30, 30);
+  font-weight: 500;
+}
+
+.booth-stat-revenue-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgb(130, 130, 130);
+  margin-left: 6px;
+}
+
 /* GRAFY */
 .stats-charts {
   margin-bottom: 30px;

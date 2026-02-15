@@ -639,7 +639,6 @@ async function openEditModal(employeeId) {
     <form id="edit-employee-form">
       <div class="form-row">
         <input id="edit-id" name="id" type="hidden" value="${escapeHTML(employee.id) || ''}" required readonly/>
-        <div id="edit-employee-id-error" class="form-error"></div>
       </div>
 
       <div class="form-row">
@@ -908,7 +907,6 @@ function showAddErrors(error) {
 
 
 function showEditErrors(error) {
-  const idError = document.querySelector('#edit-employee-id-error');
   const usernameError = document.querySelector('#edit-employee-username-error');
   const emailError = document.querySelector('#edit-employee-email-error');
   const passwordError = document.querySelector('#edit-employee-password-error');
@@ -925,20 +923,20 @@ function showEditErrors(error) {
     return;
   }
 
-  const resStr = String(error).toLowerCase().trim();
+  const errorStr = String(error).toLowerCase().trim();
 
-  switch (resStr) {
+  switch (errorStr) {
     case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'employee_not_found':
-      setErr(idError, 'Uživatel nenalezen.');
+      setErr(generalError, 'Zaměstnanec nebyl nalezen.');
       return;
     case 'missing_id':
-      setErr(idError, 'Chybí id zaměstnance.');
+      setErr(generalError, 'Chybí id zaměstnance.');
       return;
     case 'invalid_id':
-      setErr(idError, 'Id zaměstnance není validní.');
+      setErr(generalError, 'Id zaměstnance není validní.');
       return;
     case 'username_taken':
       setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
@@ -971,86 +969,86 @@ function showEditErrors(error) {
       break;
   }
 
-  if (resStr.includes('username must be at least')) {
-    let limit = resStr.split('username must be at least ');
+  if (errorStr.includes('username must be at least')) {
+    let limit = errorStr.split('username must be at least ');
     limit = limit[1].split(' characters')[0];
     setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
     return;
   }
-  if (resStr.includes('username must be at most')) {
-    let limit = resStr.split('username must be at most ');
+  if (errorStr.includes('username must be at most')) {
+    let limit = errorStr.split('username must be at most ');
     limit = limit[1].split(' characters')[0];
     setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
     return;
   }
-  if (resStr.includes('username must start and end with')) {
-    const allowedChars = resStr.split('characters: ')[1];
+  if (errorStr.includes('username must start and end with')) {
+    const allowedChars = errorStr.split('characters: ')[1];
     setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
-  if (resStr.includes('username must not contain')) {
+  if (errorStr.includes('username must not contain')) {
     setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
     return;
   }
-  if (resStr.includes('username must not be all numeric')) {
+  if (errorStr.includes('username must not be all numeric')) {
     setErr(usernameError, 'Uživatelské jméno nesmí obsahovat pouze čísla.');
     return;
   }
-  if (resStr.includes('username must not contain the reserved words')) {
-    const reservedWords = resStr.split('reserved words: ')[1];
+  if (errorStr.includes('username must not contain the reserved words')) {
+    const reservedWords = errorStr.split('reserved words: ')[1];
     setErr(usernameError, `Uživatelské jméno nesmí obsahovat: ${reservedWords}`);
     return;
   }
 
-  if (resStr.includes('invalid_email')) {
+  if (errorStr.includes('invalid_email')) {
     setErr(emailError, 'Email není platný');
     return;
   }
 
-  if (resStr.includes('password must be at least')) {
-    let limit = resStr.split('password must be at least ');
+  if (errorStr.includes('password must be at least')) {
+    let limit = errorStr.split('password must be at least ');
     limit = limit[1].split(' characters')[0];
     setErr(passwordError, `Minimální délka hesla je ${limit}.`);
     return;
   }
-  if (resStr.includes('password must not contain spaces or tabs')) {
+  if (errorStr.includes('password must not contain spaces or tabs')) {
     setErr(passwordError, 'Heslo nesmí obsahovat mezery nebo tabulátory.');
     return;
   }
-  if (resStr.includes('uppercase')) {
+  if (errorStr.includes('uppercase')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno velké písmeno.');
     return;
   }
-  if (resStr.includes('lowercase')) {
+  if (errorStr.includes('lowercase')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno malé písmeno.');
     return;
   }
-  if (resStr.includes('digit')) {
+  if (errorStr.includes('digit')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jedno číslo.');
     return;
   }
-  if (resStr.includes('special character')) {
+  if (errorStr.includes('special character')) {
     setErr(passwordError, 'Heslo musí obsahovat alespoň jeden speciální znak (např. !@#$%).');
     return;
   }
-  if (resStr.includes('too common')) {
+  if (errorStr.includes('too common')) {
     setErr(passwordError, 'Heslo je příliš jednoduché nebo běžné.');
     return;
   }
-  if (resStr.includes('must not contain the username')) {
+  if (errorStr.includes('must not contain the username')) {
     setErr(passwordError, 'Heslo nesmí obsahovat uživatelské jméno.');
     return;
   }
-  if (resStr.includes('must not contain the email local-part')) {
+  if (errorStr.includes('must not contain the email local-part')) {
     setErr(passwordError, 'Heslo nesmí obsahovat část e-mailu před zavináčem.');
     return;
   }
-  if (resStr.includes('repeated characters')) {
+  if (errorStr.includes('repeated characters')) {
     setErr(passwordError, 'Heslo obsahuje příliš mnoho opakujících se znaků.');
     return;
   }
 
-  setErr(generalError, resStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -1068,13 +1066,13 @@ function showDeleteErrors(error) {
     return;
   }
 
-  const resStr = String(error);
-  switch (resStr) {
+  const errorStr = String(error);
+  switch (errorStr) {
     case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění provést změnu.');
       return;
     case 'employee_not_found':
-      setErr(generalError, 'Uživatel nenalezen.');
+      setErr(generalError, 'Zaměstnanec nebyl nalezen.');
       return;
     case 'missing_id':
       setErr(generalError, 'Chybí id zaměstnance.');
@@ -1095,7 +1093,7 @@ function showDeleteErrors(error) {
       break;
   }
 
-  setErr(generalError, resStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 

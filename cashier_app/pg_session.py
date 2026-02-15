@@ -304,7 +304,7 @@ def delete_expired_sessions(max_inactive_days: int | None = None) -> int:
             deleted += len(cur.fetchall())
 
             if max_inactive_days is not None:
-                days = float(max_inactive_days)
+                days = int(max_inactive_days)
                 cur.execute(
                     """
                     DELETE FROM sessions

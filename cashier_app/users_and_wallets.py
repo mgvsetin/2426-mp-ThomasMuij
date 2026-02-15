@@ -547,14 +547,15 @@ def add_wallet():
     if selected_booth['booth_type'] != 'cashier':
         return jsonify(error='invalid_booth_type'), 400
     
+    owner_id = request.form.get('user-id')
+
+    if not owner_id:
+        return jsonify(error='missing_user_id'), 400 
 
     try:
-        owner_id = UUID(request.form.get('user-id'))
+        owner_id = UUID(owner_id)
     except (ValueError, TypeError):
-        return jsonify(error='invalid_user_id'), 400
-    
-    if not owner_id:
-        return jsonify(error='missing_user_id'), 400          
+        return jsonify(error='invalid_user_id'), 400         
             
 
     tag_id = request.form.get('tag-id', '').strip()

@@ -15,14 +15,16 @@ def assign_manager():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        event_id = UUID(request.form.get('event-id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_event_id'), 400
+    
+    event_id = request.form.get('event-id')
 
     if not event_id:
         return jsonify(error='missing_event_id'), 400
+
+    try:
+        event_id = UUID(event_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_event_id'), 400
 
     username_or_email = request.form.get('username-or-email', '').strip()
 
@@ -73,13 +75,15 @@ def assign_employee():
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
-    try:
-        event_id = UUID(request.form.get('event-id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_event_id'), 400
+    event_id = request.form.get('event-id')
 
     if not event_id:
         return jsonify(error='missing_event_id'), 400
+
+    try:
+        event_id = UUID(event_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_event_id'), 400
 
     username_or_email = request.form.get('username-or-email', '').strip()
 
@@ -162,8 +166,13 @@ def unassign_employee_or_manager():
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
+    event_id = request.form.get('event-id')
+
+    if not event_id:
+        return jsonify(error='missing_event_id'), 400
+
     try:
-        event_id = UUID(request.form.get('event-id'))
+        event_id = UUID(event_id)
     except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
@@ -172,14 +181,16 @@ def unassign_employee_or_manager():
 
     if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
-
-    try:
-        employee_id = UUID(request.form.get('id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400
+    
+    employee_id = request.form.get('id')
 
     if not employee_id:
         return jsonify(error='missing_id'), 400
+
+    try:
+        employee_id = UUID(employee_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400    
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:

@@ -104,11 +104,12 @@ def select_event():
                 AND (end_at IS NULL OR end_at > now())
                 AND deleted_at IS NULL''',
                 (event_id,)).fetchone()
+            
+            if not event:
+                return jsonify(error='event_not_found_or_inactive'), 404
     
-    # ověř zda zaměstanec je spojený s akcí
-    if not employee['is_admin']:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
+            # ověř zda zaměstanec je spojený s akcí
+            if not employee['is_admin']:
                 role = cur.execute(
                     '''
                     SELECT role
@@ -117,11 +118,8 @@ def select_event():
                     AND event_id = %s''',
                     (employee['id'], event_id)).fetchall()
         
-        if not role:
-            return jsonify(error='employee_not_linked_to_event'), 403
-
-    if not event:
-        return jsonify(error='event_not_found_or_inactive'), 404
+                if not role:
+                    return jsonify(error='employee_not_linked_to_event'), 403
 
     session.pop('booth_id', None)
     session['event_id'] = str(event_id)
@@ -279,13 +277,11 @@ def select_booth():
                 AND deleted_at IS NULL''',
                 (booth_id, event['id'])).fetchone()
             
-    if booth is None:
-        return jsonify(error='booth_not_found'), 404
+            if booth is None:
+                return jsonify(error='booth_not_found'), 404
 
-    # ověř zda je zaměstanenc spojený se stánkem:
-    if not employee['is_admin']:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
+            # ověř zda je zaměstanenc spojený se stánkem:
+            if not employee['is_admin']:
                 event_link = cur.execute(
                     '''
                     SELECT role

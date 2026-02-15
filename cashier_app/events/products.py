@@ -23,14 +23,16 @@ def add_product():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        event_id = UUID(request.form.get('event-id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_event_id'), 400
+    
+    event_id = request.form.get('event-id')
 
     if not event_id:
         return jsonify(error='missing_event_id'), 400
+
+    try:
+        event_id = UUID(event_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_event_id'), 400
 
     name = request.form.get('name', '').strip()
     price = request.form.get('price', '').strip()
@@ -172,14 +174,16 @@ def edit_product():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        product_id = UUID(request.form.get('id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400
+    
+    product_id = request.form.get('id')
 
     if not product_id:
         return jsonify(error='missing_id'), 400
+
+    try:
+        product_id = UUID(product_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -353,14 +357,16 @@ def delete_product():
 
     if logged_employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    try:
-        product_id = UUID(request.form.get('id'))
-    except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400
+    
+    product_id = request.form.get('id')
 
     if not product_id:
         return jsonify(error='missing_id'), 400
+
+    try:
+        product_id = UUID(product_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:

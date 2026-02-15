@@ -704,10 +704,13 @@ export function showUserFormErrors(error, detail) {
   const generalError = document.querySelector('#general-error');
 
   let nameErrorEl = generalError;
+  let nameStr = 'Jméno nebo příjmení';
   if (detail === 'first_name_error') {
     nameErrorEl = firstNameError;
+    nameStr = 'Jméno';
   } else if (detail === 'last_name_error') {
     nameErrorEl = lastNameError;
+    nameStr = 'Příjmení';
   }
 
   const setErr = (el, text) => {
@@ -759,7 +762,7 @@ export function showUserFormErrors(error, detail) {
       setErr(phoneNumberError, 'Chybí předčíslí.');
       return;
     case 'invalid_phone_number':
-      setErr(phoneNumberError, 'Telefonní číslo není správné.');
+      setErr(phoneNumberError, 'Telefonní číslo není platné.');
       return;
     case 'missing_tag_id':
       setErr(generalError, 'Chybí ID karty.');
@@ -817,31 +820,31 @@ export function showUserFormErrors(error, detail) {
   }
 
   if (errorStr.includes('name must be a string')) {
-    setErr(nameErrorEl, 'Jméno nebo příjmení není správně zadané.');
+    setErr(nameErrorEl, `${nameStr} není správně zadané.`);
     return;
   }
   if (errorStr.includes('name must be at least')) {
     let limit = errorStr.split('name must be at least ')[1].split(' characters')[0];
-    setErr(nameErrorEl, `Jméno nebo příjmení může mít minimálně ${limit} znaků.`);
+    setErr(nameErrorEl, `${nameStr} může mít minimálně ${limit} znaků.`);
     return;
   }
   if (errorStr.includes('name must be at most')) {
     let limit = errorStr.split('name must be at most ')[1].split(' characters')[0];
-    setErr(nameErrorEl, `Jméno nebo příjmení může mít maximálně ${limit} znaků.`);
+    setErr(nameErrorEl, `${nameStr} může mít maximálně ${limit} znaků.`);
     return;
   }
   if (errorStr.includes('name may only contain letters, digits, and these characters:')) {
     const allowedChars = errorStr.split('characters: ')[1];
-    setErr(nameErrorEl, `Jméno nebo příjmení může obsahovat pouze písmena, číslice a tyto znaky: ${allowedChars}`);
+    setErr(nameErrorEl, `${nameStr} může obsahovat pouze písmena, číslice a tyto znaky: ${allowedChars}`);
     return;
   }
   if (errorStr.includes('name must not be all numeric')) {
-    setErr(nameErrorEl, 'Jméno nebo příjmení nesmí obsahovat pouze čísla.');
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat pouze čísla.`);
     return;
   }
   if (errorStr.includes('name must not contain the reserved word:')) {
     const reservedWord = errorStr.split('reserved word: ')[1];
-    setErr(nameErrorEl, `Jméno nebo příjmení nesmí obsahovat: ${reservedWord}`);
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat: ${reservedWord}`);
     return;
   }
 
@@ -901,7 +904,7 @@ export function showUserFormErrors(error, detail) {
     return;
   }
 
-  setErr(generalError, errorStr); /////
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -948,7 +951,7 @@ export function showDeleteUserFormErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr); /////
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -1049,7 +1052,7 @@ export function showEditWalletFormErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr); /////
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 

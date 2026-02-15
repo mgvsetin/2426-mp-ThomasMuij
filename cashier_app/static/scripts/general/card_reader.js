@@ -74,8 +74,7 @@ async function getCardReaderPort(calledFromInteraction, portIdx = undefined) {
     if (pairedPorts.length === 1) {
       return pairedPorts[0];
     } else {
-      requestPortFromUser(calledFromInteraction);
-      return null;
+      return requestPortFromUser(calledFromInteraction);
     }
   } catch (error) {
     console.warn('Error pairing port:', error);

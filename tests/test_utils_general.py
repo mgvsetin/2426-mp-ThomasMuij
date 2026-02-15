@@ -138,20 +138,20 @@ class TestClientIpFromRequest:
 class TestGetConstraintName:
 
     def test_returns_constraint_name(self):
-        error = MagicMock(spec=IntegrityError)
+        error = MagicMock()
         error.diag = MagicMock()
         error.diag.constraint_name = 'unique_index_employees_username_active'
         result = get_constraint_name(error)
         assert result == 'unique_index_employees_username_active'
 
     def test_returns_none_when_no_diag(self):
-        error = MagicMock(spec=IntegrityError)
+        error = MagicMock()
         error.diag = None
         result = get_constraint_name(error)
         assert result is None
 
     def test_returns_none_on_exception(self):
-        error = MagicMock(spec=IntegrityError)
+        error = MagicMock()
         type(error).diag = property(lambda s: (_ for _ in ()).throw(RuntimeError))
         result = get_constraint_name(error)
         assert result is None

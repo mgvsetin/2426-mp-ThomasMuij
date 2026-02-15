@@ -923,7 +923,7 @@ document.addEventListener('submit', async (event) => {
       const data = await response.json();
 
       if (!response.ok) {
-        showAddUserErrors(data.error || 'unexpected_error');
+        showAddUserErrors(data.error || 'unexpected_error', data.detail);
         saveButton.disabled = false;
         return;
       }
@@ -967,7 +967,7 @@ document.addEventListener('submit', async (event) => {
       const data = await response.json();
 
       if (!response.ok) {
-        showEditUserErrors(data.error || 'unexpected_error');
+        showEditUserErrors(data.error || 'unexpected_error', data.detail);
         saveButton.disabled = false;
         return;
       }
@@ -2374,15 +2374,20 @@ async function openEditBoothModal(boothId) {
   const booth = eventData.booths.find(booth => booth.id === boothId);
   if (!booth) return;
 
-  const boothProducts = eventData.products.filter(p =>
-    p.booths.some(b => b.id === boothId)
-  );
-  const boothCategories = eventData.categories.filter(c =>
-    c.booths.some(b => b.id === boothId)
-  );
+  let productsPickerStr = '';
+  let categoriesPickerStr = '';
 
-  const productsPickerStr = makeProductsPicker(eventData.products, boothProducts);
-  const categoriesPickerStr = makeCategoriesPicker(eventData.categories, boothCategories);
+  if (booth.booth_type === 'seller') {
+    const boothProducts = eventData.products.filter(p =>
+      p.booths.some(b => b.id === boothId)
+    );
+    const boothCategories = eventData.categories.filter(c =>
+      c.booths.some(b => b.id === boothId)
+    );
+
+    productsPickerStr = makeProductsPicker(eventData.products, boothProducts);
+    categoriesPickerStr = makeCategoriesPicker(eventData.categories, boothCategories);
+  }
 
   const html = `
     <header>
@@ -2430,8 +2435,8 @@ async function openEditBoothModal(boothId) {
   if (booth.booth_type === 'cashier') {
     const productsRow = document.querySelector('#booth-products-row');
     const categoriesRow = document.querySelector('#booth-categories-row');
-    productsRow.style.display = 'none';
-    categoriesRow.style.display = 'none';
+    if (productsRow) productsRow.style.display = 'none';
+    if (categoriesRow) categoriesRow.style.display = 'none';
   }
 }
 
@@ -3172,7 +3177,7 @@ function showEditEventErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3211,7 +3216,7 @@ function showDeleteEventErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3312,7 +3317,7 @@ function showAddBoothErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3409,7 +3414,7 @@ function showEditBoothErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3448,7 +3453,7 @@ function showDeleteBoothErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3507,7 +3512,7 @@ function showAssignEmployeeErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3565,7 +3570,7 @@ function showEditEmployeeErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3607,7 +3612,7 @@ function showRemoveEmployeeErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3701,10 +3706,10 @@ function showAddProductErrors(error) {
   }
 
   if (errorStr.includes('price must be a number') || errorStr.includes('price must be a whole number') || errorStr.includes('price must be positive')) {
-    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    setErr(priceError, 'Cena musí být celé číslo.');
     return;
   } else if (errorStr.includes('price must be a number')) {
-    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    setErr(priceError, 'Cena musí být celé číslo.');
     return;
   } if (errorStr.includes('price must be more than or equal to')) {
     let limit = errorStr.split('price must be more than or equal to ')[1];
@@ -3716,7 +3721,7 @@ function showAddProductErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3828,10 +3833,10 @@ function showEditProductErrors(error) {
   }
 
   if (errorStr.includes('price must be a number') || errorStr.includes('price must be a whole number') || errorStr.includes('price must be positive')) {
-    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    setErr(priceError, 'Cena musí být celé číslo.');
     return;
   } else if (errorStr.includes('price must be a number')) {
-    setErr(priceError, 'Cena musí být kladné celé číslo.');
+    setErr(priceError, 'Cena musí být celé číslo.');
     return;
   } if (errorStr.includes('price must be more than or equal to')) {
     let limit = errorStr.split('price must be more than or equal to ')[1];
@@ -3843,7 +3848,7 @@ function showEditProductErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3882,7 +3887,7 @@ function showDeleteProductErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -3958,7 +3963,7 @@ function showAddCategoryErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -4034,7 +4039,7 @@ function showEditCategoryErrors(error) {
     return;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
@@ -4073,17 +4078,27 @@ function showDeleteCategoryErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
-function showAddUserErrors(error) {
+function showAddUserErrors(error, detail) {
   const firstNameError = document.querySelector('#add-user-first-name-error');
   const lastNameError = document.querySelector('#add-user-last-name-error');
   const emailError = document.querySelector('#add-user-email-error');
   const phoneError = document.querySelector('#add-user-phone-error');
   const otherIdentifierError = document.querySelector('#add-user-other-identifier-error');
   const generalError = document.querySelector('#add-user-general-error');
+
+  let nameErrorEl = generalError;
+  let nameStr = 'Jméno nebo příjmení';
+  if (detail === 'first_name_error') {
+    nameErrorEl = firstNameError;
+    nameStr = 'Jméno';
+  } else if (detail === 'last_name_error') {
+    nameErrorEl = lastNameError;
+    nameStr = 'Příjmení';
+  }
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -4110,6 +4125,9 @@ function showAddUserErrors(error) {
     case 'missing_last_name':
       setErr(lastNameError, 'Chybí příjmení.');
       return;
+    case 'missing_country_code':
+      setErr(phoneError, 'Chybí předčíslí.');
+      return;
     case 'invalid_phone_number':
       setErr(phoneError, 'Telefonní číslo není platné.');
       return;
@@ -4128,16 +4146,88 @@ function showAddUserErrors(error) {
     default:
       break;
   }
-  setErr(generalError, errorStr);
+
+
+  if (errorStr.includes('name must be a string')) {
+    setErr(nameErrorEl, `${nameStr} není správně zadané.`);
+    return;
+  }
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `${nameStr} může mít minimálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `${nameStr} může mít maximálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name may only contain letters, digits, and these characters:')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameErrorEl, `${nameStr} může obsahovat pouze písmena, číslice a tyto znaky: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat pouze čísla.`);
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+
+  if (errorStr.includes('email must be a string')) {
+    setErr(emailError, 'Email není správně zadaný.');
+    return;
+  }
+  if (errorStr.includes('email is empty')) {
+    setErr(emailError, 'Email je prázdný.');
+    return;
+  }
+
+  if (errorStr.includes('email') && !errorStr.includes('must not contain')) {
+    setErr(emailError, 'Email není platný.');
+    return;
+  }
+
+  if (errorStr.includes('other_identifier must be at least')) {
+    let limit = errorStr.split('other_identifier must be at least ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Minimální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must be at most')) {
+    let limit = errorStr.split('other_identifier must be at most ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Maximální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(otherIdentifierError, `Identifikátor nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
-function showEditUserErrors(error) {
+function showEditUserErrors(error, detail) {
   const firstNameError = document.querySelector('#edit-user-first-name-error');
   const lastNameError = document.querySelector('#edit-user-last-name-error');
   const emailError = document.querySelector('#edit-user-email-error');
   const phoneError = document.querySelector('#edit-user-phone-error');
   const otherIdentifierError = document.querySelector('#edit-user-other-identifier-error');
   const generalError = document.querySelector('#edit-user-general-error');
+
+  let nameErrorEl = generalError;
+  let nameStr = 'Jméno nebo příjmení';
+  if (detail === 'first_name_error') {
+    nameErrorEl = firstNameError;
+    nameStr = 'Jméno';
+  } else if (detail === 'last_name_error') {
+    nameErrorEl = lastNameError;
+    nameStr = 'Příjmení';
+  }
 
   const setErr = (el, text) => {
     if (!el) return;
@@ -4173,6 +4263,9 @@ function showEditUserErrors(error) {
     case 'missing_last_name':
       setErr(lastNameError, 'Chybí příjmení.');
       return;
+    case 'missing_country_code':
+      setErr(phoneError, 'Chybí předčíslí.');
+      return;
     case 'invalid_phone_number':
       setErr(phoneError, 'Telefonní číslo není platné.');
       return;
@@ -4191,7 +4284,68 @@ function showEditUserErrors(error) {
     default:
       break;
   }
-  setErr(generalError, errorStr);
+
+  if (errorStr.includes('name must be a string')) {
+    setErr(nameErrorEl, `${nameStr} není správně zadané.`);
+    return;
+  }
+  if (errorStr.includes('name must be at least')) {
+    let limit = errorStr.split('name must be at least ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `${nameStr} může mít minimálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name must be at most')) {
+    let limit = errorStr.split('name must be at most ')[1].split(' characters')[0];
+    setErr(nameErrorEl, `${nameStr} může mít maximálně ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('name may only contain letters, digits, and these characters:')) {
+    const allowedChars = errorStr.split('characters: ')[1];
+    setErr(nameErrorEl, `${nameStr} může obsahovat pouze písmena, číslice a tyto znaky: ${allowedChars}`);
+    return;
+  }
+  if (errorStr.includes('name must not be all numeric')) {
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat pouze čísla.`);
+    return;
+  }
+  if (errorStr.includes('name must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(nameErrorEl, `${nameStr} nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+
+  if (errorStr.includes('email must be a string')) {
+    setErr(emailError, 'Email není správně zadaný.');
+    return;
+  }
+  if (errorStr.includes('email is empty')) {
+    setErr(emailError, 'Email je prázdný.');
+    return;
+  }
+
+  if (errorStr.includes('email') && !errorStr.includes('must not contain')) {
+    setErr(emailError, 'Email není platný.');
+    return;
+  }
+
+  if (errorStr.includes('other_identifier must be at least')) {
+    let limit = errorStr.split('other_identifier must be at least ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Minimální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must be at most')) {
+    let limit = errorStr.split('other_identifier must be at most ')[1].split(' characters')[0];
+    setErr(otherIdentifierError, `Maximální délka identifikátoru je ${limit} znaků.`);
+    return;
+  }
+  if (errorStr.includes('other_identifier must not contain the reserved word:')) {
+    const reservedWord = errorStr.split('reserved word: ')[1];
+    setErr(otherIdentifierError, `Identifikátor nesmí obsahovat: ${reservedWord}`);
+    return;
+  }
+
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 function showDeleteUserErrors(error) {
@@ -4216,10 +4370,10 @@ function showDeleteUserErrors(error) {
     case 'insufficient_privileges':
       setErr(generalError, 'Nemáte oprávnění smazat uživatele.');
       return;
-    case 'invalid_id':
+    case 'invalid_user_id':
       setErr(generalError, 'ID uživatele není správné.');
       return;
-    case 'missing_id':
+    case 'missing_user_id':
       setErr(generalError, 'Chybí ID uživatele.');
       return;
     case 'user_not_found':
@@ -4228,7 +4382,7 @@ function showDeleteUserErrors(error) {
     default:
       break;
   }
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 

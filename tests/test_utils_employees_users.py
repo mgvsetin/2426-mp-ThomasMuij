@@ -261,7 +261,7 @@ class TestValidateFirstOrLastName:
 class TestValidatePhoneNumber:
 
     def test_valid_czech_number(self):
-        assert validate_phone_number('+420123456789') is True
+        assert validate_phone_number('+420601234567') is True
 
     def test_valid_us_number(self):
         assert validate_phone_number('+12025551234') is True
@@ -286,7 +286,7 @@ class TestValidatePhoneNumber:
 class TestFormatValidPhoneNumber:
 
     def test_returns_all_formats(self):
-        result = format_valid_phone_number('+420123456789')
+        result = format_valid_phone_number('+420601234567')
         assert 'e164' in result
         assert 'international' in result
         assert 'national' in result
@@ -294,11 +294,11 @@ class TestFormatValidPhoneNumber:
         assert 'country_code' in result
 
     def test_e164_format(self):
-        result = format_valid_phone_number('+420123456789')
+        result = format_valid_phone_number('+420601234567')
         assert result['e164'].startswith('+420')
 
     def test_country_code(self):
-        result = format_valid_phone_number('+420123456789')
+        result = format_valid_phone_number('+420601234567')
         assert result['country_code'] == '+420'
 
 
@@ -332,7 +332,7 @@ class TestValidateOtherIdentifier:
 class TestAddMorePhoneNumberInfo:
 
     def test_adds_formats_to_user_with_phone(self):
-        users = [{'phone_number': '+420123456789'}]
+        users = [{'phone_number': '+420601234567'}]
         add_more_phone_number_info(users)
         assert users[0]['phone_number_international'] is not None
         assert users[0]['phone_number_national'] is not None
@@ -346,7 +346,7 @@ class TestAddMorePhoneNumberInfo:
 
     def test_multiple_users(self):
         users = [
-            {'phone_number': '+420123456789'},
+            {'phone_number': '+420601234567'},
             {'phone_number': None},
         ]
         add_more_phone_number_info(users)

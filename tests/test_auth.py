@@ -3,7 +3,7 @@
 import pytest
 from uuid import uuid4
 from unittest.mock import patch, MagicMock
-from conftest import set_session, ADMIN_EMPLOYEE
+from tests.conftest import set_session, ADMIN_EMPLOYEE
 
 
 class TestLoginEndpoint:
@@ -50,7 +50,8 @@ class TestLoginEndpoint:
         })
         assert response.status_code == 201
 
-    def test_login_empty_fields(self, client):
+    @patch('cashier_app.auth.get_employee_id', return_value=None)
+    def test_login_empty_fields(self, mock_get_id, client):
         response = client.post('/api/auth/login', data={
             'username-email': '',
             'password': '',

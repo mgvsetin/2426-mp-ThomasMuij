@@ -440,7 +440,7 @@ function showRestoreErrors(error) {
       break;
   }
 
-  setErr(generalError, errorStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
 
 
