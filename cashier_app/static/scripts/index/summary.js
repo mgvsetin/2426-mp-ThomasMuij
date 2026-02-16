@@ -1,3 +1,6 @@
+/**
+ * @file Vykreslení souhrnu objednávky a celkové ceny.
+ */
 import { order } from "./order.js";
 import { fetchProductsAndCategories, findProduct } from "./products.js";
 
@@ -6,9 +9,14 @@ const orderSummary = document.querySelector('#order-summary');
 const orderPrice = document.querySelector('#order-cost');
 const payButton = document.querySelector('#pay-button');
 
+/**
+ * Vykreslí souhrn objednávky a celkovou cenu do příslušných prvků na stránce.
+ * Pokud nejsou produkty nebo položky v objednávce, zobrazí prázdný souhrn a deaktivuje tlačítko platby.
+ * @returns {Promise<void>}
+ */
 export async function renderSummary() {
 
-  // add the zustatek stuff, add zustatek po platbe nebo neco takoveho
+  // přidat zůstatek a zůstatek po platbě nebo něco podobného
 
   const result = await fetchProductsAndCategories().catch(() => { });
   if (!result) return;

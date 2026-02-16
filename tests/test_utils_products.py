@@ -1,4 +1,4 @@
-"""Tests for cashier_app.utils.products validation functions."""
+"""Testy validačních funkcí modulu cashier_app.utils.products."""
 
 import pytest
 from cashier_app.utils.products import (
@@ -8,7 +8,7 @@ from cashier_app.utils.products import (
 
 
 # ---------------------------------------------------------------------------
-# validate_product_or_category_name
+# validate_product_or_category_name – validace názvu produktu nebo kategorie
 # ---------------------------------------------------------------------------
 
 class TestValidateProductOrCategoryName:
@@ -54,7 +54,7 @@ class TestValidateProductOrCategoryName:
 
 
 # ---------------------------------------------------------------------------
-# validate_product_price
+# validate_product_price – validace ceny produktu
 # ---------------------------------------------------------------------------
 
 class TestValidateProductPrice:

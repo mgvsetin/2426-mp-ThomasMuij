@@ -1,4 +1,4 @@
-"""Tests for cashier_app.employee_events_booths module."""
+"""Testy modulu cashier_app.employee_events_booths pro udalosti a stanky zamestnancu."""
 
 import pytest
 from uuid import uuid4

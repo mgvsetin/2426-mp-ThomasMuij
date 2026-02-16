@@ -1,7 +1,7 @@
 """Modul pro autentizaci zaměstnanců.
 
-Obsahuje blueprint /auth s routami pro login, logout a pomocné funkce pro nahrání
-přihlášeného zaměstnance.
+Obsahuje blueprinty pro přihlášení a odhlášení zaměstnanců a pomocné funkce
+pro ověření přihlašovacích údajů a načtení přihlášeného zaměstnance ze session.
 """
 
 from uuid import UUID
@@ -17,6 +17,7 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @bp.route('/login')
 def get_login_page():
+    """Vrátí HTML stránku pro přihlášení."""
     return render_template('login/login.html')
 
 
@@ -25,6 +26,10 @@ api_bp = Blueprint('auth_api', __name__, url_prefix='/api/auth')
 
 
 def get_employee_id(username_or_email: str) -> str | UUID | None:
+    """Vyhledá zaměstnance podle uživatelského jména nebo e-mailu a vrátí jeho ID.
+
+    Vrátí UUID zaměstnance, pokud existuje a nebyl smazán, jinak vrátí None.
+    """
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             employee = cur.execute(
@@ -42,6 +47,11 @@ def get_employee_id(username_or_email: str) -> str | UUID | None:
 
 
 def employee_password_is_correct(employee_id: str, password: str):
+    """Ověří, zda zadané heslo odpovídá heslu zaměstnance.
+
+    Pokud je hash hesla zastaralý, provede rehashování a uloží nový hash do databáze.
+    Vrátí True při správném hesle, jinak False.
+    """
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             employee = cur.execute(
@@ -79,6 +89,11 @@ def employee_password_is_correct(employee_id: str, password: str):
 @api_bp.route('/login', methods=('POST',))
 @limiter.limit("10 per 15 minutes")
 def login():
+    """Zpracuje POST požadavek pro přihlášení zaměstnance.
+
+    Ověří přihlašovací údaje, vytvoří novou session a vrátí URL pro přesměrování.
+    Při neúspěchu vrátí chybu 401.
+    """
     # if request.method == 'POST':
     username_or_email = request.form.get('username-email', '').strip()
     password = request.form.get('password', '')
@@ -88,7 +103,7 @@ def login():
 
     if employee_id and employee_password_is_correct(employee_id, password):
         session.clear()
-        # request that the session cookie be replaced with a new sid when saved
+        # požadavek na nahrazení session cookie novým SID při uložení
         session['_regenerate'] = True
         session['employee_id'] = str(employee_id)
 
@@ -104,10 +119,10 @@ def login():
 
 
 def load_logged_in_employee() -> dict | None:
-    """Načte aktuálně přihlášeného zaměstnance z session a ulož do `g`.
+    """Načte přihlášeného zaměstnance ze session a uloží ho do kontextu požadavku `g`.
 
-
-    Vrátí slovník s informacemi o zaměstnanci nebo None pokud není přihlášen.
+    Pokud v session není žádné employee_id, nastaví g.employee na None.
+    Vrátí slovník s údaji o zaměstnanci nebo None, pokud není přihlášen.
     """
     employee_id = session.get('employee_id')
 
@@ -129,8 +144,7 @@ def load_logged_in_employee() -> dict | None:
 
 @api_bp.route('/logout')
 def logout():
-    """Odhlásí aktuálního uživatele clearnutím session a přesměrová na login.
-    """
+    """Odhlásí aktuálního zaměstnance vymazáním session a přesměruje na přihlašovací stránku."""
     session.clear()
     return redirect(url_for('auth.get_login_page'))
 

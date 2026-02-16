@@ -1,3 +1,5 @@
+"""Modul pro správu událostí (eventů) - CRUD operace, statistiky, historie transakcí a kaskádové mazání/obnovení."""
+
 from datetime import timezone
 from dateutil import parser
 from flask import Blueprint, current_app, jsonify, url_for, request, render_template
@@ -20,21 +22,25 @@ bp = Blueprint('events', __name__, url_prefix='/events')
 
 @bp.route('/manager')
 def get_events_manager_page():
+    """Vrátí stránku správce událostí se seznamem všech událostí."""
     return render_template('event_managers/events_manager.html')
 
 
 @bp.route('/<uuid:event_id>/manager')
 def get_event_manager_page(event_id):
+    """Vrátí stránku správy konkrétní události podle jejího ID."""
     return render_template('event_managers/event_manager.html')
 
 
 @bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
 def get_user_transaction_history_page(event_id, user_id):
+    """Vrátí stránku s historií transakcí konkrétního uživatele pro danou událost."""
     return render_template('index/user_transaction_history.html')
 
 
 @bp.route('/<uuid:event_id>/transaction-history')
 def get_event_transaction_history_page(event_id):
+    """Vrátí stránku s historií všech transakcí pro danou událost."""
     return render_template('event_managers/event_transaction_history.html')
 
 

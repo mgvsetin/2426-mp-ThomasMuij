@@ -1,3 +1,5 @@
+"""Pomocné funkce pro validaci a správu údajů zaměstnanců a uživatelů."""
+
 from cashier_app.db import get_pool
 import re
 import unicodedata
@@ -9,6 +11,15 @@ from phonenumbers.phonenumberutil import NumberParseException
 from phonenumbers import PhoneNumberFormat, national_significant_number
 
 def is_manager(employee_id, event_id):
+    """Zjistí, zda je zaměstnanec manažerem dané akce.
+
+    Args:
+        employee_id: ID zaměstnance.
+        event_id: ID akce.
+
+    Returns:
+        True, pokud je zaměstnanec manažerem akce, jinak False.
+    """
     is_manager = False
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -19,7 +30,7 @@ def is_manager(employee_id, event_id):
                 AND event_id = %s
                 AND booth_id IS NULL''',
                 (employee_id, event_id)).fetchone())
-            
+
     return is_manager
 
 
@@ -32,20 +43,20 @@ def validate_username(
     forbidden_substrings: List[str] | None = None
     ) -> Tuple[bool, List[str]]:
     """
-    Validate a username.
+    Validuje uživatelské jméno.
 
-    Rules (defaults):
-      - length between min_len and max_len
-      - starts and ends with an alphanumeric character
-      - middle characters may include letters, digits, and characters in allow_chars
-      - no consecutive punctuation from allow_chars (e.g., ".." or "._")
-      - optionally forbid usernames that are entirely numeric
-      - optionally forbid certain substrings (case-insensitive)
+    Pravidla (výchozí):
+      - délka mezi min_len a max_len
+      - začíná a končí alfanumerickým znakem
+      - prostřední znaky mohou obsahovat písmena, číslice a znaky z allow_chars
+      - žádné po sobě jdoucí speciální znaky z allow_chars (např. ".." nebo "._")
+      - volitelně zakázat uživatelská jména, která jsou celá číselná
+      - volitelně zakázat určité podřetězce (bez ohledu na velikost písmen)
 
     Returns:
       (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může jich být vráceno více):
     - "username must be a string"
     - "username must be at least {min_len} characters"
     - "username must be at most {max_len} characters"
@@ -101,15 +112,15 @@ def validate_username(
 
 def validate_email(email: str) -> Tuple[bool, List[str]]:
     """
-    Validate an email address.
+    Validuje e-mailovou adresu.
 
     Returns:
       (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může jich být vráceno více):
     - "email must be a string"
     - "email is empty"
-    - error messages raised by email_validator.EmailNotValidError
+    - chybové zprávy vyvolané email_validator.EmailNotValidError
     """
     errors: List[str] = []
     if not isinstance(email, str):
@@ -140,19 +151,19 @@ def validate_new_password(
     email: str | None = None,
 ) -> Tuple[bool, List[str]]:
     """
-    Validate a password with configurable rules.
+    Validuje heslo s nastavitelnými pravidly.
 
-    Default rules:
-      - at least min_len characters
-      - contains uppercase, lowercase, digit, and a special character (one of string.punctuation)
-      - no spaces (optional)
-      - not a forbidden (common) password
-      - not containing the username or the local part of the email (if provided)
+    Výchozí pravidla:
+      - alespoň min_len znaků
+      - obsahuje velké písmeno, malé písmeno, číslici a speciální znak (jeden z string.punctuation)
+      - žádné mezery (volitelné)
+      - není zakázané (běžné) heslo
+      - neobsahuje uživatelské jméno ani lokální část e-mailu (pokud jsou zadány)
 
     Returns:
       (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může jich být vráceno více):
     - "password must be a string"
     - "password is empty"
     - "password must be at least {min_len} characters long"
@@ -218,20 +229,20 @@ def validate_first_or_last_name(
     forbidden_substrings: List[str] | None = None
     ) -> Tuple[bool, List[str]]:
     """
-    Validate a first or last name.
+    Validuje křestní jméno nebo příjmení.
 
-    Isn't very strict about it (allows numbers,...)
+    Není příliš přísná (povoluje číslice,...).
 
-    Rules (defaults):
-      - length between min_len and max_len
-      - characters may include letters, digits, and characters in allow_chars
-      - optionally forbid names that are entirely numeric
-      - optionally forbid certain substrings (case-insensitive)
+    Pravidla (výchozí):
+      - délka mezi min_len a max_len
+      - znaky mohou obsahovat písmena, číslice a znaky z allow_chars
+      - volitelně zakázat jména, která jsou celá číselná
+      - volitelně zakázat určité podřetězce (bez ohledu na velikost písmen)
 
     Returns:
       (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může jich být vráceno více):
     - "name must be a string"
     - "name must be at least {min_len} characters"
     - "name must be at most {max_len} characters"
@@ -252,12 +263,12 @@ def validate_first_or_last_name(
     if len(name) > max_len:
         errors.append(f"name must be at most {max_len} characters")
 
-    # Build allowed character class (letters, digits, Latin-1 + Latin-Extended-A)
+    # Sestav třídu povolených znaků (písmena, číslice, Latin-1 + Latin-Extended-A)
     esc = re.escape(allow_chars)
     char_class = r"A-Za-z0-9\u00C0-\u017F"
 
-    # Validate that every character is allowed. Length is already checked above,
-    # so skip this check for the empty string (will be caught by length).
+    # Ověř, že každý znak je povolený. Délka je již zkontrolována výše,
+    # takže u prázdného řetězce tuto kontrolu přeskoč (zachytí ji kontrola délky).
     if name:
         allowed_pattern = f"^[{char_class}{esc}]+$"
         if not re.match(allowed_pattern, name):
@@ -277,19 +288,19 @@ def validate_first_or_last_name(
 
 def validate_phone_number(phone_number: str) -> bool:
     """
-    Validate a phone number with a country code.
+    Validuje telefonní číslo s kódem země.
 
     Returns:
       is_valid
-    """    
+    """
     try:
         phone_number_instance = phonenumbers.parse(str(phone_number))
     except NumberParseException as e:
         return False
-    
+
     if not phonenumbers.is_possible_number(phone_number_instance):
         return False
-    
+
     if not phonenumbers.is_valid_number(phone_number_instance):
         return False
 
@@ -298,15 +309,15 @@ def validate_phone_number(phone_number: str) -> bool:
 
 def format_valid_phone_number(phone_number: str) -> dict[str]:
     """
-    Format a valid phone number with a country code.
+    Naformátuje platné telefonní číslo s kódem země.
 
     Returns:
       {
-        'e164': e164 format,
-        'international': international format,
-        'national': national format,
-        'national_significant_number': phone number without the country code,
-        'country_code': +the phone_number's country code
+        'e164': formát E.164,
+        'international': mezinárodní formát,
+        'national': národní formát,
+        'national_significant_number': telefonní číslo bez kódu země,
+        'country_code': +kód země telefonního čísla
       }
     """
     phone_number_instance = phonenumbers.parse(str(phone_number))
@@ -327,6 +338,14 @@ def format_valid_phone_number(phone_number: str) -> dict[str]:
 
 
 def add_more_phone_number_info(users):
+    """Doplní ke každému uživateli v seznamu rozšířené informace o telefonním čísle.
+
+    Pro každého uživatele přidá formáty: e164, mezinárodní, národní,
+    národní významné číslo a kód země.
+
+    Args:
+        users: Seznam slovníků uživatelů s klíčem 'phone_number'.
+    """
     for user in users:
         phone_number_formats = {
             'e164': None,
@@ -352,16 +371,16 @@ def validate_other_identifier(
     forbidden_substrings: List[str] | None = None
     ) -> Tuple[bool, List[str]]:
     """
-    Validate other_identifier.
+    Validuje other_identifier (jiný identifikátor).
 
-    Rules (defaults):
-      - length between min_len and max_len
-      - optionally forbid certain substrings (case-insensitive)
+    Pravidla (výchozí):
+      - délka mezi min_len a max_len
+      - volitelně zakázat určité podřetězce (bez ohledu na velikost písmen)
 
     Returns:
       (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může jich být vráceno více):
     - "other_identifier must be at least {min_len} characters"
     - "other_identifier must be at most {max_len} characters"
     - "other_identifier must not contain the reserved word: {substring}"

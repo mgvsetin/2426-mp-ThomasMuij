@@ -1,10 +1,14 @@
+/**
+ * @file Pomocné funkce pro práci s API (zpracování odpovědí, přesměrování).
+ */
+
 import { UnauthorizedRedirectError } from "./errors.js";
 
 /**
- * Checks if response is a 401 and handles redirect if so.
- * Call this BEFORE calling response.json() for your data.
- * If 401: reads json, redirects, and throws UnauthorizedRedirectError.
- * If not 401: does nothing, allowing you to call response.json() after.
+ * Zkontroluje, zda je odpověď 401, a případně provede přesměrování.
+ * Volejte PŘED voláním response.json() pro vaše data.
+ * Pokud 401: přečte JSON, přesměruje a vyhodí UnauthorizedRedirectError.
+ * Pokud ne 401: nic neprovede, takže můžete poté zavolat response.json().
  */
 export async function handleUnauthorizedRedirect(response) {
   if (response.status === 401) {

@@ -1,3 +1,6 @@
+/**
+ * @file Nastavení – správa profilu zaměstnance (heslo) a konfigurace čteček karet.
+ */
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { requestPortFromUser, setUpCardReading } from "../general/card_reader.js";
 import { UnexpectedError } from "../general/errors.js";
@@ -26,6 +29,15 @@ loadPage({
 });
 
 
+/**
+ * Načte různé části stránky podle zadaných parametrů.
+ * @param {Object} param0 - Objekt s volbami, co načíst.
+ * @param {boolean} [param0.header=false] - Zda načíst hlavičku.
+ * @param {boolean} [param0.sidebar=false] - Zda načíst postranní panel.
+ * @param {boolean} [param0.profile=false] - Zda načíst profil uživatele.
+ * @param {boolean} [param0.readers=false] - Zda načíst čtečky karet.
+ * @returns {Promise<void>} - Vrací promise po načtení všech částí.
+ */
 async function loadPage({
   header = false,
   sidebar = false,
@@ -212,6 +224,10 @@ if ('serial' in navigator) {
 
 // -- Profil --
 
+/**
+ * Načte profil aktuálního uživatele a zobrazí jej na stránce.
+ * @returns {Promise<void>} - Vrací promise po načtení profilu.
+ */
 async function loadProfile() {
   try {
     const response = await fetch('/api/settings/profile');
@@ -232,6 +248,10 @@ async function loadProfile() {
 }
 
 
+/**
+ * Vrací SVG kód pro ikonu oka pro zobrazení/skrývání hesla.
+ * @returns {string} - SVG kód jako string.
+ */
 function passwordEyeSVG() {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
@@ -327,6 +347,10 @@ function passwordEyeSVG() {
 // }
 
 
+/**
+ * Otevře modal pro změnu hesla uživatele.
+ * @returns {void}
+ */
 function openChangePasswordModal() {
   const html = `
     <header>
@@ -375,6 +399,11 @@ function openChangePasswordModal() {
 
 // -- API --
 
+/**
+ * Odesílá změny profilu na server (např. změna hesla).
+ * @param {FormData} formData - Data formuláře k odeslání.
+ * @returns {Promise<true|Object>} - Vrací true při úspěchu, jinak objekt s chybou.
+ */
 async function updateProfile(formData) {
   try {
     const response = await fetch('/api/settings/update-profile', {
@@ -400,6 +429,10 @@ async function updateProfile(formData) {
 
 // -- Čtečky --
 
+/**
+ * Vykreslí seznam připojených čteček karet na stránce.
+ * @returns {Promise<void>} - Vrací promise po vykreslení čteček.
+ */
 async function renderReaders() {
   if (!('serial' in navigator)) {
     readersNotSupported.style.display = 'block';
@@ -463,6 +496,10 @@ async function renderReaders() {
 }
 
 
+/**
+ * Přidá novou čtečku karet po výběru uživatelem.
+ * @returns {Promise<void>} - Vrací promise po přidání čtečky.
+ */
 async function addReader() {
   if (!('serial' in navigator)) return;
 
@@ -475,6 +512,11 @@ async function addReader() {
 }
 
 
+/**
+ * Zapomene (odebere) čtečku karet podle indexu.
+ * @param {number} index - Index čtečky v seznamu.
+ * @returns {Promise<void>} - Vrací promise po odebrání čtečky.
+ */
 async function forgetReader(index) {
   if (!('serial' in navigator)) return;
 
@@ -490,6 +532,11 @@ async function forgetReader(index) {
 }
 
 
+/**
+ * Otestuje čtečku karet na zadaném indexu a zobrazí výsledek.
+ * @param {number} index - Index čtečky v seznamu.
+ * @returns {void}
+ */
 function testReader(index) {
   readerTestResult.style.display = 'flex';
   readerTestValue.textContent = 'Čekám na kartu...';
@@ -626,6 +673,11 @@ function testReader(index) {
 // }
 
 
+/**
+ * Zobrazí chybové hlášky v modalu pro změnu hesla podle typu chyby.
+ * @param {string} error - Kód nebo popis chyby.
+ * @returns {void}
+ */
 function showPasswordModalErrors(error) {
   const currentPwError = document.querySelector('#modal-current-password-error');
   const newPwError = document.querySelector('#modal-new-password-error');

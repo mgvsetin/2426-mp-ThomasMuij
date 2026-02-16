@@ -1,9 +1,4 @@
-"""
-Shared pytest fixtures for cashier_app tests.
-
-Provides a Flask app, test client, and helpers for simulating
-authenticated sessions without needing a real PostgreSQL database.
-"""
+"""Konfigurace testů a sdílené fixtures pro cashier_app."""
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -13,12 +8,12 @@ from cashier_app import create_app
 
 
 # ---------------------------------------------------------------------------
-# Flask application & client
+# Flask aplikace a testovací klient
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
 def app():
-    """Create a Flask application configured for testing."""
+    """Vytvoří Flask aplikaci nakonfigurovanou pro testování."""
     test_config = {
         'TESTING': True,
         'SECRET_KEY': 'test-secret-key',
@@ -55,12 +50,12 @@ def app():
         'SCHEDULER_ENABLED': False,
     }
 
-    # Patch out the database pool and scheduler so we never touch a real DB
+    # Nahrazení databázového poolu a plánovače, abychom se nepřipojovali ke skutečné DB
     with patch('cashier_app.db.init_app'), \
          patch('cashier_app.scheduler.init_scheduler'):
         application = create_app(test_config)
 
-    # Use the default in-memory session interface for tests
+    # Použití výchozího in-memory rozhraní pro relace v testech
     from flask.sessions import SecureCookieSessionInterface
     application.session_interface = SecureCookieSessionInterface()
 
@@ -69,25 +64,25 @@ def app():
 
 @pytest.fixture()
 def client(app):
-    """Flask test client."""
+    """Testovací klient Flask."""
     return app.test_client()
 
 
 @pytest.fixture()
 def app_context(app):
-    """Push an application context for tests that need it."""
+    """Aktivuje aplikační kontext pro testy, které ho vyžadují."""
     with app.app_context():
         yield app
 
 
 # ---------------------------------------------------------------------------
-# Mock database pool
+# Mock databázového poolu
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
 def mock_pool():
-    """Return a mock ConnectionPool whose .connection() context manager
-    yields a mock connection with a mock cursor."""
+    """Vrátí mock ConnectionPool, jehož .connection() kontextový manažer
+    poskytne mock připojení s mock kurzorem."""
     pool = MagicMock()
     conn = MagicMock()
     cur = MagicMock()
@@ -102,7 +97,7 @@ def mock_pool():
 
 
 # ---------------------------------------------------------------------------
-# Authenticated session helpers
+# Pomocné funkce pro autentizovanou relaci
 # ---------------------------------------------------------------------------
 
 ADMIN_EMPLOYEE = {
@@ -142,7 +137,7 @@ SAMPLE_BOOTH_CASHIER = {
 
 
 def set_session(client, employee=None, event=None, booth=None):
-    """Helper to set session values on the test client."""
+    """Pomocná funkce pro nastavení hodnot relace na testovacím klientovi."""
     with client.session_transaction() as sess:
         if employee:
             sess['employee_id'] = employee['id']

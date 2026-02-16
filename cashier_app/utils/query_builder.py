@@ -1,4 +1,4 @@
-
+"""Pomocné funkce pro sestavování parametrizovaných SQL dotazů (INSERT, UPDATE, DELETE)."""
 
 from uuid import UUID
 from psycopg import sql

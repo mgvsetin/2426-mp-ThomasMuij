@@ -1,3 +1,6 @@
+/**
+ * @file Hlavní skript indexové stránky – načítání stránek, obsluha událostí, platby, refundace a správa uživatelů.
+ */
 import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent, unselectBooth } from "./event_booth.js";
 import { renderProducts, renderCategories, saveSelectedCategory, findProduct, fetchProductsAndCategories } from "./products.js";
 import { order } from "./order.js";
@@ -30,6 +33,18 @@ const userIdInput = document.querySelector('#user-id-input');
 chooseAndLoadPage();
 
 
+/**
+ * Načte a vykreslí požadované části stránky podle zadaných parametrů.
+ * @param {Object} options - Nastavení, které části stránky načíst
+ * @param {boolean} [options.products] - Načíst produkty
+ * @param {boolean} [options.summary] - Načíst souhrn
+ * @param {boolean} [options.categories] - Načíst kategorie
+ * @param {boolean} [options.cardInfo] - Načíst informace o kartě
+ * @param {boolean} [options.users] - Načíst uživatele
+ * @param {boolean} [options.sidebar] - Načíst postranní panel
+ * @param {boolean} [options.header] - Načíst hlavičku
+ * @returns {Promise<void>}
+ */
 async function loadPage({
   products = false,
   summary = false,
@@ -74,6 +89,10 @@ async function loadPage({
 }
 
 
+/**
+ * Rozhodne, kterou stránku a komponenty načíst podle informací o relaci.
+ * @returns {Promise<void>}
+ */
 async function chooseAndLoadPage() {
   const sessionInfo = await getSessionInfo().catch(() => { });
 
@@ -891,9 +910,9 @@ document.addEventListener('submit', async (event) => {
       unselectUserForUpdate(); // volá i removeReadCard()
       // removeReadCard();
 
-      // figure out what happens if user gets created but there is a problem with wallet
+      // zjistit co se stane, když se uživatel vytvoří, ale nastane problém s peněženkou
 
-      // make sure stuff like user deletion deletes the wallets too
+      // zajistit, aby smazání uživatele smazalo i peněženky
     }
     saveButton.disabled = false;
     return;
@@ -1046,6 +1065,10 @@ if ('serial' in navigator) {
 }
 
 
+/**
+ * Otevře modální okno pro vrácení poslední platby a načte informace o poslední refundovatelné transakci.
+ * @returns {Promise<void>}
+ */
 async function openRefundModal() {
   setUpCardReading(handleCardRead, true);
   clearPayError();
@@ -1123,12 +1146,19 @@ async function openRefundModal() {
 
 
 
+/**
+ * Vymaže chybovou hlášku platby a skryje ji.
+ */
 function clearPayError() {
   payError.innerHTML = '';
   payError.classList.remove('show-pay-error');
 }
 
 
+/**
+ * Zobrazí chybovou hlášku platby podle typu chyby.
+ * @param {string} error - Kód nebo popis chyby
+ */
 function showPayError(error) {
   const setErr = (text) => {
     payError.innerHTML = escapeHTML(String(text));
@@ -1197,10 +1227,13 @@ function showPayError(error) {
     return;
   }
 
-  setErr(errorStr); // make sure to remove these and put some general type error message
+  setErr(errorStr); // nezapomenout toto odstranit a nahradit obecnou chybovou hláškou
 }
 
 
+/**
+ * Zobrazí modální okno s informací o úspěšné platbě.
+ */
 function showPaySuccess() {
   const existing = document.querySelector('.overlay');
   if (existing) existing.remove();
@@ -1208,7 +1241,7 @@ function showPaySuccess() {
   const overlay = document.createElement('div')
   overlay.className = 'overlay';
 
-  // add cross close button
+  // přidat tlačítko s křížkem pro zavření
   overlay.innerHTML = `
     <div id="successful-payment-modal">
       <img id="successful-payment-icon" src="/static/images/icons/checkmark_icon.png">
@@ -1224,6 +1257,10 @@ function showPaySuccess() {
 }
 
 
+/**
+ * Zobrazí chybovou hlášku při vracení platby podle typu chyby.
+ * @param {string} error - Kód nebo popis chyby
+ */
 function showRefundError(error) {
   const refundError = document.querySelector('#refund-general-error');
   const setErr = (text) => {
@@ -1293,10 +1330,13 @@ function showRefundError(error) {
     return;
   }
 
-  setErr(errorStr); // make sure to remove these and put some general type error message
+  setErr(errorStr); // nezapomenout toto odstranit a nahradit obecnou chybovou hláškou
 }
 
 
+/**
+ * Zobrazí modální okno s informací o úspěšném vrácení platby.
+ */
 function showRefundSuccess() {
   const existing = document.querySelector('.overlay');
   if (existing) existing.remove();

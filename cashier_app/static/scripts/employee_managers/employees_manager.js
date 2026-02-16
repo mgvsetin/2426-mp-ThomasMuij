@@ -1,3 +1,6 @@
+/**
+ * @file Správa zaměstnanců – přidávání, úprava, mazání a zobrazení zaměstnanců v tabulce.
+ */
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
 import { fetchEmployees, resetEmployeesCache } from "../general/employees.js";
@@ -20,6 +23,14 @@ loadPage({
 });
 
 
+/**
+ * Načte a vykreslí části stránky podle zadaných parametrů.
+ * @param {Object} param0 - Objekt s volbami načtení.
+ * @param {boolean} [param0.table=false] - Zda načíst tabulku zaměstnanců.
+ * @param {boolean} [param0.sidebar=false] - Zda načíst postranní panel.
+ * @param {boolean} [param0.header=false] - Zda načíst hlavičku.
+ * @returns {Promise<void>} - Vrací promise po dokončení načítání.
+ */
 async function loadPage({
   table = false,
   sidebar = false,
@@ -172,12 +183,12 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  // do prevent default on the a element and add the attribute
-  // then scroll to the row
-  // the row with the attribute will be in data of the body
-  // make sure to alway remove the selected attribute
-  // maybe add something like enter opens edit for selected attr
-  // maybe add arrows moving the selected attr
+  // zabránit výchozí akci na elementu a a přidat atribut
+  // poté posunout na řádek
+  // řádek s atributem bude v datech body
+  // vždy nezapomenout odebrat atribut selected
+  // možná přidat otevření úprav klávesou Enter pro vybraný řádek
+  // možná přidat pohyb šipkami pro vybraný řádek
   // ??
 
   if (event.target.matches('.search-bar') || document.querySelector('.modal')) {
@@ -357,6 +368,10 @@ document.addEventListener('keydown', (event) => {
 });
 
 
+/**
+ * Přepíná řazení tabulky podle zadaného klíče.
+ * @param {string} key - Klíč pro řazení.
+ */
 function toggleOrder(key) {
   if (orderBy.key !== key) {
     orderBy.key = key;
@@ -370,6 +385,12 @@ function toggleOrder(key) {
 }
 
 
+/**
+ * Zjišťuje, zda zaměstnanec odpovídá vyhledávacímu dotazu.
+ * @param {Object} employee - Objekt zaměstnance.
+ * @param {string} searchQuery - Hledaný dotaz.
+ * @returns {boolean} - True pokud odpovídá.
+ */
 function isSearchedFor(employee, searchQuery) {
   if (!searchQuery) {
     return true;
@@ -454,6 +475,10 @@ function isSearchedFor(employee, searchQuery) {
 }
 
 
+/**
+ * Vykreslí řádky tabulky zaměstnanců podle aktuálních dat a filtru.
+ * @returns {Promise<void>} - Vrací promise po vykreslení tabulky.
+ */
 async function renderTableRows() {
   const employees = await fetchEmployees().catch((er) => {
     employeeTableBody.innerHTML = `
@@ -544,6 +569,9 @@ async function renderTableRows() {
 }
 
 
+/**
+ * Otevře modální okno pro přidání nového zaměstnance.
+ */
 function openAddEmployeeModal() {
   const html = `
     <header>
@@ -624,6 +652,11 @@ function openAddEmployeeModal() {
 }
 
 
+/**
+ * Otevře modální okno pro úpravu zaměstnance.
+ * @param {string} employeeId - ID zaměstnance k úpravě.
+ * @returns {Promise<void>} - Vrací promise po otevření modalu.
+ */
 async function openEditModal(employeeId) {
   if (!employeeId) return;
   const employees = await fetchEmployees();
@@ -716,6 +749,11 @@ async function openEditModal(employeeId) {
 }
 
 
+/**
+ * Otevře modální okno pro smazání zaměstnance.
+ * @param {string} employeeId - ID zaměstnance ke smazání.
+ * @returns {Promise<void>} - Vrací promise po otevření modalu.
+ */
 async function openDeleteModal(employeeId) {
   if (!employeeId) return;
   const employees = await fetchEmployees();
@@ -767,6 +805,10 @@ async function openDeleteModal(employeeId) {
 }
 
 
+/**
+ * Zobrazí chybové hlášky při přidávání zaměstnance.
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ */
 function showAddErrors(error) {
   const usernameError = document.querySelector('#add-employee-username-error');
   const emailError = document.querySelector('#add-employee-email-error');
@@ -906,6 +948,10 @@ function showAddErrors(error) {
 }
 
 
+/**
+ * Zobrazí chybové hlášky při úpravě zaměstnance.
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ */
 function showEditErrors(error) {
   const usernameError = document.querySelector('#edit-employee-username-error');
   const emailError = document.querySelector('#edit-employee-email-error');
@@ -1052,6 +1098,10 @@ function showEditErrors(error) {
 }
 
 
+/**
+ * Zobrazí chybové hlášky při mazání zaměstnance.
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ */
 function showDeleteErrors(error) {
   const generalError = document.querySelector('#delete-employee-general-error');
 
@@ -1097,6 +1147,11 @@ function showDeleteErrors(error) {
 }
 
 
+/**
+ * Přidá nového zaměstnance pomocí API.
+ * @param {FormData} formData - Data z formuláře.
+ * @returns {Promise<Object|boolean>} - True při úspěchu, jinak objekt s chybou.
+ */
 async function addEmployee(formData) {
   try {
     const response = await fetch('/api/employees/create', {
@@ -1120,6 +1175,11 @@ async function addEmployee(formData) {
 }
 
 
+/**
+ * Upraví zaměstnance pomocí API.
+ * @param {FormData} formData - Data z formuláře.
+ * @returns {Promise<Object|boolean>} - True při úspěchu, jinak objekt s chybou.
+ */
 async function editEmployee(formData) {
   try {
     const response = await fetch('/api/employees/edit', {
@@ -1143,6 +1203,11 @@ async function editEmployee(formData) {
 }
 
 
+/**
+ * Smaže zaměstnance pomocí API.
+ * @param {FormData} formData - Data z formuláře.
+ * @returns {Promise<Object|boolean>} - True při úspěchu, jinak objekt s chybou.
+ */
 async function deleteEmployee(formData) {
   try {
     const response = await fetch('/api/employees/delete', {

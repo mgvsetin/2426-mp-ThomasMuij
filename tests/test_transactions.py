@@ -1,4 +1,4 @@
-"""Tests for cashier_app.transactions route handlers."""
+"""Testy obsluznych funkci tras modulu cashier_app.transactions."""
 
 import pytest
 import json
@@ -11,7 +11,7 @@ from tests.conftest import (
 
 
 def _mock_auth(employee):
-    """Return a patch for load_logged_in_employee."""
+    """Vrati patch pro load_logged_in_employee."""
     return patch('cashier_app.transactions.load_logged_in_employee', return_value=employee)
 
 
@@ -128,7 +128,7 @@ class TestMakePayment:
         with _mock_auth(ADMIN_EMPLOYEE), _mock_event(SAMPLE_EVENT), _mock_booth(SAMPLE_BOOTH_SELLER):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': 'CARD123',
-                'amount-czk': '-50',  # should be -100
+                'amount-czk': '-50',  # melo by byt -100
                 'idempotency-key': str(uuid4()),
                 'products-info': json.dumps(products),
             })

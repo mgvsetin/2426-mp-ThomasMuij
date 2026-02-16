@@ -1,3 +1,6 @@
+/**
+ * @file Vstup telefonního čísla s výběrem mezinárodní předvolby.
+ */
 const countryCodes = [
   { code: '', country: 'Žádné', nativeName: 'Žádné předčíslí', flag: '' },
   { code: '+1', country: 'USA / Canada', nativeName: 'USA / Canada', flag: '🇺🇸' },
@@ -208,7 +211,7 @@ const countryCodes = [
 ];
 
 
-// LocalStorage
+// Lokální úložiště
 const recentCodesKey = 'recentCountryCodes';
 const maxRecent = 5;
 
@@ -217,6 +220,12 @@ initValues();
 renderDropdown();
 
 
+/**
+ * Zpracuje kliknutí na možnost předvolby země v dropdownu.
+ * @function
+ * @param {Event} event - Událost kliknutí.
+ * @returns {boolean} True, pokud bylo kliknutí zpracováno.
+ */
 export function phoneInputClickListeners(event) {
   const countryCodeOption = event.target.closest('.country-code-option');
   if (countryCodeOption) {
@@ -238,6 +247,12 @@ export function phoneInputClickListeners(event) {
 }
 
 
+/**
+ * Zpracuje vstup do pole pro předvolbu země (input).
+ * @function
+ * @param {Event} event - Událost vstupu.
+ * @returns {boolean} True, pokud byl vstup zpracován.
+ */
 export function phoneInputInputisteners(event) {
   if (event.target.matches('#country-code-input')) {
     const countryCodeInput = event.target;
@@ -252,6 +267,12 @@ export function phoneInputInputisteners(event) {
 
 // focusout listener (dropdown.classList.remove('active')) tu není schválně (nešlo by kliknout na dropdown)
 
+/**
+ * Zpracuje focusin na kontejner předvolby země, aktivuje dropdown.
+ * @function
+ * @param {Event} event - Událost focusin.
+ * @returns {boolean} True, pokud byl focusin zpracován.
+ */
 export function phoneInputFocusinisteners(event) {
   const countryCodeContainer = event.target.closest('.country-code-container');
   if (countryCodeContainer) {
@@ -263,6 +284,12 @@ export function phoneInputFocusinisteners(event) {
 }
 
 
+/**
+ * Zpracuje stisk klávesy v kontejneru předvolby země (šipky, enter, escape).
+ * @function
+ * @param {KeyboardEvent} event - Událost stisku klávesy.
+ * @returns {boolean} True, pokud byla klávesa zpracována.
+ */
 export function phoneInputKeydownListeners(event) {
   const countryCodeContainer = event.target.closest('.country-code-container');
   if (countryCodeContainer) {
@@ -342,6 +369,10 @@ document.addEventListener('click', (event) => {
 
 
 
+/**
+ * Inicializuje hodnoty při načtení (nastaví poslední použitou předvolbu).
+ * @function
+ */
 export function initValues() {
   const recent = getRecentCodes();
   if (recent.length > 0) {
@@ -350,6 +381,11 @@ export function initValues() {
 }
 
 
+/**
+ * Změní aktuálně vybranou předvolbu země.
+ * @function
+ * @param {string} code - Nová předvolba (např. '+420').
+ */
 export function changeSelectedCode(code) {
   const countryCodeInput = document.querySelector('#country-code-input');
   if (countryCodeInput) {
@@ -359,12 +395,22 @@ export function changeSelectedCode(code) {
 }
 
 
+/**
+ * Získá pole naposledy použitých předvoleb ze storage.
+ * @function
+ * @returns {string[]} Pole předvoleb.
+ */
 function getRecentCodes() {
   const stored = localStorage.getItem(recentCodesKey);
   return stored ? JSON.parse(stored) : [];
 }
 
 
+/**
+ * Uloží předvolbu do seznamu naposledy použitých.
+ * @function
+ * @param {string} code - Předvolba k uložení.
+ */
 function saveRecentCode(code) {
   let recent = getRecentCodes();
   recent = recent.filter(c => c !== code);
@@ -374,6 +420,10 @@ function saveRecentCode(code) {
 }
 
 
+/**
+ * Vykreslí dropdown s předvolbami zemí podle aktuálního vstupu a historie.
+ * @function
+ */
 export function renderDropdown() {
   const countryCodeInput = document.querySelector('#country-code-input');
   if (!countryCodeInput) {

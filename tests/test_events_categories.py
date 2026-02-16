@@ -1,4 +1,4 @@
-"""Tests for cashier_app.events.categories module."""
+"""Testy pro modul cashier_app.events.categories (kategorie v rámci akcí)."""
 
 import pytest
 from uuid import uuid4

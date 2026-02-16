@@ -1,7 +1,7 @@
-"""Periodic background job scheduler.
+"""Plánovač periodických úloh na pozadí.
 
-Uses APScheduler BackgroundScheduler with a file lock to ensure only
-one process (across multiple Gunicorn workers) runs the scheduler.
+Používá APScheduler BackgroundScheduler se souborovým zámkem, aby zajistil,
+že plánovač spouští pouze jeden proces (napříč více Gunicorn workery).
 """
 
 import os
@@ -20,10 +20,11 @@ _lock: FileLock | None = None
 
 
 # ---------------------------------------------------------------------------
-# Job wrappers – each pushes Flask app context and catches exceptions
+# Obálky úloh – každá nastaví Flask app kontext a odchytí výjimky
 # ---------------------------------------------------------------------------
 
 def _job_delete_expired_sessions(app: Flask):
+    """Smaže prošlé session záznamy z databáze."""
     with app.app_context():
         from cashier_app.pg_session import delete_expired_sessions
         try:
@@ -34,6 +35,7 @@ def _job_delete_expired_sessions(app: Flask):
 
 
 def _job_delete_unused_images(app: Flask):
+    """Smaže nepoužívané obrázky z databáze."""
     with app.app_context():
         from cashier_app.utils.images import delete_unused_images
         try:
@@ -44,6 +46,7 @@ def _job_delete_unused_images(app: Flask):
 
 
 def _job_delete_disk_orphans(app: Flask):
+    """Smaže osiřelé soubory obrázků z disku, které nemají záznam v databázi."""
     with app.app_context():
         from cashier_app.utils.images import delete_disk_orphans
         try:
@@ -54,10 +57,11 @@ def _job_delete_disk_orphans(app: Flask):
 
 
 # ---------------------------------------------------------------------------
-# APScheduler error listener (defence-in-depth)
+# APScheduler listener chyb (obrana do hloubky)
 # ---------------------------------------------------------------------------
 
 def _on_job_error(event):
+    """Zaloguje výjimku, pokud naplánovaná úloha skončila chybou."""
     if event.exception:
         logger.error(
             "Scheduler job %s raised an exception",
@@ -67,11 +71,11 @@ def _on_job_error(event):
 
 
 # ---------------------------------------------------------------------------
-# Public entry point – called from create_app()
+# Veřejný vstupní bod – voláno z create_app()
 # ---------------------------------------------------------------------------
 
 def init_scheduler(app: Flask):
-    """Start the background scheduler if enabled and no other process holds the lock."""
+    """Spustí plánovač na pozadí, pokud je povolen a žádný jiný proces nedrží zámek."""
     global _scheduler, _lock
 
     if not app.config.get("SCHEDULER_ENABLED", True):
@@ -140,6 +144,7 @@ def init_scheduler(app: Flask):
     )
 
     def _shutdown():
+        """Ukončí plánovač a uvolní souborový zámek při ukončení procesu."""
         if _scheduler and _scheduler.running:
             _scheduler.shutdown(wait=False)
             logger.info("Scheduler shut down")

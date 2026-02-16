@@ -72,6 +72,10 @@ export const [fetchUsers, resetUsersCache] = cacheFunctionFactory(async () => {
 // }
 
 
+/**
+ * Nastaví řazení uživatelů podle zvoleného sloupce.
+ * @param {HTMLElement} headerEl - Element hlavičky tabulky, podle kterého se má řadit.
+ */
 export function setOrder(headerEl) {
   const id = headerEl.id || '';
 
@@ -95,6 +99,11 @@ export function setOrder(headerEl) {
 }
 
 
+/**
+ * Přepne směr řazení a nastaví vizuální indikátor v hlavičce tabulky.
+ * @param {string} key - Klíč podle kterého se řadí.
+ * @param {HTMLElement} headerEl - Element hlavičky tabulky.
+ */
 function toggleOrder(key, headerEl) {
   if (orderBy.key !== key) {
     orderBy.key = key;
@@ -117,6 +126,11 @@ function toggleOrder(key, headerEl) {
 }
 
 
+/**
+ * Zjistí, zda uživatel odpovídá aktuálnímu vyhledávání.
+ * @param {Object} user - Objekt uživatele.
+ * @returns {boolean} True pokud uživatel odpovídá hledání.
+ */
 function userIsSearchedFor(user) {
   const searchQuery = usersSearchBar.value.toLowerCase().trim();
 
@@ -224,6 +238,10 @@ function userIsSearchedFor(user) {
 }
 
 
+/**
+ * Vykreslí tabulku uživatelů podle aktuálního řazení a filtru.
+ * @returns {Promise<void>}
+ */
 export async function renderUsers() {
   const users = await fetchUsers().catch((error) => {
     usersTableBody.innerHTML = '<tr><td colspan="7">Nepovedlo se načíst uživatele.</td></tr>';
@@ -292,6 +310,11 @@ export async function renderUsers() {
 }
 
 
+/**
+ * Vybere uživatele pro úpravu a předvyplní formulář jeho daty.
+ * @param {string} userId - ID uživatele k úpravě.
+ * @returns {Promise<void>}
+ */
 export async function selectUserForUpdate(userId) {
   userId = userId.trim();
   const users = await fetchUsers().catch(() => { });
@@ -327,6 +350,10 @@ export async function selectUserForUpdate(userId) {
 }
 
 
+/**
+ * Zruší výběr uživatele pro úpravu a vymaže formulář.
+ * @returns {Promise<void>}
+ */
 export async function unselectUserForUpdate() {
   removeReadCard();
 
@@ -347,6 +374,11 @@ export async function unselectUserForUpdate() {
 }
 
 
+/**
+ * Zpracuje změny ve formuláři uživatele a aktualizuje stav tlačítek a chyb.
+ * @param {Event|null} inputEvent - Událost vstupu (volitelné).
+ * @returns {Promise<void>}
+ */
 export async function editUserFormOnChange(inputEvent = null) {
   const result = await Promise.all([
     fetchUsers().catch(() => { }),
@@ -461,6 +493,11 @@ export async function editUserFormOnChange(inputEvent = null) {
 
 
 
+/**
+ * Otevře modální okno pro potvrzení smazání uživatele.
+ * @param {string} userId - ID uživatele ke smazání.
+ * @returns {Promise<void>}
+ */
 export async function openDeleteUserModal(userId) {
   const users = await fetchUsers().catch(() => { });
   if (!users) return;
@@ -504,6 +541,11 @@ export async function openDeleteUserModal(userId) {
 }
 
 
+/**
+ * Otevře modální okno s dalšími možnostmi pro uživatele.
+ * @param {string} userId - ID uživatele.
+ * @returns {Promise<void>}
+ */
 export async function openMoreUserOptionsModal(userId) {
   userId = userId.trim();
   const users = await fetchUsers().catch(() => { });
@@ -537,6 +579,12 @@ export async function openMoreUserOptionsModal(userId) {
 }
 
 
+/**
+ * Otevře modální okno se seznamem karet uživatele.
+ * @param {string} userId - ID uživatele.
+ * @param {HTMLElement|null} modal - Volitelně existující modal pro přepsání.
+ * @returns {Promise<void>}
+ */
 export async function openUserCardsModal(userId, modal = null) {
   userId = userId.trim();
   const users = await fetchUsers().catch(() => { });
@@ -590,6 +638,11 @@ export async function openUserCardsModal(userId, modal = null) {
 }
 
 
+/**
+ * Otevře detailní modal pro konkrétní kartu uživatele.
+ * @param {HTMLElement} userWalletLi - Element <li> reprezentující kartu.
+ * @returns {Promise<void>}
+ */
 export async function openUserCardModal(userWalletLi) {
   const tagId = userWalletLi.getAttribute('tag-id').trim();
   const modal = userWalletLi.closest('.modal');
@@ -649,6 +702,11 @@ export async function openUserCardModal(userWalletLi) {
 }
 
 
+/**
+ * Zpracuje změny vstupů v modalu pro úpravu karty (peněženky).
+ * @param {Event} event - Událost vstupu.
+ * @returns {Promise<void>}
+ */
 export async function editWalletInputListeners(event) {
   const editWalletTagIdInput = document.querySelector('#edit-wallet-tag-id-input');
   if (editWalletTagIdInput) {
@@ -688,11 +746,19 @@ export async function editWalletInputListeners(event) {
 }
 
 
+/**
+ * Vymaže všechny chybové hlášky ve formuláři uživatele.
+ */
 export function clearFormErrors() {
   clearModalErrors();
 }
 
 
+/**
+ * Zobrazí chybové hlášky ve formuláři uživatele podle typu chyby.
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ * @param {string} [detail] - Detail chyby (volitelné).
+ */
 export function showUserFormErrors(error, detail) {
   const firstNameError = document.querySelector('#first-name-error');
   const lastNameError = document.querySelector('#last-name-error');
@@ -908,6 +974,10 @@ export function showUserFormErrors(error, detail) {
 }
 
 
+/**
+ * Zobrazí chybové hlášky v modalu pro smazání uživatele.
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ */
 export function showDeleteUserFormErrors(error) {
   const generalError = document.querySelector('#delete-user-general-error');
 
@@ -955,6 +1025,10 @@ export function showDeleteUserFormErrors(error) {
 }
 
 
+/**
+ * Zobrazí chybové hlášky v modalu pro úpravu karty (peněženky).
+ * @param {string} error - Chybová zpráva nebo kód chyby.
+ */
 export function showEditWalletFormErrors(error) {
   const changeBalanceByError = document.querySelector('#edit-wallet-change-balance-by-error');
   const setNewBalanceError = document.querySelector('#edit-wallet-set-new-balance-error');
@@ -1056,6 +1130,10 @@ export function showEditWalletFormErrors(error) {
 }
 
 
+/**
+ * Otevře modal s informací o nutnosti vrácení/vyplacení peněz při změně zůstatku.
+ * @param {number} balanceChangedBy - Změna zůstatku v Kč.
+ */
 export function showMoneyToExchangeModal(balanceChangedBy) {
   document.querySelector('.overlay')?.remove();
   let html = '';

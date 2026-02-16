@@ -1,4 +1,4 @@
-"""Tests for cashier_app.undo_and_redo route handlers and helpers."""
+"""Testy pro obslužné funkce tras a pomocné funkce modulu cashier_app.undo_and_redo."""
 
 import pytest
 from unittest.mock import patch, MagicMock
@@ -38,7 +38,7 @@ class TestGetChangeType:
         assert _get_change_type(change) == 'unknown'
 
     def test_insert_with_empty_old(self):
-        # old_values falsy (None), new_values truthy → insert
+        # old_values nepravdivé (None), new_values pravdivé → insert
         change = {'old_values': None, 'new_values': {'id': '2'}}
         assert _get_change_type(change) == 'insert'
 
@@ -62,8 +62,8 @@ class TestOrderChangesForUndo:
         i1 = self._make_insert('i1')
         i2 = self._make_insert('i2')
         ordered = _order_changes_for_undo([i1, i2])
-        # deletes + updates + reversed inserts
-        # no deletes or updates → just reversed inserts
+        # smazání + aktualizace + obrácené vložení
+        # žádná smazání ani aktualizace → pouze obrácené vložení
         assert ordered == [i2, i1]
 
     def test_deletes_before_inserts(self):

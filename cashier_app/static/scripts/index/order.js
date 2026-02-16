@@ -1,3 +1,6 @@
+/**
+ * @file Správa objednávky - přidávání, odebírání a ukládání položek.
+ */
 import { findProduct } from "./products.js";
 
 // let _orderCache = null;
@@ -5,6 +8,10 @@ import { findProduct } from "./products.js";
 
 
 class Order {
+  /**
+   * Vytvoří novou instanci objednávky a načte položky ze sessionStorage.
+   * @param {string} [key='order'] Klíč pro uložení objednávky v sessionStorage.
+   */
   constructor(key = 'order') {
     this._key = key;
     this.items = [];
@@ -46,31 +53,48 @@ class Order {
   //   return _orderInitPromise;
   // }
 
+  /**
+   * Načte objednávku ze sessionStorage.
+   * Pokud se načtení nezdaří, uloží prázdnou objednávku.
+   * @private
+   */
   _loadOrderFromStorage() {
     try {
       const raw = sessionStorage.getItem(this._key);
       this.items = raw ? JSON.parse(raw) : [];
     } catch (error) {
       // this.items = [];
-      console.warn('Failed to load order from sessionStorage');
+      console.warn('Nepodařilo se načíst objednávku ze sessionStorage');
       this._saveOrderToStorage();
     }
   }
 
+  /**
+   * Uloží aktuální objednávku do sessionStorage.
+   * @private
+   */
   _saveOrderToStorage() {
     try {
       sessionStorage.setItem(this._key, JSON.stringify(this.items));
     } catch (error) {
-      console.warn('Failed to save order to sessionStorage');
+      console.warn('Nepodařilo se uložit objednávku do sessionStorage');
     }
   }
 
+  /**
+   * Resetuje objednávku (vymaže všechny položky) a uloží změnu do sessionStorage.
+   */
   reset() {
     this.items = [];
     this._saveOrderToStorage();
     // sessionStorage.removeItem(this._key);
   }
 
+  /**
+   * Vrátí celkovou cenu objednávky.
+   * @param {Array} products Pole produktů pro výpočet ceny.
+   * @returns {number} Celková cena objednávky.
+   */
   getTotalPrice(products) {
     let totalPrice = 0;
     for (const item of this.items) {
@@ -80,6 +104,11 @@ class Order {
     return totalPrice;
   }
 
+  /**
+   * Vrátí položku objednávky podle ID produktu.
+   * @param {number|string} productId ID produktu.
+   * @returns {Object|undefined} Položka objednávky nebo undefined, pokud neexistuje.
+   */
   getItem(productId) {
     for (const item of this.items) {
       if (item.productId === productId) {
@@ -88,15 +117,27 @@ class Order {
     }
   }
 
+  /**
+   * Vrátí množství daného produktu v objednávce.
+   * @param {number|string} productId ID produktu.
+   * @returns {number} Množství produktu v objednávce.
+   */
   getQuantity(productId) {
     const item = this.getItem(productId);
     return item ? item.quantity : 0;
   }
 
+  /**
+   * Nastaví množství produktu v objednávce.
+   * Pokud je množství 0 nebo menší, položka se odstraní.
+   * @param {number|string} productId ID produktu.
+   * @param {number} quantity Požadované množství.
+   * @throws {Error} Pokud množství není číslo.
+   */
   setQuantity(productId, quantity) {
     quantity = Number(quantity);
     if (Number.isNaN(quantity)) {
-      throw new Error('Item quantity has to be a number')
+      throw new Error('Množství položky musí být číslo')
     }
 
     quantity = Math.min(quantity, 999);
@@ -125,10 +166,17 @@ class Order {
     this._saveOrderToStorage();
   }
 
+  /**
+   * Aktualizuje množství produktu v objednávce (přičte nebo odečte).
+   * Pokud položka neexistuje, přidá ji.
+   * @param {number|string} productId ID produktu.
+   * @param {number} [quantity=1] Změna množství (kladné nebo záporné číslo).
+   * @throws {Error} Pokud množství není číslo.
+   */
   updateQuantity(productId, quantity = 1) {
     quantity = Number(quantity);
     if (Number.isNaN(quantity)) {
-      throw new Error('Item quantity has to be a number')
+      throw new Error('Množství položky musí být číslo')
     }
     const item = this.getItem(productId);
 
@@ -141,6 +189,10 @@ class Order {
     return;
   }
 
+  /**
+   * Odstraní z objednávky položky, které nemají odpovídající produkt v seznamu produktů.
+   * @param {Array} products Pole aktuálních produktů.
+   */
   removeItemsWithNoMatchingProduct(products) {
     this.items = this.items.filter((item) => {
       const product = findProduct(products, item.productId);

@@ -1,7 +1,7 @@
-"""
-Cascade capture functions for undo/redo system.
-These functions capture all data that will be affected by delete operations,
-allowing the changes to be undone as a single atomic action.
+"""Funkce pro kaskádové zachycení dat v systému undo/redo.
+
+Tyto funkce zachytí všechna data, která budou ovlivněna operací mazání,
+a umožní tak vrácení změn jako jedné atomické akce.
 """
 
 from psycopg import Cursor
@@ -10,6 +10,7 @@ from datetime import datetime, date, time
 
 
 def _convert(value):
+    """Rekurzivně převede hodnotu na JSON-serializovatelný formát (UUID → str, datetime → ISO)."""
     if value is None:
         return None
     elif isinstance(value, UUID):
@@ -25,20 +26,19 @@ def _convert(value):
 
 
 def convert_dict_to_serializable(row: dict) -> dict:
-    """Convert a database row to a JSON-serializable dict with string UUIDs."""
+    """Převede řádek z databáze na JSON-serializovatelný slovník s UUID jako řetězci."""
     return {k: _convert(v) for k, v in row.items()}
 
 
 def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting an event.
-    Returns list of change dicts for undo tracking.
+    """Zachytí všechna data ovlivněná smazáním události.
 
-    Captures: event, booths, products, categories, link tables, employee roles
+    Vrátí seznam změnových záznamů pro sledování undo.
+    Zachycuje: událost, stánky, produkty, kategorie, vazební tabulky, role zaměstnanců, peněženky.
     """
     changes = []
 
-    # 1. Capture the event
+    # 1. Zachycení události
     event = cur.execute(
         'SELECT * FROM events WHERE id = %s AND deleted_at IS NULL',
         (event_id,)
@@ -50,7 +50,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
-    # 2. Capture all booths
+    # 2. Zachycení všech stánků
     booths = cur.execute(
         'SELECT * FROM booths WHERE event_id = %s AND deleted_at IS NULL',
         (event_id,)
@@ -63,7 +63,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
-    # 3. Capture all products
+    # 3. Zachycení všech produktů
     products = cur.execute(
         'SELECT * FROM products WHERE event_id = %s AND deleted_at IS NULL',
         (event_id,)
@@ -76,7 +76,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
-    # 4. Capture all categories
+    # 4. Zachycení všech kategorií
     categories = cur.execute(
         'SELECT * FROM categories WHERE event_id = %s AND deleted_at IS NULL',
         (event_id,)
@@ -89,7 +89,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
-    # 5. Capture link tables
+    # 5. Zachycení vazebních tabulek
     if booth_ids:
         product_booth_links = cur.execute(
             'SELECT * FROM product_booth_link WHERE booth_id = ANY(%s)',
@@ -114,7 +114,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             })
 
     if product_ids or category_ids:
-        # Capture category_product_links that reference any of our products or categories
+        # Zachycení category_product_links odkazujících na naše produkty nebo kategorie
         category_product_links = cur.execute(
             '''SELECT * FROM category_product_link
                WHERE product_id = ANY(%s) OR category_id = ANY(%s)''',
@@ -127,7 +127,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
                 'new_values': None
             })
 
-    # 6. Capture employee roles
+    # 6. Zachycení rolí zaměstnanců
     roles = cur.execute(
         'SELECT * FROM employee_event_booth_roles WHERE event_id = %s',
         (event_id,)
@@ -139,7 +139,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
             'new_values': None
         })
 
-    # 7. Capture wallets
+    # 7. Zachycení peněženek
     wallets = cur.execute(
         'SELECT * FROM wallets WHERE event_id = %s AND deleted_at IS NULL',
         (event_id,)
@@ -155,15 +155,14 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
 
 
 def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting a booth.
-    Returns list of change dicts for undo tracking.
+    """Zachytí všechna data ovlivněná smazáním stánku.
 
-    Captures: booth, link tables (product_booth_link, category_booth_link), employee roles for this booth
+    Vrátí seznam změnových záznamů pro sledování undo.
+    Zachycuje: stánek, vazební tabulky (product_booth_link, category_booth_link), role zaměstnanců.
     """
     changes = []
 
-    # 1. Capture the booth
+    # 1. Zachycení stánku
     booth = cur.execute(
         'SELECT * FROM booths WHERE id = %s AND deleted_at IS NULL',
         (booth_id,)
@@ -175,7 +174,7 @@ def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
             'new_values': None
         })
 
-    # 2. Capture product links
+    # 2. Zachycení vazeb produktů
     product_links = cur.execute(
         'SELECT * FROM product_booth_link WHERE booth_id = %s',
         (booth_id,)
@@ -187,7 +186,7 @@ def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
             'new_values': None
         })
 
-    # 3. Capture category links
+    # 3. Zachycení vazeb kategorií
     category_links = cur.execute(
         'SELECT * FROM category_booth_link WHERE booth_id = %s',
         (booth_id,)
@@ -199,7 +198,7 @@ def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
             'new_values': None
         })
 
-    # 4. Capture employee roles for this booth
+    # 4. Zachycení rolí zaměstnanců pro tento stánek
     roles = cur.execute(
         'SELECT * FROM employee_event_booth_roles WHERE booth_id = %s',
         (booth_id,)
@@ -215,15 +214,14 @@ def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
 
 
 def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting a product.
-    Returns list of change dicts for undo tracking.
+    """Zachytí všechna data ovlivněná smazáním produktu.
 
-    Captures: product, link tables (product_booth_link, category_product_link)
+    Vrátí seznam změnových záznamů pro sledování undo.
+    Zachycuje: produkt, vazební tabulky (product_booth_link, category_product_link).
     """
     changes = []
 
-    # 1. Capture the product
+    # 1. Zachycení produktu
     product = cur.execute(
         'SELECT * FROM products WHERE id = %s AND deleted_at IS NULL',
         (product_id,)
@@ -235,7 +233,7 @@ def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
             'new_values': None
         })
 
-    # 2. Capture booth links
+    # 2. Zachycení vazeb stánků
     booth_links = cur.execute(
         'SELECT * FROM product_booth_link WHERE product_id = %s',
         (product_id,)
@@ -247,7 +245,7 @@ def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
             'new_values': None
         })
 
-    # 3. Capture category links
+    # 3. Zachycení vazeb kategorií
     category_links = cur.execute(
         'SELECT * FROM category_product_link WHERE product_id = %s',
         (product_id,)
@@ -263,15 +261,14 @@ def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
 
 
 def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting a category.
-    Returns list of change dicts for undo tracking.
+    """Zachytí všechna data ovlivněná smazáním kategorie.
 
-    Captures: category, link tables (category_booth_link, category_product_link)
+    Vrátí seznam změnových záznamů pro sledování undo.
+    Zachycuje: kategorii, vazební tabulky (category_booth_link, category_product_link).
     """
     changes = []
 
-    # 1. Capture the category
+    # 1. Zachycení kategorie
     category = cur.execute(
         'SELECT * FROM categories WHERE id = %s AND deleted_at IS NULL',
         (category_id,)
@@ -283,7 +280,7 @@ def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
             'new_values': None
         })
 
-    # 2. Capture booth links
+    # 2. Zachycení vazeb stánků
     booth_links = cur.execute(
         'SELECT * FROM category_booth_link WHERE category_id = %s',
         (category_id,)
@@ -295,7 +292,7 @@ def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
             'new_values': None
         })
 
-    # 3. Capture product links
+    # 3. Zachycení vazeb produktů
     product_links = cur.execute(
         'SELECT * FROM category_product_link WHERE category_id = %s',
         (category_id,)
@@ -311,15 +308,14 @@ def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
 
 
 def capture_employee_cascade(cur: Cursor, employee_id) -> list[dict]:
-    """
-    Captures all data that will be affected by deleting an employee.
-    Returns list of change dicts for undo tracking.
+    """Zachytí všechna data ovlivněná smazáním zaměstnance.
 
-    Captures: employee, employee roles
+    Vrátí seznam změnových záznamů pro sledování undo.
+    Zachycuje: zaměstnance, role zaměstnance.
     """
     changes = []
 
-    # 1. Capture the employee
+    # 1. Zachycení zaměstnance
     employee = cur.execute(
         'SELECT * FROM employees WHERE id = %s AND deleted_at IS NULL',
         (employee_id,)
@@ -331,7 +327,7 @@ def capture_employee_cascade(cur: Cursor, employee_id) -> list[dict]:
             'new_values': None
         })
 
-    # 2. Capture employee roles
+    # 2. Zachycení rolí zaměstnanců
     roles = cur.execute(
         'SELECT * FROM employee_event_booth_roles WHERE employee_id = %s',
         (employee_id,)

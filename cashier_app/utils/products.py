@@ -1,3 +1,5 @@
+"""Pomocné funkce pro validaci produktů/kategorií, ověřování a ukládání obrázků."""
+
 from typing import List, Tuple
 import unicodedata
 import os
@@ -91,12 +93,14 @@ UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000
 
 
 def _get_allowed_exts():
+    """Vrátí množinu povolených přípon obrázků z konfigurace aplikace."""
     v = current_app.config.get('ALLOWED_IMAGE_EXTENSIONS')
     if not v:
         return set(ALLOWED_IMAGE_EXTENSIONS)
     return {str(x).lower() for x in (v if isinstance(v, (set, list, tuple)) else [v])}
 
 def _get_allowed_mime_types():
+    """Vrátí množinu povolených MIME typů obrázků z konfigurace aplikace."""
     v = current_app.config.get('ALLOWED_IMAGE_MIME_TYPES')
     if not v:
         return set(ALLOWED_MIME_TYPES)
@@ -104,6 +108,7 @@ def _get_allowed_mime_types():
 
 
 def image_extension_is_allowed(filename):
+    """Ověří, zda má soubor povolenou příponu obrázku."""
     if '.' not in filename:
         return False
 
@@ -112,6 +117,10 @@ def image_extension_is_allowed(filename):
 
 
 def verify_image_file_get_info(file_obj, pixel_limit=None):
+    """Ověří platnost obrázku a vrátí informace (rozměry, MIME typ).
+
+    Vrátí (True, info_dict) při úspěchu nebo (False, {}) při neplatném obrázku.
+    """
     if pixel_limit is None:
         try:
             pixel_limit = current_app.config.get('UPLOAD_IMAGE_PIXEL_LIMIT', UPLOAD_IMAGE_PIXEL_LIMIT)
@@ -268,12 +277,17 @@ def save_unique_stream(file_obj, dest_dir, secure_name, max_attempts=1000):
 
 
 def convert_image_paths_from_relative(products):
+    """Převede relativní cesty obrázků produktů na absolutní URL."""
     for product in products:
         if product['image_path']:
             product['image_path'] = url_for('uploaded_product_image', filename=product['image_path'])
 
 
 def save_image_get_params(image_file):
+    """Ověří, uloží obrázek a vrátí slovník s parametry pro uložení do databáze.
+
+    Při chybě vrátí slovník s klíči 'error' a 'code'.
+    """
     safe_filename = secure_filename(image_file.filename)
 
     max_filename_len = current_app.config.get('MAX_FILENAME_LEN', 255)

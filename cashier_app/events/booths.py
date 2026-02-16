@@ -1,3 +1,5 @@
+"""Modul pro správu stánků – vytváření, úprava, mazání a načítání produktů a kategorií stánku."""
+
 from flask import Blueprint, current_app, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
@@ -19,6 +21,13 @@ api_booths_bp = Blueprint('booths', __name__, url_prefix='/booths')
 
 @api_booths_bp.route('/create', methods=('POST',))
 def add_booth():
+    """Vytvoří nový stánek v rámci akce.
+
+    Ověří přihlášení zaměstnance a jeho oprávnění (admin nebo manažer akce).
+    Validuje název a typ stánku, volitelně přiřadí produkty a kategorie.
+    Pokladní stánek nesmí mít přiřazené produkty ani kategorie.
+    Uloží změnu pro funkci zpět/vpřed.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -132,6 +141,13 @@ def add_booth():
 
 @api_booths_bp.route('/edit', methods=('POST',))
 def edit_booth():
+    """Upraví existující stánek.
+
+    Ověří přihlášení zaměstnance a jeho oprávnění (admin nebo manažer akce).
+    Validuje nový název stánku a synchronizuje přiřazené produkty a kategorie.
+    Pokladní stánek nesmí mít přiřazené produkty ani kategorie.
+    Uloží staré a nové hodnoty pro funkci zpět/vpřed.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -272,6 +288,13 @@ def edit_booth():
 
 @api_booths_bp.route('/delete', methods=('DELETE',))
 def delete_booth():
+    """Smaže stánek (soft-delete).
+
+    Ověří přihlášení zaměstnance a jeho oprávnění (admin nebo manažer akce).
+    Zachytí kaskádové změny před smazáním, odstraní vazby na produkty,
+    kategorie a role zaměstnanců u stánku.
+    Uloží změny pro funkci zpět/vpřed.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

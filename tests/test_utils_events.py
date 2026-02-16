@@ -1,4 +1,4 @@
-"""Tests for cashier_app.utils.events validation functions."""
+"""Testy validačních funkcí modulu cashier_app.utils.events."""
 
 import pytest
 from cashier_app.utils.events import validate_event_or_booth_name

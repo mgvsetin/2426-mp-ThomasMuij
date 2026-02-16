@@ -1,3 +1,5 @@
+"""Modul pro zpracování operací zpět (undo) a znovu (redo) nad změnami v databázi."""
+
 from flask import Blueprint, jsonify, url_for, current_app
 from psycopg import Cursor, IntegrityError
 from psycopg.types.json import Jsonb
@@ -15,9 +17,9 @@ bp = Blueprint('undo_and_redo', __name__, url_prefix='/api')
 
 def _cleanup_old_history(cur: Cursor, employee_id):
     """
-    Delete change_history rows that are no longer accessible:
-    - Rows older than UNDO_TIME_LIMIT_HOURS
-    - Rows beyond MAX_UNDO_CHANGES (keeping only the most recent ones)
+    Smaže řádky z change_history, které již nejsou dostupné:
+    - Řádky starší než UNDO_TIME_LIMIT_HOURS
+    - Řádky přesahující MAX_UNDO_CHANGES (ponechá pouze nejnovější)
     """
 
     # tento delete se stane přes cascade v DELETE FROM change_history
@@ -65,7 +67,7 @@ def _cleanup_old_history(cur: Cursor, employee_id):
         params)
 
 
-# Link tables that don't have an 'id' column and need special handling
+# Vazební tabulky, které nemají sloupec 'id' a vyžadují speciální zacházení
 LINK_TABLES = {
     'product_booth_link': ('product_id', 'booth_id'),
     'category_booth_link': ('category_id', 'booth_id'),
@@ -76,23 +78,23 @@ LINK_TABLES = {
 
 def save_change(cur: Cursor, changes: list[dict], logged_employee_id):
     """
-    Saves changes to change_history for undo capability.
-    Clears any pending redo actions for this employee.
+    Uloží změny do change_history pro možnost vrácení zpět (undo).
+    Vymaže všechny čekající akce pro opětovné provedení (redo) tohoto zaměstnance.
 
     Args:
-        cur: Database cursor
-        changes: List of change dicts with format:
+        cur: Kurzor databáze
+        changes: Seznam slovníků změn ve formátu:
             {
                 'table': str,
-                'old_values': dict | None,  # None for INSERT
-                'new_values': dict | None   # None for DELETE
+                'old_values': dict | None,  # None pro INSERT
+                'new_values': dict | None   # None pro DELETE
             }
-        logged_employee_id: UUID of the employee making the change
+        logged_employee_id: UUID zaměstnance provádějícího změnu
     """
     if not changes:
         return
 
-    # Filter out no-op changes (where old_values == new_values)
+    # Odfiltrovat prázdné změny (kde old_values == new_values)
     filtered_changes = [
         change for change in changes
         if change.get('old_values') != change.get('new_values')
@@ -103,7 +105,7 @@ def save_change(cur: Cursor, changes: list[dict], logged_employee_id):
 
     changes = filtered_changes
 
-    # Clear redo history (any undone changes no longer redo-able after new action)
+    # Vymazat historii redo (vrácené změny již nelze znovu provést po nové akci)
     cur.execute(
         '''
         DELETE FROM undo_change_history u
@@ -113,10 +115,10 @@ def save_change(cur: Cursor, changes: list[dict], logged_employee_id):
         ''',
         (logged_employee_id,))
 
-    # Clean up old/excess history rows
+    # Vyčistit staré/přebytečné řádky historie
     _cleanup_old_history(cur, logged_employee_id)
 
-    # Insert the change record
+    # Vložit záznam o změně
     cur.execute(
         '''
         INSERT INTO change_history (performed_by, changes)
@@ -126,7 +128,7 @@ def save_change(cur: Cursor, changes: list[dict], logged_employee_id):
 
 
 def _get_change_type(change: dict) -> str:
-    """Determine the type of change: 'insert', 'update', or 'delete'."""
+    """Určí typ změny: 'insert', 'update' nebo 'delete'."""
     old_values = change.get('old_values')
     new_values = change.get('new_values')
 
@@ -141,7 +143,7 @@ def _get_change_type(change: dict) -> str:
 
 
 def _delete_link_row(cur: Cursor, table: str, values: dict):
-    """Delete a row from a link table using composite key."""
+    """Smaže řádek z vazební tabulky pomocí složeného klíče."""
     key_columns = LINK_TABLES[table]
     conditions = []
     params = []
@@ -157,7 +159,7 @@ def _delete_link_row(cur: Cursor, table: str, values: dict):
 
 
 def _insert_link_row(cur: Cursor, table: str, values: dict):
-    """Insert a row into a link table."""
+    """Vloží řádek do vazební tabulky."""
 
     if table == 'employee_event_booth_roles':
         new_row_is_manager = values['booth_id'] is None
@@ -184,7 +186,7 @@ def _insert_link_row(cur: Cursor, table: str, values: dict):
     cur.execute(sql, query_params)
 
 
-# Mapping from column name to (table, has_deleted_at)
+# Mapování z názvu sloupce na (tabulka, má_deleted_at)
 LINK_COLUMN_TO_TABLE = {
     'product_id': ('products', True),
     'booth_id': ('booths', True),
@@ -196,8 +198,8 @@ LINK_COLUMN_TO_TABLE = {
 
 def _check_link_references_valid(cur: Cursor, values: dict) -> bool:
     """
-    Check if all referenced entities in a link row exist and are not soft-deleted.
-    Returns True if all references are valid, False if any are deleted/missing.
+    Zkontroluje, zda všechny odkazované entity ve vazebním řádku existují a nejsou soft-deletnuté.
+    Vrací True, pokud jsou všechny reference platné, False pokud jsou některé smazané/chybějící.
     """
     for col, val in values.items():
         if val is None:

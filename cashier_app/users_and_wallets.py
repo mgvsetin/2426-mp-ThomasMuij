@@ -1,3 +1,9 @@
+"""Modul pro správu uživatelů a jejich peněženek.
+
+Obsahuje API endpointy pro vytváření, úpravu, mazání a obnovení uživatelů,
+a také pro vytváření a vracení peněženek.
+"""
+
 from flask import Blueprint, current_app, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
@@ -16,6 +22,7 @@ api_bp = Blueprint('users_api', __name__, url_prefix='/api/users')
 
 @api_bp.route('')
 def get_users():
+    """Získá seznam všech aktivních (nesmazaných) uživatelů."""
     logged_employee = load_logged_in_employee()
     selected_event = load_selected_event()
     selected_booth = load_selected_booth()
@@ -55,6 +62,7 @@ def _validate_user_get_params_or_response(
         phone_number,
         country_code,
         other_identifier):
+    """Zvaliduje údaje uživatele a vrátí slovník parametrů nebo chybovou odpověď."""
     params = {}
 
     if not first_name:
@@ -106,6 +114,7 @@ def _validate_user_get_params_or_response(
 
 @api_bp.route('/create', methods=('POST',))
 def add_user():
+    """Vytvoří nového uživatele s validovanými údaji."""
     logged_employee = load_logged_in_employee()
     selected_event = load_selected_event()
     selected_booth = load_selected_booth()
@@ -176,6 +185,7 @@ def add_user():
 
 @api_bp.route('/edit', methods=('POST',))
 def edit_user():
+    """Upraví údaje existujícího uživatele."""
     logged_employee = load_logged_in_employee()
     selected_event = load_selected_event()
     selected_booth = load_selected_booth()
@@ -257,6 +267,7 @@ def edit_user():
 
 @api_bp.route('/delete', methods=('DELETE',))
 def delete_user():
+    """Soft-delete uživatele (nastaví deleted_at)."""
     logged_employee = load_logged_in_employee()
     selected_event = load_selected_event()
     selected_booth = load_selected_booth()
@@ -309,6 +320,7 @@ def delete_user():
 
 @api_bp.route('/deleted')
 def get_deleted_users():
+    """Získá seznam všech smazaných uživatelů."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -356,6 +368,7 @@ def get_deleted_users():
 
 @api_bp.route('/restore', methods=('POST',))
 def restore_user():
+    """Obnoví smazaného uživatele a jeho peněženky, případně vyřeší konflikty unikátnosti."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

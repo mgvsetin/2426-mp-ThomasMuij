@@ -1,4 +1,4 @@
-"""Tests for cashier_app.utils.employees_users validation functions."""
+"""Testy validacnich funkci z modulu cashier_app.utils.employees_users."""
 
 import pytest
 from cashier_app.utils.employees_users import (

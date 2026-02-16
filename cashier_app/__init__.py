@@ -1,6 +1,18 @@
-"""Inicializačni modul aplikace Flask pro cashier_app.
-Obsahuje funkci create_app, ktera vytvori a nakonfiguruje Flask aplikaci,
-registruje blueprinty a nastavuje session interface.
+"""Inicializační modul aplikace Flask pro cashier_app.
+
+Tento modul definuje tovární funkci create_app(), která sestaví a nakonfiguruje
+celou Flask aplikaci včetně:
+- načtení konfigurace (výchozí i volitelné testovací),
+- inicializace databázového connection poolu,
+- registrace blueprintů (auth, events, transactions, ...),
+- nastavení session rozhraní (PgSessionInterface),
+- konfigurace omezovače požadavků (rate limiter),
+- konfigurace ProxyFix middleware pro reverzní proxy,
+- nastavení plánovače úloh (scheduler),
+- verzování statických souborů a cache hlaviček.
+
+Dále obsahuje třídu ISOJSONProvider pro serializaci datumů do formátu ISO 8601
+a globální instanci Limiter pro omezení počtu požadavků.
 """
 
 from flask import Flask, jsonify, send_from_directory, request, Response
@@ -22,20 +34,25 @@ limiter = Limiter(
 
 # název funkce je důležitý, aby ji flask spustil
 def create_app(test_config=None):
-    """Vytvoří a nakonfiguruje Flask aplikaci.
+    """Tovární funkce pro vytvoření a konfiguraci Flask aplikace.
 
+    Provede kompletní inicializaci aplikace: načte výchozí a volitelnou
+    testovací konfiguraci, vytvoří potřebné adresáře, inicializuje databázi
+    a connection pool, zaregistruje všechny blueprinty, nastaví session
+    rozhraní, omezovač požadavků, ProxyFix middleware, plánovač úloh,
+    vlastní JSON provider pro ISO 8601 formát datumů, verzování statických
+    souborů a cache hlavičky.
 
     Parametry
     ---------
-    test_config: dict | None
-    Volitelný slovník konfigurace, který přepíše konfiguraci z config.py
-    (využívá se především pro testování).
-    
-    
+    test_config : dict | None
+        Volitelný slovník konfigurace, který přepíše konfiguraci z config.py
+        (využívá se především pro testování).
+
     Vrátí
     ------
     Flask
-    Nakonfigurovaná Flask aplikace.
+        Plně nakonfigurovaná instance Flask aplikace.
     """
     app = Flask(__name__, instance_relative_config=True)
 
@@ -103,9 +120,9 @@ def create_app(test_config=None):
         ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'},
         MAX_CONTENT_LENGTH = 16 * 1024 * 1024,  # 16MB
         SESSION_COOKIE_HTTPONLY = True, # JavaScript nemůže číst cookies
-        SESSION_COOKIE_SAMESITE = 'Lax',   # or 'Strict' if you can, if swtich to None add csrf protection
+        SESSION_COOKIE_SAMESITE = 'Lax',   # nebo 'Strict' pokud je to možné; při přepnutí na None přidejte CSRF ochranu
         SESSION_COOKIE_SECURE = False,
-        # SESSION_COOKIE_SECURE should be True in production when using HTTPS ######
+        # SESSION_COOKIE_SECURE by mělo být True v produkci při použití HTTPS ######
         # SESSION_COOKIE_SECURE = bool(os.environ.get('CASHIER_APP_COOKIE_SECURE', False)),
 
         SESSION_ENFORCE_UA = False,
@@ -179,7 +196,25 @@ def create_app(test_config=None):
     # není nutné, ale js teoreticky bere pouze ISO 8601
     # prakticky funguje i default, ale nemusí vždy fungovat
     class ISOJSONProvider(DefaultJSONProvider):
+        """Vlastní JSON provider, který serializuje datumy do formátu ISO 8601."""
+
         def default(self, obj):
+            """Převede datum/čas na řetězec ve formátu ISO 8601 v UTC.
+
+            Pokud je objekt typu date (bez času), vrátí prostý ISO řetězec.
+            Pokud je objekt typu datetime bez časové zóny, doplní UTC.
+            Ostatní typy deleguje na rodičovskou metodu.
+
+            Parametry
+            ---------
+            obj : Any
+                Objekt k serializaci do JSON.
+
+            Vrátí
+            ------
+            str | Any
+                ISO 8601 řetězec pro datum/čas, jinak výsledek rodičovské metody.
+            """
             if isinstance(obj, (datetime, date)):
                 if isinstance(obj, date) and not isinstance(obj, datetime):
                     return obj.isoformat()
@@ -206,15 +241,37 @@ def create_app(test_config=None):
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_too_large(e):
+        """Obsluha chyby při překročení maximální velikosti nahrávaného souboru.
+
+        Vrátí JSON odpověď s kódem 413 (Request Entity Too Large).
+        """
         return jsonify(error="file_too_large"), 413
 
     @app.errorhandler(429)
     def handle_rate_limit(e):
+        """Obsluha chyby při překročení limitu počtu požadavků.
+
+        Vrátí JSON odpověď s kódem 429 (Too Many Requests).
+        """
         return jsonify(error="too_many_requests"), 429
 
-    ### make sure nginx does this
+    ### ujistěte se, že toto obsluhuje nginx
     @app.route('/uploads/products/<path:filename>')
     def uploaded_product_image(filename):
+        """Obslouží požadavek na nahraný obrázek produktu.
+
+        V produkčním prostředí by měl statické soubory obsluhovat nginx.
+
+        Parametry
+        ---------
+        filename : str
+            Cesta k souboru obrázku relativně k adresáři UPLOAD_FOLDER.
+
+        Vrátí
+        ------
+        Response
+            Odpověď se souborem obrázku.
+        """
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     from cashier_app import auth
@@ -266,6 +323,21 @@ def create_app(test_config=None):
     _static_hash_cache = {}
 
     def versioned_static(filename):
+        """Vrátí URL statického souboru s verzovacím parametrem (MD5 hash obsahu).
+
+        Výsledek se ukládá do mezipaměti, aby se hash nepočítal opakovaně.
+        Pokud soubor neexistuje, použije se výchozí verze '0'.
+
+        Parametry
+        ---------
+        filename : str
+            Název statického souboru relativně k adresáři static.
+
+        Vrátí
+        ------
+        str
+            URL cesta ke statickému souboru s query parametrem ?v=<hash>.
+        """
         if filename not in _static_hash_cache:
             filepath = os.path.join(app.static_folder, filename)
             try:
@@ -280,13 +352,28 @@ def create_app(test_config=None):
     
     @app.after_request
     def set_cache_headers(response: Response):
+        """Nastaví cache hlavičky pro statické soubory po každém požadavku.
+
+        Verzované soubory (s parametrem ?v=) se cachují na 1 rok.
+        Neverzované soubory (např. JS moduly) se vždy revalidují.
+
+        Parametry
+        ---------
+        response : Response
+            Odpověď Flask aplikace.
+
+        Vrátí
+        ------
+        Response
+            Odpověď s nastavenými cache hlavičkami.
+        """
         if request.path.startswith('/static/'):
             if request.args.get('v'):
-                # versioned files: cache for 1 year, never revalidate
+                # verzované soubory: cachovat 1 rok, nikdy nerevalidovat
                 response.cache_control.max_age = 60 * 60 * 24 * 365
                 response.cache_control.public = True
             else:
-                # non-versioned files (JS module imports): always revalidate
+                # neverzované soubory (JS importy modulů): vždy revalidovat
                 response.cache_control.no_cache = True
         return response
 

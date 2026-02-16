@@ -1,3 +1,5 @@
+"""Modul pro správu zaměstnanců a manažerů přiřazených k událostem."""
+
 from flask import Blueprint, jsonify, url_for, request
 from uuid import UUID
 from cashier_app.auth import load_logged_in_employee
@@ -11,6 +13,15 @@ api_employees_bp = Blueprint('employees', __name__, url_prefix='/employees')
 
 @api_employees_bp.route('/assign-manager', methods=('POST',))
 def assign_manager():
+    """Přiřadí zaměstnance jako manažera k dané události.
+
+    Ověří přihlášení, oprávnění a existenci události i zaměstnance.
+    Administrátor nemůže být přiřazen jako manažer.
+    Synchronizuje role zaměstnance pro danou událost a uloží změnu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -70,6 +81,16 @@ def assign_manager():
 
 @api_employees_bp.route('/assign-employee', methods=('POST',))
 def assign_employee():
+    """Přiřadí zaměstnance ke konkrétním stánkům v rámci události.
+
+    Ověří přihlášení, oprávnění, existenci události, stánků i zaměstnance.
+    Administrátor nemůže být přiřazen ke stánkům.
+    Manažer události nemůže být přiřazen ke stánkům.
+    Synchronizuje role zaměstnance pro dané stánky a uloží změnu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -161,6 +182,15 @@ def assign_employee():
 
 @api_employees_bp.route('/unassign', methods=('POST',))
 def unassign_employee_or_manager():
+    """Odebere zaměstnance nebo manažera z dané události.
+
+    Ověří přihlášení, oprávnění a platnost identifikátorů události a zaměstnance.
+    Synchronizuje role zaměstnance s prázdným seznamem stánků (odebrání všech rolí)
+    a uloží změnu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

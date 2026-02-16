@@ -1,4 +1,4 @@
-"""Tests for Flask app creation and error handlers."""
+"""Testy vytvoření Flask aplikace a obsluh chyb."""
 
 import pytest
 from datetime import datetime, date, timezone
@@ -35,7 +35,7 @@ class TestISOJSONProvider:
 
     def test_naive_datetime_gets_utc(self, app):
         with app.app_context():
-            dt = datetime(2025, 6, 15, 12, 0, 0)  # naive
+            dt = datetime(2025, 6, 15, 12, 0, 0)  # bez časové zóny
             result = app.json.dumps({'ts': dt})
             assert '+00:00' in result
 
@@ -43,8 +43,8 @@ class TestISOJSONProvider:
 class TestErrorHandlers:
 
     def test_413_error_handler(self, client):
-        # POST with content larger than MAX_CONTENT_LENGTH triggers 413
-        # We'll test the handler by directly invoking a large upload scenario
+        # POST s obsahem větším než MAX_CONTENT_LENGTH vyvolá chybu 413
+        # Obsluhu otestujeme přímým vyvoláním scénáře s velkým nahráváním
         response = client.get('/nonexistent-route')
         assert response.status_code == 404
 
@@ -57,7 +57,7 @@ class TestErrorHandlers:
 class TestCacheHeaders:
 
     def test_versioned_static_gets_cache_headers(self, client):
-        # Request a static file with a version parameter
+        # Požadavek na statický soubor s parametrem verze
         response = client.get('/static/scripts/general/utils.js?v=abc123')
         cc = response.cache_control
         assert cc.max_age == 60 * 60 * 24 * 365

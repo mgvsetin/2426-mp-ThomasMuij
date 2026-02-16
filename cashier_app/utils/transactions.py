@@ -1,3 +1,5 @@
+"""Pomocná funkce pro vytváření transakcí s kontrolou idempotence a otisku požadavku."""
+
 import json
 import hashlib
 from flask import jsonify
@@ -11,6 +13,12 @@ from cashier_app.utils.query_builder import build_insert_statement
 
 
 def make_transaction(params: dict, cursor: Cursor | None = None):
+    """Vloží transakci do databáze s kontrolou idempotence a otiskem požadavku.
+
+    Vypočítá SHA-256 otisk ze všech parametrů. Při duplicitním klíči idempotence
+    ověří, zda se data shodují; pokud ne, vyvolá IdempotencyKeyDataConflict.
+    Při nedostatečném zůstatku vyvolá InsufficientBalanceError.
+    """
     # params = {
     # 'tag_id': tag_id,
     # 'wallet_id': wallet['id'],

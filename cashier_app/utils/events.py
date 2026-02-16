@@ -1,3 +1,5 @@
+"""Pomocné funkce pro validaci nazvu udalosti a stanku."""
+
 import re
 import unicodedata
 from typing import List, Tuple

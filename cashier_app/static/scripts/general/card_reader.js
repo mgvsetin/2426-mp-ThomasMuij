@@ -1,9 +1,20 @@
+/**
+ * @file Komunikace s kartovou čtečkou přes Web Serial API.
+ */
 import { UnexpectedError } from "../general/errors.js";
 
 let readerInfo;
 let cardReaderIsBeingRead = false;
 
 
+
+/**
+ * Načte a uloží informace o kartové čtečce z backendu.
+ * Vrací objekt s možnostmi sériového portu a filtry.
+ * Vyvolá výjimku UnexpectedError při chybě načítání nebo neplatných datech.
+ * @returns {Promise<object>} Objekt s informacemi o čtečce (možnosti portu, filtry).
+ * @throws {UnexpectedError} Pokud selže načtení nebo jsou data neplatná.
+ */
 async function getReaderInfo() {
   if (readerInfo) return readerInfo;
   const response = await fetch('/api/reader/info');
@@ -17,7 +28,7 @@ async function getReaderInfo() {
   readerInfo = resData.reader_info;
   if (!readerInfo
     || !readerInfo.serial_port_options) {
-    console.warn('Unable to get reader information');
+    console.warn('Nepodařilo se získat informace o čtečce');
     throw new UnexpectedError();
   }
 
@@ -25,7 +36,14 @@ async function getReaderInfo() {
 }
 
 
-export async function requestPortFromUser(calledFromInteraction=false) {
+
+/**
+ * Požádá uživatele o výběr sériového portu pro kartovou čtečku.
+ * Pokud je voláno z uživatelské interakce, použije filtry z backendu.
+ * @param {boolean} [calledFromInteraction=false] - True, pokud je voláno z uživatelské akce (např. kliknutí).
+ * @returns {Promise<SerialPort|null|undefined>} Vybraný SerialPort, nebo null/undefined pokud není dostupný.
+ */
+export async function requestPortFromUser(calledFromInteraction = false) {
   if (!('serial' in navigator)) return;
 
   if (calledFromInteraction) {
@@ -59,6 +77,12 @@ export async function requestPortFromUser(calledFromInteraction=false) {
 }
 
 
+/**
+ * Získá SerialPort pro kartovou čtečku – buď z již spárovaných portů, nebo vyzve uživatele k výběru.
+ * @param {boolean} calledFromInteraction - True, pokud je voláno z uživatelské akce.
+ * @param {number|undefined} [portIdx] - Volitelný index portu k výběru.
+ * @returns {Promise<SerialPort|null>} Vybraný SerialPort, nebo null pokud není nalezen.
+ */
 async function getCardReaderPort(calledFromInteraction, portIdx = undefined) {
   try {
     // porty, které uživatel povolil pomocí navigator.serial.requestPort()
@@ -66,7 +90,7 @@ async function getCardReaderPort(calledFromInteraction, portIdx = undefined) {
 
     if (Number.isInteger(portIdx)) {
       if (portIdx < 0 || portIdx >= pairedPorts.length) {
-        console.warn('Error pairing port: tried to open a port on a too high index (not enough paired port)');
+        console.warn('Chyba párování portu: pokus o otevření portu s příliš vysokým indexem (nedostatek spárovaných portů)');
         return null;
       }
       return pairedPorts[portIdx];
@@ -77,15 +101,20 @@ async function getCardReaderPort(calledFromInteraction, portIdx = undefined) {
       return requestPortFromUser(calledFromInteraction);
     }
   } catch (error) {
-    console.warn('Error pairing port:', error);
+    console.warn('Chyba párování portu:', error);
     return null;
   }
 }
 
 
+/**
+ * Otevře zadaný SerialPort, pokud ještě není otevřený.
+ * @param {SerialPort} port - Sériový port k otevření.
+ * @returns {Promise<boolean>} True pokud je port otevřený nebo byl úspěšně otevřen, jinak false.
+ */
 async function openPortIfNecessary(port) {
   try {
-    if (!port.readable) { // port není otevřený
+    if (!port.readable) { // port není otevřen
       const readerInfo = await getReaderInfo().catch(() => { });
       if (!readerInfo || !readerInfo.serial_port_options) return false;
       await port.open(readerInfo.serial_port_options);
@@ -99,14 +128,20 @@ async function openPortIfNecessary(port) {
       // }); // get from app config (check reader docs for it)
       // docs for this reader say: Rychlost 9600 Bd, 8 bitů, 1 stop bit, parita žádná, řízení přenosu žádné
     }
-    return true; // už je otevřený
+    return true; // již je otevřen
   } catch (error) {
-    console.warn('Error opening port:', error);
+    console.warn('Chyba otevírání portu:', error);
     return false;
   }
 }
 
 
+
+/**
+ * Vytvoří čtečku textového proudu ze SerialPortu.
+ * @param {SerialPort} port - Sériový port pro čtení.
+ * @returns {[ReadableStreamDefaultReader<string>, Promise<void>]} Čtečka a promise pro uzavření proudu.
+ */
 function getStringStreamReader(port) {
   const textDecoder = new TextDecoderStream();
   const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
@@ -114,6 +149,13 @@ function getStringStreamReader(port) {
 }
 
 
+/**
+ * Čte ID karet z textového proudu a volá callback při načtení karty.
+ * @param {ReadableStreamDefaultReader<string>} reader - Čtečka proudu.
+ * @param {Promise<void>} readableStreamClosed - Promise pro uzavření proudu.
+ * @param {(cardId: string) => void} onCardRead - Callback při načtení ID karty.
+ * @returns {Promise<void>}
+ */
 async function readStringStreamReader(reader, readableStreamClosed, onCardRead) {
   let timeoutId;
 
@@ -141,7 +183,7 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
       }
     }
   } catch (error) {
-    console.warn('Read error:', error);
+    console.warn('Chyba čtení:', error);
   } finally {
     clearTimeout(timeoutId);
     reader.releaseLock();
@@ -150,6 +192,13 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
 }
 
 
+/**
+ * Interní nastavení čtení karet: získá port, otevře jej a spustí čtení.
+ * @param {(cardId: string) => void} onCardRead - Callback při načtení ID karty.
+ * @param {boolean} [calledFromInteraction=false] - True, pokud je voláno z uživatelské akce.
+ * @param {number|undefined} [portIdx] - Volitelný index portu k výběru.
+ * @returns {Promise<void>}
+ */
 async function _setUpCardReading(onCardRead, calledFromInteraction = false, portIdx = undefined) {
   document.querySelector('#select-reader-modal')?.remove();
 
@@ -167,10 +216,18 @@ async function _setUpCardReading(onCardRead, calledFromInteraction = false, port
 }
 
 
+
+/**
+ * Nastaví čtení karet: zajistí, že probíhá jen jedno čtení najednou, ověří podporu v prohlížeči a spustí čtení.
+ * @param {(cardId: string) => void} onCardRead - Callback při načtení ID karty.
+ * @param {boolean} [calledFromInteraction=false] - True, pokud je voláno z uživatelské akce.
+ * @param {number|undefined} [portIdx] - Volitelný index portu k výběru.
+ * @returns {Promise<void>}
+ */
 export async function setUpCardReading(onCardRead, calledFromInteraction = false, portIdx = undefined) {
   if (!('serial' in navigator)) {
-    // prohlížeč nepodporuje
-    console.warn('Browser does not support Web Serial API.');
+    // prohlížeč nepodporuje Web Serial API
+    console.warn('Prohlížeč nepodporuje Web Serial API.');
     return;
   }
   if (cardReaderIsBeingRead) return;

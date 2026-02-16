@@ -25,6 +25,10 @@ const totalCardsCountEl = document.querySelector('#total-cards-count');
 
 loadPage();
 
+/**
+ * Načte data o historii transakcí akce a vykreslí je do tabulek.
+ * @returns {Promise<void>}
+ */
 async function loadPage() {
   // /events/<event_id>/transaction-history
   const pathParts = window.location.pathname.split('/');
@@ -77,6 +81,11 @@ async function loadPage() {
   }
 }
 
+/**
+ * Načte a zobrazí informace o akci (název, datumy) podle ID akce.
+ * @param {string} eventId - ID akce
+ * @returns {Promise<void>}
+ */
 async function loadEventInfo(eventId) {
   try {
     const eventResponse = await fetch('/api/events');
@@ -97,6 +106,10 @@ async function loadEventInfo(eventId) {
   }
 }
 
+/**
+ * Vykreslí souhrnné statistiky uživatelů na základě transakcí.
+ * @param {Array<Object>} transactions - Pole transakcí
+ */
 function renderUsers(transactions) {
   if (!transactions || transactions.length === 0) {
     usersTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádní uživatelé.</td></tr>';
@@ -191,6 +204,10 @@ function renderUsers(transactions) {
   usersTableBody.innerHTML = rows;
 }
 
+/**
+ * Vykreslí souhrnné statistiky karet na základě transakcí.
+ * @param {Array<Object>} transactions - Pole transakcí
+ */
 function renderCards(transactions) {
   if (!transactions || transactions.length === 0) {
     cardsTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádné karty.</td></tr>';
@@ -289,6 +306,10 @@ function renderCards(transactions) {
   cardsTableBody.innerHTML = rows;
 }
 
+/**
+ * Vykreslí tabulku všech transakcí a souhrnné statistiky.
+ * @param {Array<Object>} transactions - Pole transakcí
+ */
 function renderTransactions(transactions) {
   if (!transactions || transactions.length === 0) {
     transactionsTableBody.innerHTML = '<tr><td colspan="11" class="empty-message">Žádné transakce.</td></tr>';
@@ -406,6 +427,10 @@ function renderTransactions(transactions) {
   totalCardsCountEl.textContent = `${cardBalances.size} ${cardBalances.size === 1 ? 'karta' : 0 < cardBalances.size && cardBalances.size < 5 ? 'karty' : 'karet'}`;
 }
 
+/**
+ * Zobrazí chybovou hlášku ve všech tabulkách.
+ * @param {string} message - Text chybové zprávy
+ */
 function showError(message) {
   transactionsTableBody.innerHTML = `<tr><td colspan="10" class="error-message">${escapeHTML(message)}</td></tr>`;
   cardsTableBody.innerHTML = `<tr><td colspan="9" class="error-message">${escapeHTML(message)}</td></tr>`;

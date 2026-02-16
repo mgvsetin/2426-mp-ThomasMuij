@@ -1,3 +1,9 @@
+"""Modul pro správu kategorií v rámci událostí.
+
+Poskytuje API endpointy pro vytváření, úpravu a mazání kategorií,
+včetně synchronizace vazeb na stánky a produkty.
+"""
+
 from flask import Blueprint, current_app, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
@@ -17,6 +23,15 @@ api_categories_bp = Blueprint('categories', __name__, url_prefix='/categories')
 
 @api_categories_bp.route('/create', methods=('POST',))
 def add_category():
+    """Vytvoří novou kategorii pro danou událost.
+
+    Ověří přihlášení a oprávnění zaměstnance, zvaliduje vstupní data (název,
+    stánky, produkty) a vloží novou kategorii do databáze. Synchronizuje
+    vazby kategorie na stánky a produkty a uloží změnu pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -132,6 +147,15 @@ def add_category():
 
 @api_categories_bp.route('/edit', methods=('POST',))
 def edit_category():
+    """Upraví existující kategorii.
+
+    Ověří přihlášení a oprávnění zaměstnance, zvaliduje vstupní data (název,
+    stánky, produkty) a aktualizuje kategorii v databázi. Synchronizuje vazby
+    kategorie na stánky a produkty a uloží změnu pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -281,6 +305,15 @@ def edit_category():
 
 @api_categories_bp.route('/delete', methods=('DELETE',))
 def delete_category():
+    """Smaže existující kategorii (soft delete).
+
+    Ověří přihlášení a oprávnění zaměstnance, zachytí kaskádové vazby
+    kategorie, provede soft delete a odstraní vazby na stánky a produkty.
+    Uloží změnu pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

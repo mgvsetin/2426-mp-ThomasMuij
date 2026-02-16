@@ -1,3 +1,5 @@
+"""Obecné pomocné funkce pro aplikaci pokladny (konverze UUID, zámky, IP adresy, databázové chyby)."""
+
 from uuid import UUID
 from typing import Any
 import hashlib
@@ -5,6 +7,7 @@ from psycopg import IntegrityError
 from flask import request
 
 def convert_uuids_to_str(obj: Any) -> Any:
+    """Rekurzivně převede všechny UUID objekty v zadané struktuře (dict, list, tuple) na řetězce."""
     if isinstance(obj, UUID):
         return str(obj)
     if isinstance(obj, dict):
@@ -33,12 +36,11 @@ def convert_uuids_to_str(obj: Any) -> Any:
 
 
 def get_employee_lock_key(employee_id: UUID, namespace: str | int = 1001) -> int:
-    """
-    Convert employee UUID + namespace to a consistent signed 64-bit int suitable for
-    an advisory lock key.
+    """Převede UUID zaměstnance a jmenný prostor na konzistentní 64bitové celé číslo se znaménkem
+    vhodné jako klíč pro poradní zámek (advisory lock).
 
-    - `namespace` may be an int or a str (default 1001).
-    - Different namespace values produce different keys for the same UUID.
+    - `namespace` může být int nebo str (výchozí 1001).
+    - Různé hodnoty namespace produkují různé klíče pro stejné UUID.
     """
     namespace = str(namespace)
     input_bytes = (f"{namespace}:{employee_id}").encode("utf-8")

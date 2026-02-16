@@ -1,3 +1,5 @@
+"""Pomocné funkce pro správu obrázků produktů – mazání nepoužívaných obrázků a osiřelých souborů z disku."""
+
 import os
 import time
 from pathlib import Path
@@ -8,23 +10,25 @@ from cashier_app.utils.query_builder import build_insert_statement
 
 
 def relative_posix_path(full_path: str, base: str | None = None) -> str:
+    """Vrátí relativní POSIX cestu od base k full_path."""
     base_path = Path(base).resolve()
     full_path = Path(full_path).resolve()
 
     try:
         rel = full_path.relative_to(base_path)
     except ValueError:
-        # Not inside base_path; fall back to relpath which can contain .. components
+        # Není uvnitř base_path; záložní řešení přes relpath, které může obsahovat .. komponenty
         rel = Path(os.path.relpath(str(full_path), start=str(base_path)))
 
     return rel.as_posix()
 
 
 def remove_image_if_exists(path):
+    """Smaže obrázek na dané cestě, pokud existuje. Vrátí True při úspěchu."""
     if not path or not os.path.exists(path):
         return True
     
-    # Retry logic for Windows file locking
+    # Opakované pokusy kvůli zamykání souborů na Windows
     max_attempts = 2
     for attempt in range(max_attempts):
         try:
@@ -42,6 +46,7 @@ def remove_image_if_exists(path):
 
 
 def delete_unused_images():
+    """Smaže obrázky produktů, které nejsou referencovány žádným aktivním produktem ani historií změn."""
     rows_failed_to_delete_img = []
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -92,7 +97,7 @@ def delete_unused_images():
 
 
 def delete_disk_orphans():
-    # smaž soubory na disku, které nemají žádný řádek v DB
+    """Smaže soubory obrázků na disku, které nemají žádný odpovídající záznam v databázi."""
     image_dir = current_app.config.get('UPLOAD_FOLDER')
     if image_dir and os.path.isdir(image_dir):
         filenames_on_disk = {f for f in os.listdir(image_dir)

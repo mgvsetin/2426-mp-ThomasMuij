@@ -1,4 +1,4 @@
-"""Tests for cashier_app.events route handlers."""
+"""Testy obsluznych funkci tras modulu cashier_app.events."""
 
 import pytest
 from uuid import uuid4

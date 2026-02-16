@@ -1,4 +1,4 @@
-"""Tests for cashier_app.utils.cascade_capture module."""
+"""Testy modulu cashier_app.utils.cascade_capture pro serializaci dat."""
 
 import pytest
 from uuid import UUID, uuid4

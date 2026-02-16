@@ -1,4 +1,4 @@
-"""Tests for cashier_app.utils.query_builder module."""
+"""Testy modulu cashier_app.utils.query_builder pro sestavování SQL dotazů."""
 
 import pytest
 from uuid import uuid4
@@ -13,7 +13,7 @@ from cashier_app.utils.query_builder import (
 
 
 # ---------------------------------------------------------------------------
-# get_insert_placeholders_and_params
+# get_insert_placeholders_and_params – získání zástupných symbolů a parametrů pro INSERT
 # ---------------------------------------------------------------------------
 
 class TestGetInsertPlaceholdersAndParams:
@@ -44,7 +44,7 @@ class TestGetInsertPlaceholdersAndParams:
 
 
 # ---------------------------------------------------------------------------
-# build_insert_statement
+# build_insert_statement – sestavení INSERT příkazu
 # ---------------------------------------------------------------------------
 
 class TestBuildInsertStatement:
@@ -106,7 +106,7 @@ class TestBuildInsertStatement:
 
 
 # ---------------------------------------------------------------------------
-# build_update_statement
+# build_update_statement – sestavení UPDATE příkazu
 # ---------------------------------------------------------------------------
 
 class TestBuildUpdateStatement:
@@ -157,7 +157,7 @@ class TestBuildUpdateStatement:
 
 
 # ---------------------------------------------------------------------------
-# build_delete_statement
+# build_delete_statement – sestavení DELETE příkazu
 # ---------------------------------------------------------------------------
 
 class TestBuildDeleteStatement:

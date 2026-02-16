@@ -1,4 +1,4 @@
-"""Tests for smaller route modules: reader_info, deleted pages, index, users deleted/restore."""
+"""Testy pro menší moduly tras: reader_info, stránky smazaných, index, smazaní/obnovení uživatelů."""
 
 import pytest
 from uuid import uuid4
@@ -26,7 +26,7 @@ class TestReaderInfo:
 
 
 # ---------------------------------------------------------------------------
-# GET /deleted/users  and  GET /deleted/events  (page routes)
+# GET /deleted/users  a  GET /deleted/events  (stránkové trasy)
 # ---------------------------------------------------------------------------
 
 class TestDeletedPages:
@@ -41,7 +41,7 @@ class TestDeletedPages:
 
 
 # ---------------------------------------------------------------------------
-# GET /  (index page)
+# GET /  (úvodní stránka)
 # ---------------------------------------------------------------------------
 
 class TestIndexPage:
@@ -83,9 +83,9 @@ class TestGetDeletedUsers:
 
     @patch('cashier_app.users_and_wallets.get_pool')
     def test_non_admin_without_booth_requires_event(self, mock_pool, client):
-        """Non-admin non-manager without selected event gets 400."""
+        """Ne-admin, ne-manažer bez vybrané akce dostane 400."""
         mock_cur = MagicMock()
-        mock_cur.execute.return_value.fetchone.return_value = None  # not a manager
+        mock_cur.execute.return_value.fetchone.return_value = None  # není manažer
         mock_conn = MagicMock()
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)

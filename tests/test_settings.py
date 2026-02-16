@@ -1,4 +1,4 @@
-"""Tests for cashier_app.settings route handlers."""
+"""Testy pro obslužné funkce tras modulu cashier_app.settings (nastavení)."""
 
 import pytest
 from unittest.mock import patch, MagicMock
@@ -10,7 +10,7 @@ def _mock_auth(employee):
 
 
 # ---------------------------------------------------------------------------
-# GET /settings (page)
+# GET /settings (stránka)
 # ---------------------------------------------------------------------------
 
 class TestSettingsPage:

@@ -1,4 +1,4 @@
-"""Tests for cashier_app.session_api module."""
+"""Testy modulu cashier_app.session_api pro spravu relace."""
 
 import pytest
 from uuid import uuid4
@@ -38,7 +38,7 @@ class TestSessionInfo:
     @patch('cashier_app.session_api.load_logged_in_employee', return_value=ADMIN_EMPLOYEE)
     def test_full_session(self, mock_emp, mock_evt, mock_booth, mock_pool, client):
         mock_cur = MagicMock()
-        mock_cur.execute.return_value.fetchone.return_value = None  # not a manager
+        mock_cur.execute.return_value.fetchone.return_value = None  # neni manazer
         mock_conn = MagicMock()
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)

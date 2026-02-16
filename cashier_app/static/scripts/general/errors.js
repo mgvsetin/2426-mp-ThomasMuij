@@ -1,3 +1,7 @@
+/**
+ * @file Vlastní třídy chyb pro zpracování API odpovědí a stavů aplikace.
+ */
+
 export class UnexpectedError extends Error {
   constructor(message = 'unexpected_error') {
     super(message);

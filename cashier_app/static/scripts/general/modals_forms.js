@@ -1,3 +1,13 @@
+/**
+ * @file Funkce pro otevírání, zavírání a správu modálních oken a formulářů.
+ */
+
+/**
+ * Otevře modální okno s daným HTML obsahem.
+ * @param {string} html - HTML obsah modálního okna.
+ * @param {boolean} [focusFirstInput=true] - Zda zaostřit první vstupní pole.
+ * @returns {HTMLElement} Vytvořený overlay element.
+ */
 export function openModal(html, focusFirstInput=true) {
   document.querySelector('.overlay')?.remove();
   const overlay = document.createElement('div');
@@ -24,12 +34,18 @@ export function openModal(html, focusFirstInput=true) {
   return overlay;
 }
 
+/**
+ * Zavře aktuálně otevřené modální okno.
+ */
 export function closeModal() {
   document.querySelector('.overlay')?.remove();
   document.body.classList.remove('no-scroll');
 }
 
 
+/**
+ * Vymaže chybové hlášky ve formulářích v modálním okně.
+ */
 export function clearModalErrors() {
   const els = document.querySelectorAll('.form-error');
   els.forEach(e => {

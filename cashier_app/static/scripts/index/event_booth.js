@@ -1,3 +1,6 @@
+/**
+ * @file Výběr akce a stánku pro pokladní aplikaci.
+ */
 // export async function eventAndBoothIsPicked() {
 //   try {
 //     const response = await fetch('/api/session/booth-is-registered');
@@ -27,6 +30,11 @@ const pageContainer = document.querySelector('#page-container');
 
 export let selectingEvent = false;
 
+/**
+ * Vytvoří překryvnou vrstvu (overlay) pro výběr akce nebo stánku.
+ * @param {HTMLElement} container - Kontejner, do kterého se overlay vloží
+ * @returns {HTMLElement} Vytvořený overlay prvek
+ */
 function makeEventBoothOverlay(container) {
   const existing = document.querySelector('.overlay');
   existing?.remove();
@@ -42,6 +50,9 @@ function makeEventBoothOverlay(container) {
 }
 
 
+/**
+ * Odstraní překryvnou vrstvu (overlay) pro výběr akce nebo stánku.
+ */
 function removeEventBoothOverlay() {
   const overlay = document.querySelector('.overlay');
 
@@ -57,6 +68,11 @@ function removeEventBoothOverlay() {
 }
 
 
+/**
+ * Vykreslí formulář pro výběr akce. Načte dostupné akce ze serveru a zobrazí je uživateli.
+ * V případě chyby zobrazí chybovou hlášku.
+ * @returns {Promise<void>}
+ */
 export async function renderEventPicker() {
   let data;
   try {
@@ -115,6 +131,12 @@ export async function renderEventPicker() {
 }
 
 
+/**
+ * Odešle výběr akce na server a zpracuje odpověď.
+ * Zobrazí chybové hlášky podle typu chyby.
+ * @param {FormData} formData - Data z formuláře s vybranou akcí
+ * @returns {Promise<boolean>} Vrací true při úspěchu, jinak false
+ */
 export async function pickEvent(formData) {
   try {
     const response = await fetch('/api/employees/me/events/select', {
@@ -158,6 +180,11 @@ export async function pickEvent(formData) {
 }
 
 
+/**
+ * Vykreslí formulář pro výběr stánku. Načte dostupné stánky ze serveru a zobrazí je uživateli.
+ * V případě chyby zobrazí chybovou hlášku nebo vyvolá výběr akce.
+ * @returns {Promise<void>}
+ */
 export async function renderBoothPicker() {
   let data;
   try {
@@ -227,6 +254,12 @@ export async function renderBoothPicker() {
 }
 
 
+/**
+ * Odešle výběr stánku na server a zpracuje odpověď.
+ * Zobrazí chybové hlášky podle typu chyby.
+ * @param {FormData} formData - Data z formuláře s vybraným stánkem
+ * @returns {Promise<string|null>} Vrací typ stánku při úspěchu, jinak null
+ */
 export async function pickBooth(formData) {
   let booth_type = null;
   try {
@@ -287,6 +320,10 @@ export async function pickBooth(formData) {
 }
 
 
+/**
+ * Zruší výběr akce a stánku, resetuje stav aplikace a vymaže související data.
+ * @returns {Promise<void>}
+ */
 export async function unselectEventBooth() {
   order.reset();
   const response = await fetch('/api/employees/me/events/remove', {
@@ -308,6 +345,10 @@ export async function unselectEventBooth() {
 }
 
 
+/**
+ * Zruší výběr stánku, resetuje stav aplikace a vymaže související data.
+ * @returns {Promise<void>}
+ */
 export async function unselectBooth() {
   order.reset();
   try {

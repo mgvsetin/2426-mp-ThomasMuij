@@ -1,3 +1,6 @@
+/**
+ * @file Správa smazaných uživatelů – zobrazení, vyhledávání, řazení a obnova smazaných uživatelů.
+ */
 import { handleUnauthorizedRedirect } from '../general/api_utils.js';
 import { cacheFunctionFactory } from '../general/cache_factory.js';
 import { formatDateTimeISOToDisplay } from '../general/date_utils.js';
@@ -34,6 +37,15 @@ loadPage({
   sidebar: true
 });
 
+
+/**
+ * Načte a vykreslí části stránky podle zadaných parametrů.
+ * @param {Object} param0 - Objekt s parametry, které části načíst.
+ * @param {boolean} [param0.table=false] - Zda načíst tabulku.
+ * @param {boolean} [param0.header=false] - Zda načíst hlavičku.
+ * @param {boolean} [param0.sidebar=false] - Zda načíst postranní panel.
+ * @returns {Promise<void>} - Vrací promise po dokončení načítání.
+ */
 async function loadPage({
   table = false,
   header = false,
@@ -194,6 +206,11 @@ document.addEventListener('keydown', (event) => {
 });
 
 
+
+/**
+ * Přepíná řazení tabulky podle zadaného klíče.
+ * @param {string} key - Klíč, podle kterého se má řadit.
+ */
 function toggleOrder(key) {
   if (orderBy.key !== key) {
     orderBy.key = key;
@@ -207,6 +224,12 @@ function toggleOrder(key) {
 }
 
 
+
+/**
+ * Zjišťuje, zda uživatel odpovídá aktuálnímu vyhledávání.
+ * @param {Object} user - Objekt uživatele.
+ * @returns {boolean} - Vrací true, pokud uživatel odpovídá hledání.
+ */
 function userIsSearchedFor(user) {
   const searchQuery = usersSearchBar.value.toLowerCase().trim();
 
@@ -295,6 +318,11 @@ function userIsSearchedFor(user) {
 }
 
 
+
+/**
+ * Vykreslí tabulku smazaných uživatelů podle aktuálního řazení a vyhledávání.
+ * @returns {Promise<void>} - Vrací promise po dokončení vykreslení tabulky.
+ */
 async function renderTable() {
   const users = await fetchDeletedUsers().catch(() => {
     tableBody.innerHTML = '<tr><td colspan="8" class="error-message">Nepovedlo se načíst smazané uživatele.</td></tr>';
@@ -352,6 +380,12 @@ async function renderTable() {
 }
 
 
+
+/**
+ * Otevře modální okno pro obnovení uživatele.
+ * @param {string} userId - ID uživatele, který má být obnoven.
+ * @returns {Promise<void>} - Vrací promise po otevření modalu.
+ */
 async function openRestoreModal(userId) {
   const users = await fetchDeletedUsers().catch(() => { });
   if (!users) return;
@@ -381,6 +415,11 @@ async function openRestoreModal(userId) {
 }
 
 
+
+/**
+ * Zobrazí chybové hlášky při obnově uživatele v modálním okně.
+ * @param {string} error - Kód chyby nebo chybová zpráva.
+ */
 function showRestoreErrors(error) {
   const generalError = document.querySelector('#restore-general-error');
 
@@ -444,6 +483,12 @@ function showRestoreErrors(error) {
 }
 
 
+
+/**
+ * Odesílá požadavek na obnovení uživatele na server.
+ * @param {FormData} formData - Data formuláře s informacemi o uživateli.
+ * @returns {Promise<true|{error: string}>} - Vrací true při úspěchu, jinak objekt s chybou.
+ */
 async function restoreUser(formData) {
   try {
     const response = await fetch('/api/users/restore', {

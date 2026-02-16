@@ -1,8 +1,7 @@
-"""Modul pro správu PostgreSQL připojení v kontextu Flask aplikace.
+"""Modul pro správu fondu (poolu) PostgreSQL připojení v rámci Flask aplikace.
 
-
-Funkce get_db zajišťuje znovupoužití existujícího spojeni uloženého v `g` pokud
-parametry připojení souhlasí, jinak vytvoří nové.
+Poskytuje funkce pro inicializaci a získání sdíleného fondu připojení,
+inicializaci databázového schématu a CLI příkaz pro nastavení databáze.
 """
 
 from flask import current_app
@@ -16,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_pool() -> ConnectionPool:
+    """Vrátí fond připojení (ConnectionPool) z rozšíření aktuální Flask aplikace.
+
+    Vyvolá RuntimeError, pokud fond připojení nebyl inicializován.
+    """
     # vždy použij pool/get_pool().connection() as ...:
     # = context manager, aby se connection vrátilo
     pool: ConnectionPool = current_app.extensions.get('db_pool')
@@ -25,10 +28,10 @@ def get_pool() -> ConnectionPool:
 
 
 def init_db():
-    """Inicializuje databázi podle souboru schema.sql v instanci aplikace.
+    """Inicializuje databázové schéma spuštěním souboru schema.sql.
 
-
-    Načte SQL ze souboru schema.sql a vykoná ho přes připojení.
+    Načte obsah souboru schema.sql z prostředků aplikace a provede
+    všechny SQL příkazy v rámci jednoho připojení z fondu.
     """
     with current_app.open_resource('schema.sql', 'r', 'utf-8') as f:
         sql = f.read()
@@ -42,14 +45,19 @@ def init_db():
 def init_db_command():
     """CLI příkaz pro inicializaci databáze.
 
-
-    Tento příkaz registruje `flask --app cashier_app init-db`.
+    Spustí inicializaci databázového schématu. Registruje se jako
+    ``flask --app cashier_app init-db``.
     """
     init_db()
     click.echo('Initialized the database.')
 
 from flask import Flask
 def init_app(app: Flask):
+    """Inicializuje fond připojení k databázi a zaregistruje CLI příkazy.
+
+    Vytvoří ConnectionPool na základě konfigurace aplikace, uloží ho
+    do ``app.extensions`` a zaregistruje úklidovou funkci při ukončení procesu.
+    """
     # app.extensions = getattr(app, "extensions", {})
     conninfo = app.config.get('DATABASE_CONNINFO')
     pool = ConnectionPool(
@@ -59,11 +67,12 @@ def init_app(app: Flask):
         max_size=5,
         timeout=30,
         # check=ConnectionPool.check_connection,
-        open=True) # if process can be preloaded and then forked, use open=False and call pool.open() after fork
+        open=True) # pokud se proces předem načte a poté forkne, použij open=False a zavolej pool.open() po forku
     app.extensions['db_pool'] = pool
 
     # není nutné
     def _close_pool():
+        """Uzavře fond připojení při ukončení procesu."""
         try:
             pool.close(timeout=2.0)
         except Exception:

@@ -1,3 +1,6 @@
+"""Modul pro operaci vložení (paste) -- klonování zaměstnanců, akcí, stánků,
+produktů a kategorií včetně všech vazebních tabulek."""
+
 from uuid import UUID
 import uuid
 from typing import Callable
@@ -14,6 +17,7 @@ from cashier_app.utils.general import get_employee_lock_key
 
 
 def change_keys_make_values_UUID(from_dict: dict[str, list[str]], old_to_new_keys_dict: dict[str, str]) -> dict[str, list[UUID]]:
+    """Přemapuje klíče slovníku podle old_to_new_keys_dict a hodnoty převede na UUID."""
     new_dict = {}
     for old_key, new_key in old_to_new_keys_dict.items():
         new_dict[new_key] = [UUID(id) for id in from_dict[old_key]]
@@ -21,6 +25,7 @@ def change_keys_make_values_UUID(from_dict: dict[str, list[str]], old_to_new_key
 
 
 def make_unique_name(original_name: str, other_names_lower: set[str]) -> str:
+    """Vrátí unikátní název přidáním přípony _copy / _copyN, pokud název již existuje."""
     new_name = original_name
     i = 0
     while new_name.lower() in other_names_lower:
@@ -30,11 +35,11 @@ def make_unique_name(original_name: str, other_names_lower: set[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Pomocné funkce
 # ---------------------------------------------------------------------------
 
 def rows_to_changes(table: str, rows: list[dict]) -> list[dict]:
-    """Convert RETURNING * results to undo/redo change entries (INSERTs)."""
+    """Převede výsledky RETURNING * na záznamy změn pro undo/redo (INSERTy)."""
     return [
         {'table': table, 'old_values': None, 'new_values': convert_dict_to_serializable(dict(row))}
         for row in rows
@@ -43,7 +48,7 @@ def rows_to_changes(table: str, rows: list[dict]) -> list[dict]:
 
 def insert_and_track(cur: Cursor, table: str, rows: list[dict], changes: list[dict],
                      on_conflict_do_nothing: bool | list[str] = False) -> list[dict]:
-    """INSERT rows with RETURNING *, append change entries to changes list. Returns inserted rows."""
+    """Vloží řádky pomocí INSERT s RETURNING *, přidá záznamy změn do seznamu changes. Vrátí vložené řádky."""
     if not rows:
         return []
     sql, query_params = build_insert_statement(table, rows, returning='*',
@@ -66,12 +71,12 @@ def clone_entities(
     existing_names_lower: set[str],
 ) -> tuple[list[dict], IdMap]:
     """
-    Build clone rows for one target event.
+    Sestaví klonované řádky pro jednu cílovou akci.
 
-    Returns (rows_to_insert, id_map) where id_map maps old_id -> set of new_ids.
-    - Directly copied: always clone.
-    - Indirectly copied, same event: identity-map (reuse).
-    - Indirectly copied, different event: clone.
+    Vrací (rows_to_insert, id_map), kde id_map mapuje old_id -> množinu new_ids.
+    - Přímo zkopírované: vždy klonovat.
+    - Nepřímo zkopírované, stejná akce: identity-map (znovu použít).
+    - Nepřímo zkopírované, jiná akce: klonovat.
     """
     id_map: IdMap = {}
     rows_to_insert: list[dict] = []
@@ -111,7 +116,7 @@ def clone_entities(
 
 def clone_link_table(original_links: list[dict], id_map: IdMap,
                      col_a: str, col_b: str) -> list[dict]:
-    """Generate new link rows via Cartesian product of id_map entries."""
+    """Vygeneruje nové řádky vazební tabulky kartézským součinem záznamů z id_map."""
     new_links: list[dict] = []
     seen: set[tuple] = set()
 

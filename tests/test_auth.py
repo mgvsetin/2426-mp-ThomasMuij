@@ -1,4 +1,4 @@
-"""Tests for cashier_app.auth module."""
+"""Testy autentizacniho modulu cashier_app.auth."""
 
 import pytest
 from uuid import uuid4

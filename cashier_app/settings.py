@@ -1,3 +1,5 @@
+"""Modul pro správu nastavení profilu zaměstnance, včetně zobrazení a aktualizace údajů."""
+
 from flask import Blueprint, current_app, jsonify, request, url_for, render_template
 from argon2 import PasswordHasher
 from cashier_app.auth import load_logged_in_employee, employee_password_is_correct
@@ -14,6 +16,7 @@ bp = Blueprint('settings', __name__, url_prefix='/settings')
 
 @bp.route('')
 def get_settings_page():
+    """Vrátí HTML stránku s nastavením."""
     return render_template('settings/settings.html')
 
 
@@ -22,6 +25,7 @@ api_bp = Blueprint('settings_api', __name__, url_prefix='/api/settings')
 
 @api_bp.route('/profile')
 def get_profile():
+    """Vrátí profilové údaje přihlášeného zaměstnance jako JSON."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -37,6 +41,7 @@ def get_profile():
 
 @api_bp.route('/update-profile', methods=('POST',))
 def update_profile():
+    """Aktualizuje profil přihlášeného zaměstnance na základě odeslaných formulářových dat."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

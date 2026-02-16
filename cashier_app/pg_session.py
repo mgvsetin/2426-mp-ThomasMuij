@@ -1,12 +1,13 @@
-"""Implementace session backendu ukládajícího sessiony do PostgreSQL.
+"""Server-side session backend pro Flask s úložištěm v PostgreSQL.
 
-
-Tento modul definuje:
-- PgSession: objekt session kompatibilní s Flask-Sessions (SessionMixin).
-- PgSessionInterface: vlastní SessionInterface pro Flask, který ukládá
-session data do tabulky (defaultně `sessions`) jako jsonb.
-- Pomocné funkce pro zkrácení UA (hash), extrakci klientského IP a nástroje
-pro čištění/odstranění expirovaných session z databáze.
+Modul poskytuje:
+- PgSession -- objekt relace odvozený od CallbackDict a SessionMixin,
+  který automaticky detekuje změny dat.
+- PgSessionInterface -- vlastní implementaci rozhraní SessionInterface,
+  jež čte a zapisuje data relací do zadané tabulky (výchozí ``sessions``)
+  ve formátu JSONB.
+- Pomocné utility: zkrácený hash User-Agent řetězce, mazání
+  expirovaných relací a CLI příkaz pro údržbu databáze.
 """
 
 from typing import Callable, Optional, Dict, Any
@@ -30,22 +31,24 @@ from cashier_app.db import get_pool
 
 
 class PgSession(CallbackDict, SessionMixin):
-    """Reprezentuje jednu flaskovou session uloženou v Postgresu.
+    """Objekt relace ukládaný na straně serveru v PostgreSQL.
 
-
-    Dědí z CallbackDict, aby bylo možné detekovat změny (atribut `modified`).
-    
-    
-    Parametry
-    ---------
-    initial: dict | None
-    Počáteční data session.
-    sid: str | None
-    Session ID (opaque token uložený v cookie).
-    new: bool
-    True pokud jde o nově vytvořenou session.
+    Dědí z ``CallbackDict``, takže každá změna klíče automaticky nastaví
+    příznak ``modified`` na ``True``.  Zároveň implementuje ``SessionMixin``,
+    čímž je plně kompatibilní s Flask session API.
     """
     def __init__(self, initial: Optional[Dict[str, Any]] = None, sid: Optional[str] = None, new: bool = False) -> None:
+        """Inicializuje objekt relace.
+
+        Parametry
+        ---------
+        initial : dict | None
+            Počáteční data relace (načtená z databáze nebo prázdná).
+        sid : str | None
+            Identifikátor relace uložený v cookie prohlížeče.
+        new : bool
+            ``True``, pokud se jedná o zcela novou relaci.
+        """
         def _on_update(self):
             self.modified = True
         super().__init__(initial or {}, _on_update)
@@ -55,33 +58,30 @@ class PgSession(CallbackDict, SessionMixin):
 
 
 def short_ua_hash(user_agent: str) -> str:
-    """Vrátí zkrácený (16 hex znaků) SHA-256 hash user-agenta.
+    """Vrátí prvních 16 hexadecimálních znaků SHA-256 hashe řetězce User-Agent.
 
-
-    Používá se pro základní detekci změny user-agenta mezi požadavky
-    bez uložení celého stringu UA do tabulky.
+    Slouží k rychlé detekci změny prohlížeče mezi požadavky, aniž by se
+    do databáze ukládal celý řetězec User-Agent.
     """
-    # return first 16 hex chars of sha256
+    # vrátí prvních 16 hex znaků sha256
     if not user_agent:
         return ''
     return hashlib.sha256(user_agent.encode('utf-8')).hexdigest()[:16]
 
 
 class PgSessionInterface(SessionInterface):
-    """SessionInterface ukládající sessiony do PostgreSQL tabulky.
+    """Rozhraní pro správu relací s úložištěm v PostgreSQL.
 
+    Implementuje metody ``open_session`` (načtení relace z databáze podle
+    SID uloženého v cookie) a ``save_session`` (uložení / aktualizace relace
+    v databázi a nastavení cookie v HTTP odpovědi).
 
-    Vlastní implementace metod:
-    - open_session: načte session z DB podle sid z cookie.
-    - save_session: uloží/aktualizuje session v DB a nastaví cookie.
-    
-    
     Parametry
     ---------
-    get_db_pool: callable
-    Funkce pro získání DB pool (defaultně cashier_app.db.get_pool).
-    table: str
-    Název DB tabulky, kam se session ukládají (výchozí 'sessions').
+    get_db_pool : callable
+        Funkce vracející instanci ``ConnectionPool`` (výchozí ``get_pool``).
+    table : str
+        Název databázové tabulky pro ukládání relací (výchozí ``'sessions'``).
     """
     serializer = json
     session_class = PgSession
@@ -91,32 +91,31 @@ class PgSessionInterface(SessionInterface):
         self.table = table
 
     def generate_sid(self) -> str:
-        """Vygeneruje náhodné SID použité jako hodnota cookie.
+        """Vygeneruje kryptograficky bezpečný identifikátor relace.
 
-
-        Používá secure token_urlsafe(32) pro dostatečnou entropii.
+        Využívá ``secrets.token_urlsafe(32)`` pro dostatečnou entropii,
+        výsledek se použije jako hodnota cookie.
         """
         return secrets.token_urlsafe(32)
 
     def get_expiration_time(self, app: Flask, session: SessionMixin) -> Optional[datetime.datetime]:
-        """Vrátí datetime expirace pro cookie nebo None.
+        """Vypočítá čas vypršení platnosti relace.
 
-
-        Pokud je session označená jako `permanent`, použije se
-        `app.permanent_session_lifetime` a vrátí se UTC datetime.
-        Jinak vrací None (session-cookie bez expirace -> prohlížeč končí session při zavření).
+        Je-li relace označena jako ``permanent``, vrátí aktuální UTC čas
+        posunutý o ``app.permanent_session_lifetime``.  V opačném případě
+        vrátí ``None`` -- cookie pak platí jen do zavření prohlížeče.
         """
         if session.permanent:
             return datetime.datetime.now(datetime.timezone.utc) + app.permanent_session_lifetime
         return None
     
     def open_session(self, app: Flask, request: Request) -> PgSession:
-        """Načte session z DB na základě cookie SID.
+        """Načte relaci z databáze podle SID uloženého v cookie.
 
-
-        Kontroluje expiraci a -- volitelně -- UA/IP pokud je v konfiguraci
-        povoleno (SESSION_ENFORCE_UA / SESSION_ENFORCE_IP). Pokud session
-        neexistuje nebo je neplatná, vrátí novou prázdnou session.
+        Ověřuje platnost expirace a volitelně kontroluje shodu User-Agent
+        (``SESSION_ENFORCE_UA``) a IP adresy (``SESSION_ENFORCE_IP``).
+        Pokud relace neexistuje, vypršela nebo neprošla validací, vrátí
+        novou prázdnou relaci.
         """
         sid = request.cookies.get(app.config.get("SESSION_COOKIE_NAME", "session"))
         if not sid:
@@ -137,7 +136,7 @@ class PgSessionInterface(SessionInterface):
             return self.session_class(sid=None, new=True)
         
         if row['expires_at'] is not None and row['expires_at'] < datetime.datetime.now(datetime.timezone.utc):
-            # expired
+            # vypršela platnost
             with pool.connection() as conn:
                 with conn.cursor() as cur:
                     query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
@@ -153,7 +152,7 @@ class PgSessionInterface(SessionInterface):
             actual_ip = client_ip_from_request()
 
             if enforce_ua and row['ua_hash'] and row['ua_hash'] != actual_ua_hash:
-                # UA mismatch -> invalidate session
+                # neshoda UA -> zneplatnění relace
                 with pool.connection() as conn:
                     with conn.cursor() as cur:
                         query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
@@ -162,7 +161,7 @@ class PgSessionInterface(SessionInterface):
                 return self.session_class(sid=None, new=True)
 
             if enforce_ip and row['ip'] and row['ip'] != actual_ip:
-                # IP mismatch -> invalidate
+                # neshoda IP -> zneplatnění relace
                 with pool.connection() as conn:
                     with conn.cursor() as cur:
                         query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
@@ -173,12 +172,11 @@ class PgSessionInterface(SessionInterface):
         return self.session_class(initial=data, sid=sid, new=False)
     
     def save_session(self, app: Flask, session: PgSession, response: Response) -> None:
-        """Uloží session do DB a nastaví cookie v odpovědi.
+        """Uloží relaci do databáze a nastaví cookie v HTTP odpovědi.
 
-
-        Pokud je session prázdná, smaže se z DB a cookie je odstraněna.
-        Pokud je session nová nebo pokud došlo k regeneraci SID, vygeneruje se
-        nový sid a starý (pokud existuje) se odstraní.
+        Prázdná relace je z databáze odstraněna a cookie smazána.
+        Při nové relaci nebo explicitní regeneraci SID se vygeneruje nový
+        identifikátor a starý záznam (pokud existoval) se odstraní.
         """
         domain = self.get_cookie_domain(app)
         path = self.get_cookie_path(app)

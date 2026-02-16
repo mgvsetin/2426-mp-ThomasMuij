@@ -1,8 +1,16 @@
+/**
+ * @file Načítání a správa dat akcí a jejich identifikace z URL.
+ */
 import { handleUnauthorizedRedirect } from "./api_utils.js";
 import { cacheFunctionFactory } from "./cache_factory.js";
 import { EventNotFoundError, ForbiddenError, MissingEventIdError, UnexpectedError } from "./errors.js";
 
 
+/**
+ * Načte seznam akcí z API a uloží jej do cache.
+ * @returns {Promise<Array>} Pole akcí.
+ * @throws {UnexpectedError} Při chybě načítání.
+ */
 export const [fetchEvents, resetEventsCache] = cacheFunctionFactory(async () => {
   const response = await fetch('/api/events');
 
@@ -19,6 +27,10 @@ export const [fetchEvents, resetEventsCache] = cacheFunctionFactory(async () => 
 });
 
 
+/**
+ * Získá ID akce z aktuální URL cesty.
+ * @returns {string|null} ID akce nebo null, pokud není nalezeno.
+ */
 export function getEventIdFromPath() {
   // filter(Boolean) odstraňuje falsy hodnoty jako ""
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -33,6 +45,11 @@ export function getEventIdFromPath() {
 const eventId = getEventIdFromPath();
 
 
+/**
+ * Načte detailní data o akci podle ID z URL a uloží do cache.
+ * @returns {Promise<object>} Objekt s daty akce, stánků, zaměstnanců, produktů, kategorií, uživatelů a peněženek.
+ * @throws {MissingEventIdError|ForbiddenError|EventNotFoundError|UnexpectedError}
+ */
 export const [fetchEventData, resetEventDataCache] = cacheFunctionFactory(async () => {
   if (!eventId) {
     throw new MissingEventIdError();

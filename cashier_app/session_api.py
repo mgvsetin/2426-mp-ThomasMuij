@@ -1,3 +1,5 @@
+"""API endpoint pro získání informací o aktuální relaci (session) uživatele."""
+
 from flask import Blueprint, jsonify
 from cashier_app.db import get_pool
 from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
@@ -8,6 +10,7 @@ api_bp = Blueprint('session_api', __name__, url_prefix='/api/session')
 
 @api_bp.route('')
 def session_info():
+    """Vrátí informace o aktuální relaci: přihlášený zaměstnanec, vybraná akce a stánek."""
     employee = load_logged_in_employee()
 
     if employee is None:

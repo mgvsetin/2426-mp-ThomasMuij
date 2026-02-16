@@ -1,4 +1,4 @@
-"""Tests for cashier_app.paste route handler."""
+"""Testy pro obslužnou funkci trasy cashier_app.paste (vkládání dat)."""
 
 import pytest
 from uuid import uuid4
@@ -102,9 +102,9 @@ class TestPaste:
         with _mock_auth(ADMIN_EMPLOYEE):
             resp = client.post('/api/paste', json={
                 'targets': 'newEvents',
-                # dataToCopy omitted
+                # dataToCopy vynecháno
             })
-            # admin → targets passes, then dataToCopy missing
+            # admin → targets projde, poté chybí dataToCopy
             assert resp.status_code == 400
 
     def test_invalid_target_uuid(self, client):

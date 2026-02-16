@@ -1,3 +1,7 @@
+/**
+ * @file Inicializace a vykreslení hlavičky stránky (header) s navigací a účtem.
+ */
+
 import { order } from "../index/order.js";
 import { saveSelectedCategory } from "../index/products.js";
 import { getSessionInfo } from "./session.js";
@@ -6,6 +10,10 @@ import { getSessionInfo } from "./session.js";
 let header, /*searchBar,*/ accountDropdown, sessionInfoEl, sidebarOverlayPage;
 
 
+/**
+ * Inicializuje hlavičku stránky a vykreslí její HTML strukturu.
+ * Přidá hlavičku do DOM, nastaví avatar a barvu podle uživatele.
+ */
 function initHeader() {
   if (document.getElementById('header')) return;
 
@@ -82,6 +90,11 @@ function initHeader() {
 }
 
 
+/**
+ * Vypočítá barvu na základě jména (pro avatar).
+ * @param {string} name - Jméno uživatele.
+ * @returns {string} Barva v HSL formátu.
+ */
 function nameToColor(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -102,6 +115,10 @@ function nameToColor(name) {
 initHeader();
 
 
+/**
+ * Vykreslí informace o aktuálním uživateli do dropdownu v hlavičce.
+ * @returns {Promise<void>}
+ */
 async function renderDropdownSessionInfo() {
   if (!sessionInfoEl) initHeader();
 
@@ -125,6 +142,10 @@ async function renderDropdownSessionInfo() {
 }
 
 
+/**
+ * Vykreslí hlavičku a informace o uživateli (dropdown).
+ * @returns {Promise<void>}
+ */
 export async function renderHeader() {
   if (!header) initHeader();
   await renderDropdownSessionInfo();
@@ -153,6 +174,11 @@ export async function renderHeader() {
 // }
 
 
+/**
+ * Zpracuje kliknutí v hlavičce (dropdown, odhlášení, otevření sidebaru).
+ * @param {Event} event - Událost kliknutí.
+ * @returns {boolean|undefined} True pokud byla akce zpracována, jinak false/undefined.
+ */
 export function headerClickListeners(event) {
   if (!header) initHeader();
 

@@ -1,3 +1,5 @@
+"""Modul pro zpracování transakcí (platby, změny zůstatku a refundace) v pokladní aplikaci."""
+
 from flask import Blueprint, jsonify, url_for, request, current_app
 from uuid import UUID
 import json
@@ -14,6 +16,15 @@ api_bp = Blueprint('transactions_api', __name__, url_prefix='/api/transactions')
 
 @api_bp.route('/make-payment', methods=('POST',))
 def make_payment():
+    """Zpracuje platbu z peněženky zákazníka za produkty na prodejním stánku.
+
+    Ověří přihlášeného zaměstnance, vybranou akci a stánek. Validuje tag peněženky,
+    částku v CZK a informace o produktech. Provede transakci typu 'payment' s kontrolou
+    dostatečného zůstatku a idempotentního klíče.
+
+    Returns:
+        JSON odpověď s částkou změny zůstatku nebo chybovou zprávou.
+    """
     logged_employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()
@@ -130,6 +141,15 @@ def make_payment():
 
 @api_bp.route('/make-balance-change', methods=('POST',))
 def make_balance_change():
+    """Provede změnu zůstatku peněženky na pokladním stánku.
+
+    Ověří přihlášeného zaměstnance, vybranou akci a stánek typu 'cashier'. Validuje
+    tag peněženky, požadovanou změnu zůstatku a nový zůstatek. Kontroluje, že vypočítaný
+    nový zůstatek odpovídá zaslanému, a provede transakci typu 'balance-change'.
+
+    Returns:
+        JSON odpověď s částkou změny zůstatku nebo chybovou zprávou.
+    """
     logged_employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()
@@ -236,6 +256,21 @@ def make_balance_change():
 
 
 def _find_last_refundable_payment(cur, wallet_id, booth_id, event_id, time_limit_minutes):
+    """Najde poslední platbu, kterou je možné refundovat.
+
+    Vyhledá nejnovější transakci typu 'payment' pro danou peněženku, stánek a akci,
+    která proběhla v rámci zadaného časového limitu a dosud nebyla refundována.
+
+    Args:
+        cur: Databázový kurzor.
+        wallet_id: ID peněženky.
+        booth_id: ID stánku.
+        event_id: ID akce.
+        time_limit_minutes: Časový limit v minutách pro refundaci.
+
+    Returns:
+        Slovník s údaji o poslední refundovatelné platbě, nebo None pokud žádná neexistuje.
+    """
     return cur.execute(
         '''
         SELECT t.id, t.amount_czk, t.products_info, t.occurred_at
@@ -256,6 +291,15 @@ def _find_last_refundable_payment(cur, wallet_id, booth_id, event_id, time_limit
 
 @api_bp.route('/last-refundable', methods=('GET',))
 def get_last_refundable():
+    """Získá poslední refundovatelnou platbu pro danou peněženku a stánek.
+
+    Ověří přihlášeného zaměstnance, vybranou akci a prodejní stánek. Vyhledá peněženku
+    podle tag ID a najde poslední platbu, která může být refundována v rámci časového limitu.
+
+    Returns:
+        JSON odpověď s částkou refundace, informacemi o produktech a časem platby,
+        nebo chybovou zprávou.
+    """
     logged_employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()
@@ -308,6 +352,16 @@ def get_last_refundable():
 
 @api_bp.route('/make-refund', methods=('POST',))
 def make_refund():
+    """Provede refundaci poslední refundovatelné platby na prodejním stánku.
+
+    Ověří přihlášeného zaměstnance, vybranou akci a stánek. Vyhledá peněženku podle tag ID,
+    najde poslední refundovatelnou platbu a vytvoří transakci typu 'refund', která vrátí
+    odečtenou částku zpět na peněženku.
+
+    Returns:
+        JSON odpověď s částkou změny zůstatku, refundovanými produkty a refundovanou částkou,
+        nebo chybovou zprávou.
+    """
     logged_employee = load_logged_in_employee()
     event = load_selected_event()
     booth = load_selected_booth()

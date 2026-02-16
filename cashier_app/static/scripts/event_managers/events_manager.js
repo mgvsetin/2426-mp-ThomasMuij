@@ -26,6 +26,10 @@ const tableHeaders = document.querySelectorAll('thead');
 const orderBy = { key: '', ascending: true }; // key: 'start_at', 'end_at', 'created_at'
 
 
+/**
+ * Zobrazí tlačítko pro přidání akce, pokud je uživatel administrátor.
+ * @returns {Promise<void>}
+ */
 async function addAddEventButton() {
   const sessionInfo = await getSessionInfo().catch(() => { });
   if (!sessionInfo) return;
@@ -42,6 +46,14 @@ loadPage({
   sidebar: true
 });
 
+/**
+ * Načte a vykreslí části stránky podle zadaných parametrů (tabulka, hlavička, postranní panel).
+ * @param {Object} param0 - Nastavení co načíst
+ * @param {boolean} param0.table - Zda načíst tabulku
+ * @param {boolean} param0.header - Zda načíst hlavičku
+ * @param {boolean} param0.sidebar - Zda načíst postranní panel
+ * @returns {Promise<void>}
+ */
 async function loadPage({
   table = false,
   header = false,
@@ -246,6 +258,10 @@ document.addEventListener('keydown', (event) => {
 });
 
 
+/**
+ * Přepíná řazení tabulky podle zadaného klíče.
+ * @param {string} key - Klíč pro řazení
+ */
 function toggleOrder(key) {
   if (orderBy.key !== key) {
     orderBy.key = key;
@@ -259,6 +275,12 @@ function toggleOrder(key) {
 }
 
 
+/**
+ * Zjišťuje, zda akce odpovídá vyhledávacímu dotazu.
+ * @param {Object} ev - Objekt akce
+ * @param {string} searchQuery - Vyhledávací dotaz
+ * @returns {boolean}
+ */
 function isSearchedForEvent(ev, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -295,6 +317,12 @@ function isSearchedForEvent(ev, searchQuery) {
 }
 
 
+/**
+ * Porovnávací funkce pro řazení akcí podle zvoleného klíče a směru.
+ * @param {Object} a - První akce
+ * @param {Object} b - Druhá akce
+ * @returns {number}
+ */
 function sorter(a, b) {
   if (!orderBy.key) return 0;
   const key = orderBy.key;
@@ -313,6 +341,11 @@ function sorter(a, b) {
 }
 
 
+/**
+ * Vykreslí řádky tabulky pro zadaný seznam akcí.
+ * @param {Array<Object>} list - Seznam akcí
+ * @param {HTMLElement} tbody - Tělo tabulky, kam se mají řádky vykreslit
+ */
 function renderRowsFromList(list, tbody) {
   const searchQuery = searchBar.value;
   let rows = '';
@@ -348,6 +381,10 @@ function renderRowsFromList(list, tbody) {
 }
 
 
+/**
+ * Načte akce, rozdělí je podle stavu (aktivní, budoucí, minulé) a vykreslí do tabulek.
+ * @returns {Promise<void>}
+ */
 async function renderTableRows() {
   const events = await fetchEvents().catch(() => {
     const errHTML = `<tr><td class="error-message" colspan="6">Nepovedlo se načíst akce.</td></tr>`;
@@ -409,6 +446,9 @@ async function renderTableRows() {
 }
 
 
+/**
+ * Otevře modální okno pro přidání nové akce.
+ */
 function openAddEventOverlay() {
   const html = `
     <header>
@@ -451,6 +491,10 @@ function openAddEventOverlay() {
 
 
 
+/**
+ * Zobrazí chybové hlášky ve formuláři pro přidání akce.
+ * @param {string} error - Kód nebo text chyby
+ */
 function showAddEventErrors(error) {
   const nameError = document.querySelector('#name-add-error');
   const startAtError = document.querySelector('#start-add-error');

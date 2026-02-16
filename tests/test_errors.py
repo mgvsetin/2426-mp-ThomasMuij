@@ -1,4 +1,4 @@
-"""Tests for cashier_app.errors module."""
+"""Testy vlastních výjimek z modulu cashier_app.errors."""
 
 import pytest
 from cashier_app.errors import (
@@ -22,7 +22,7 @@ from cashier_app.errors import (
 
 
 class TestCustomExceptions:
-    """Verify all custom exception classes can be raised and caught."""
+    """Ověření, že všechny vlastní výjimky lze vyvolat a zachytit."""
 
     def test_multiple_rows_affected(self):
         with pytest.raises(MultipleRowsAffectedError):

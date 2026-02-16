@@ -1,3 +1,6 @@
+/**
+ * @file Přihlašovací formulář a přesměrování přihlášeného uživatele.
+ */
 import { order } from "../index/order.js";
 import { saveSelectedCategory } from "../index/products.js";
 
@@ -9,6 +12,10 @@ const showPassword = document.querySelector('.pw-eye');
 const passwordInput = document.querySelector('#password');
 
 
+/**
+ * Zkontroluje, zda je uživatel již přihlášen, a případně ho přesměruje na hlavní stránku.
+ * @returns {Promise<void>}
+ */
 async function redirectLoggedIn() {
   try {
     const response = await fetch('/api/session');
@@ -91,4 +98,4 @@ showPassword.addEventListener('click', () => {
   const isShow = showPassword.classList.toggle('state-hide');
   showPassword.classList.toggle('state-show', !isShow);
   showPassword.classList.toggle('state-hide', isShow);
-})
+});

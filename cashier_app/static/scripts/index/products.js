@@ -1,7 +1,10 @@
-// make sure backend checks that product belongs to event/booth
-// make sure to remove it from sessionstorage when logging in/out
-// make the products in sessionstorage be stored behind a session id or employee id for safety
-// order (not cart)
+/**
+ * @file Správa produktů a kategorií – načítání, vyhledávání, vykreslování a cache.
+ */
+// zajistit, že backend kontroluje, že produkt patří k akci/stánku
+// nezapomenout odstranit ze sessionStorage při přihlášení/odhlášení
+// produkty v sessionStorage uložit za session id nebo employee id pro bezpečnost
+// objednávka (ne košík)
 
 
 // class Product {
@@ -26,6 +29,14 @@ const productsSearchBar = document.querySelector('#products-search-bar');
 
 let measureRaf = null;
 
+/**
+ * Načte produkty a kategorie z API a uloží je do cache.
+ * Vyhazuje výjimky při chybě výběru akce nebo stánku.
+ * @returns {Promise<{products: Array, categories: Array}>} Objekt s produkty a kategoriemi
+ * @throws {EventNotSelectedError} Pokud není vybrána akce
+ * @throws {BoothNotSelectedError} Pokud není vybrán stánek
+ * @throws {UnexpectedError} Při jiné chybě
+ */
 export const [fetchProductsAndCategories, resetProductsCache] = cacheFunctionFactory(async () => {
   const response = await fetch('/api/events/booths/products-categories');
 
@@ -60,6 +71,12 @@ export const [fetchProductsAndCategories, resetProductsCache] = cacheFunctionFac
 });
 
 
+/**
+ * Najde produkt podle ID v poli produktů.
+ * @param {Array} products Pole produktů
+ * @param {number|string} productId ID produktu
+ * @returns {Object|undefined} Nalezený produkt nebo undefined
+ */
 export function findProduct(products, productId) {
   for (const product of products) {
     if (product.id === productId) {
@@ -69,8 +86,13 @@ export function findProduct(products, productId) {
 }
 
 
+/**
+ * Vykreslí produkty do gridu na stránce podle vyhledávání a kategorie.
+ * Zobrazí chybové hlášky při nevybraném stánku nebo akci.
+ * @returns {Promise<void>}
+ */
 export async function renderProducts() {
-  const result = await fetchProductsAndCategories().catch((error) => { // combine awaits here and everywhere else
+  const result = await fetchProductsAndCategories().catch((error) => {
     if ([EventNotSelectedError, BoothNotSelectedError].some((c) => error instanceof c)) {
       productGrid.innerHTML = `
       <div id="no-products-message">
@@ -205,6 +227,10 @@ function getSelectedCategory() {
 }
 
 
+/**
+ * Uloží vybranou kategorii do sessionStorage nebo ji odstraní.
+ * @param {string|null} category Název kategorie nebo null pro odstranění
+ */
 export function saveSelectedCategory(category) {
   if (!category) {
     sessionStorage.removeItem('selectedCategory');
@@ -214,10 +240,14 @@ export function saveSelectedCategory(category) {
 }
 
 
+/**
+ * Vykreslí tlačítka kategorií na stránce a zvýrazní vybranou kategorii.
+ * @returns {Promise<void>}
+ */
 export async function renderCategories() {
   const result = await fetchProductsAndCategories().catch(() => {
     categoriesEl.innerHTML = '';
-  }); // combine awaits here and everywhere else
+  });
   if (!result) return;
 
   const categories = result.categories;

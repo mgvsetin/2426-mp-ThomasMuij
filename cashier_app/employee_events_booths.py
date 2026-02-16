@@ -1,7 +1,8 @@
-"""Modul pro správu akcí, stánků a výběru událostí pro zaměstnance.
+"""Modul pro správu událostí a stánků přihlášeného zaměstnance.
 
-
-Obsahuje dva blueprinty: 'events' (hlavní) a 'booths' (pod '/booths').
+Poskytuje API endpointy pro výběr aktivní události a stánku v rámci session.
+Definuje dva Flask blueprinty: 'employee_events_api' pro události
+a 'booths' (vnořený pod '/booths') pro stánky.
 """
 
 # import functools
@@ -16,17 +17,15 @@ api_bp = Blueprint('employee_events_api', __name__, url_prefix='/api/employees/m
 
 @api_bp.route('/active')
 def get_active_events_for_employee():
-    """Vrátí aktivní (práve probíhající) události pro přihlášeného zaměstnance.
+    """Získá seznam aktivních událostí pro přihlášeného zaměstnance.
 
+    Pokud je zaměstnanec administrátor, vrátí všechny právě probíhající události.
+    V opačném případě vrátí pouze události, ke kterým je zaměstnanec přiřazen
+    prostřednictvím tabulky employee_event_booth_roles.
 
-    Pokud je zaměstnanec admin, vrátí se seznam všech aktivních akcí.
-    Jinak se vrátí pouze akce, ke kterým je zaměstnanec připojen.
-    
-    
-    Vrátí
-    ------
-    Response JSON
-    Seznam akcí nebo error redirect na login s odpověí 401.
+    Returns:
+        tuple: JSON seznam událostí (id, name) s kódem 200,
+               nebo přesměrování na přihlášení s kódem 401.
     """
     employee = load_logged_in_employee()
 
@@ -67,17 +66,15 @@ def get_active_events_for_employee():
 
 @api_bp.route('/select', methods=('PUT',))
 def select_event():
-    """Vybere událost pro aktuální session zaměstnance.
+    """Nastaví vybranou událost do session přihlášeného zaměstnance.
 
+    Validuje event_id z formuláře, ověřuje, zda je událost aktivní
+    a zda má zaměstnanec oprávnění k dané události (admin má přístup vždy).
+    Při úspěšném výběru odstraní případně zvolený stánek ze session.
 
-    Ošetřuje validitu event_id, kontroluje,
-    zda je událost aktivní a zda je zaměstnanec s akcí svázaný (pokud není admin).
-    Odstraní booth_id ze session pokud tam je.
-    
-    
-    Vrátí
-    ------
-    200 prázdný JSON pokud OK, jinak chybový kód a chybová zpráva.
+    Returns:
+        tuple: Prázdný JSON s kódem 200 při úspěchu,
+               nebo chybová zpráva s odpovídajícím HTTP kódem (400, 401, 403, 404).
     """
     employee = load_logged_in_employee()
 
@@ -108,7 +105,7 @@ def select_event():
             if not event:
                 return jsonify(error='event_not_found_or_inactive'), 404
     
-            # ověř zda zaměstanec je spojený s akcí
+            # ověření, zda je zaměstnanec přiřazen k události
             if not employee['is_admin']:
                 role = cur.execute(
                     '''
@@ -129,10 +126,13 @@ def select_event():
 
 @api_bp.route('/remove', methods=('DELETE',))
 def remove_event():
-    """Odstraní vybranou událost a stánek z aktuální session.
+    """Odstraní vybranou událost a stánek ze session.
 
+    Slouží k zrušení aktuálního výběru události, například při přechodu
+    na jinou událost. Společně s událostí se odstraní i vybraný stánek.
 
-    Použito pro "odhlášení" vybrávání události (např. při přechodu mezi akcemi).
+    Returns:
+        tuple: Prázdný JSON s kódem 200.
     """
     session.pop('event_id', None)
     session.pop('booth_id', None)
@@ -140,10 +140,15 @@ def remove_event():
         
 
 def load_selected_event() -> dict | None:
-    """Načte vybranou událost ze session a uloží ji do `g`.
+    """Načte vybranou událost ze session a uloží ji do kontextu požadavku ``g``.
 
+    Pokud v session není nastaveno event_id, nastaví ``g.event`` na None.
+    Pokud už je událost v ``g`` načtená a odpovídá session, vrátí ji přímo.
+    Jinak dotáže databázi na aktivní událost s daným ID.
 
-    Vrátí slovník s informacemi o události nebo None pokud nic vybráno.
+    Returns:
+        dict | None: Slovník s údaji o události (id, name, start_at, end_at),
+                     nebo None pokud žádná událost není vybrána či není aktivní.
     """
     event_id = session.get('event_id')
 
@@ -189,11 +194,15 @@ api_bp.register_blueprint(api_booths_bp)
 
 @api_booths_bp.route('/active')
 def get_event_booths_for_employee():
-    """Vrátí seznam stánků pro vybranou událost, které může zaměstnanec obsluhovat.
+    """Získá seznam stánků vybrané události, které může zaměstnanec obsluhovat.
 
+    Administrátor nebo správce události (event_manager) vidí všechny stánky
+    dané události. Běžný zaměstnanec vidí pouze stánky, ke kterým je
+    explicitně přiřazen v tabulce employee_event_booth_roles.
 
-    Pokud je zaměstnanec admin nebo event_manager vrátí se všechny stánky události.
-    Jinak pouze stánky, ke kterým je zaměstnanec explicitně prirazen.
+    Returns:
+        tuple: JSON seznam stánků (id, name) s kódem 200,
+               nebo chybová zpráva s kódem 400 či 401.
     """
     employee = load_logged_in_employee()
 
@@ -214,7 +223,7 @@ def get_event_booths_for_employee():
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            # is_event_manager = 
+            # is_event_manager =
 
             if employee['is_admin']:
                 booths = cur.execute(all_event_booths_sql,
@@ -239,11 +248,16 @@ def get_event_booths_for_employee():
 
 @api_booths_bp.route('/select', methods=('PUT',))
 def select_booth():
-    """Vybere stánek pro aktuální session.
+    """Nastaví vybraný stánek do session přihlášeného zaměstnance.
 
+    Validuje booth_id z formuláře a ověřuje, zda stánek patří k vybrané události.
+    Kontroluje oprávnění zaměstnance: administrátor má přístup vždy,
+    správce události (event_manager) ke všem stánkům události,
+    ostatní zaměstnanci pouze ke stánkům, ke kterým jsou explicitně přiřazeni.
 
-    Validuje vstup, kontroluje oprávňění zaměstnance (admin, event_manager nebo explicitně
-    prirazený ke stánku) a uloží booth_id do session.
+    Returns:
+        tuple: JSON s booth_type a kódem 200 při úspěchu,
+               nebo chybová zpráva s odpovídajícím HTTP kódem (400, 401, 404).
     """
     employee = load_logged_in_employee()
 
@@ -280,7 +294,7 @@ def select_booth():
             if booth is None:
                 return jsonify(error='booth_not_found'), 404
 
-            # ověř zda je zaměstanenc spojený se stánkem:
+            # ověření, zda je zaměstnanec přiřazen ke stánku
             if not employee['is_admin']:
                 event_link = cur.execute(
                     '''
@@ -313,7 +327,12 @@ def select_booth():
 
 @api_booths_bp.route('/remove', methods=('DELETE',))
 def remove_booth():
-    """Odstraní vybraný stánek z aktuální session.
+    """Odstraní vybraný stánek ze session.
+
+    Zruší aktuální výběr stánku, aniž by ovlivnil vybranou událost.
+
+    Returns:
+        tuple: Prázdný JSON s kódem 200.
     """
     session.pop('booth_id', None)
     return jsonify(), 200
@@ -321,10 +340,15 @@ def remove_booth():
 
 
 def load_selected_booth():
-    """Načte vybraný stánek ze session a ulož do `g`.
+    """Načte vybraný stánek ze session a uloží ho do kontextu požadavku ``g``.
 
+    Nejprve načte vybranou událost. Pokud v session chybí booth_id nebo
+    není vybrána žádná událost, nastaví ``g.booth`` na None.
+    Jinak dotáže databázi na stánek s daným ID v rámci vybrané události.
 
-    Vrátí slovník s informacemi o stánku nebo None pokud nic vybráno.
+    Returns:
+        dict | None: Slovník s údaji o stánku (id, name, event_id, booth_type),
+                     nebo None pokud žádný stánek není vybrán či neexistuje.
     """
     booth_id = session.get('booth_id')
     event = load_selected_event()

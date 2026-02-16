@@ -1,3 +1,6 @@
+/**
+ * @file Správa smazaných akcí – zobrazení, vyhledávání, řazení a obnova smazaných akcí.
+ */
 import { handleUnauthorizedRedirect } from '../general/api_utils.js';
 import { cacheFunctionFactory } from '../general/cache_factory.js';
 import { formatDateTimeISOToDisplay } from '../general/date_utils.js';
@@ -34,6 +37,15 @@ loadPage({
   sidebar: true
 });
 
+
+/**
+ * Načte a vykreslí části stránky podle zadaných parametrů.
+ * @param {Object} param0 - Objekt s parametry, které části načíst.
+ * @param {boolean} [param0.table=false] - Zda načíst tabulku.
+ * @param {boolean} [param0.header=false] - Zda načíst hlavičku.
+ * @param {boolean} [param0.sidebar=false] - Zda načíst postranní panel.
+ * @returns {Promise<void>} - Vrací promise po dokončení načítání.
+ */
 async function loadPage({
   table = false,
   header = false,
@@ -190,6 +202,11 @@ document.addEventListener('keydown', (event) => {
 });
 
 
+
+/**
+ * Přepíná řazení tabulky podle zadaného klíče.
+ * @param {string} key - Klíč podle kterého se má řadit.
+ */
 function toggleOrder(key) {
   if (orderBy.key !== key) {
     orderBy.key = key;
@@ -203,6 +220,12 @@ function toggleOrder(key) {
 }
 
 
+
+/**
+ * Zjišťuje, zda daná akce odpovídá aktuálnímu vyhledávání.
+ * @param {Object} event - Objekt akce.
+ * @returns {boolean} - Vrací true, pokud akce odpovídá hledání.
+ */
 function eventIsSearchedFor(event) {
   const searchQuery = eventsSearchBar.value.toLowerCase().trim();
   if (!searchQuery) return true;
@@ -240,6 +263,11 @@ function eventIsSearchedFor(event) {
 }
 
 
+
+/**
+ * Vykreslí tabulku smazaných akcí podle aktuálního vyhledávání a řazení.
+ * @returns {Promise<void>} - Vrací promise po dokončení vykreslení.
+ */
 async function renderTable() {
   const events = await fetchDeletedEvents().catch(() => {
     tableBody.innerHTML = '<tr><td colspan="6" class="error-message">Nepovedlo se načíst smazané akce.</td></tr>';
@@ -295,6 +323,12 @@ async function renderTable() {
 }
 
 
+
+/**
+ * Otevře modální okno pro obnovení akce podle zadaného ID.
+ * @param {string} eventId - ID akce k obnovení.
+ * @returns {Promise<void>} - Vrací promise po otevření modalu.
+ */
 async function openRestoreModal(eventId) {
   const events = await fetchDeletedEvents().catch(() => { });
   if (!events) return;
@@ -327,6 +361,11 @@ async function openRestoreModal(eventId) {
 }
 
 
+
+/**
+ * Zobrazí chybové hlášení při obnově akce v modálním okně.
+ * @param {string} error - Kód chyby nebo chybová zpráva.
+ */
 function showRestoreErrors(error) {
   const generalError = document.querySelector('#restore-general-error');
 
@@ -377,6 +416,12 @@ function showRestoreErrors(error) {
 }
 
 
+
+/**
+ * Odesílá požadavek na obnovení akce na server.
+ * @param {FormData} formData - Data formuláře pro obnovení akce.
+ * @returns {Promise<true|{error: string}>} - Vrací true při úspěchu, jinak objekt s chybou.
+ */
 async function restoreEvent(formData) {
   try {
     const response = await fetch('/api/events/restore', {

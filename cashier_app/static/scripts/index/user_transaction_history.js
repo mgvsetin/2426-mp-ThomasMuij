@@ -26,6 +26,10 @@ const totalCardsCountEl = document.querySelector('#total-cards-count');
 
 loadPage();
 
+/**
+ * Načte data o transakcích uživatele a informace o uživateli a akci.
+ * @returns {Promise<void>}
+ */
 async function loadPage() {
   // /events/<event_id>/users/<user_id>/transaction-history
   const pathParts = window.location.pathname.split('/');
@@ -79,6 +83,12 @@ async function loadPage() {
   }
 }
 
+/**
+ * Načte a zobrazí informace o uživateli a akci.
+ * @param {string} userId - ID uživatele
+ * @param {string} eventId - ID akce
+ * @returns {Promise<void>}
+ */
 async function loadUserAndEventInfo(userId, eventId) {
   try {
     const userResponse = await fetch('/api/users');
@@ -109,6 +119,10 @@ async function loadUserAndEventInfo(userId, eventId) {
   }
 }
 
+/**
+ * Vykreslí tabulku karet a jejich souhrnných statistik podle transakcí.
+ * @param {Array<Object>} transactions - Pole transakcí
+ */
 function renderCards(transactions) {
   if (!transactions || transactions.length === 0) {
     cardsTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Žádné karty.</td></tr>';
@@ -204,6 +218,10 @@ function renderCards(transactions) {
   cardsTableBody.innerHTML = rows;
 }
 
+/**
+ * Vykreslí tabulku transakcí a souhrnné statistiky.
+ * @param {Array<Object>} transactions - Pole transakcí
+ */
 function renderTransactions(transactions) {
   if (!transactions || transactions.length === 0) {
     transactionsTableBody.innerHTML = '<tr><td colspan="10" class="empty-message">Žádné transakce.</td></tr>';
@@ -319,6 +337,10 @@ function renderTransactions(transactions) {
   totalCardsCountEl.textContent = `${cardBalances.size} ${cardBalances.size === 1 ? 'karta' : 0 < cardBalances.size && cardBalances.size < 5 ? 'karty' : 'karet'}`;
 }
 
+/**
+ * Zobrazí chybovou zprávu v tabulkách transakcí a karet.
+ * @param {string} message - Chybová zpráva
+ */
 function showError(message) {
   transactionsTableBody.innerHTML = `<tr><td colspan="9" class="error-message">${escapeHTML(message)}</td></tr>`;
   cardsTableBody.innerHTML = `<tr><td colspan="8" class="error-message">${escapeHTML(message)}</td></tr>`;

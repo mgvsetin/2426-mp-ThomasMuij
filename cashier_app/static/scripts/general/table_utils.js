@@ -1,3 +1,6 @@
+/**
+ * @file Utility funkce pro práci s tabulkami - výběr řádků, kopírování, vkládání, undo/redo.
+ */
 import { handleUnauthorizedRedirect } from "./api_utils.js";
 import { ForbiddenError, UnexpectedError } from "./errors.js";
 import { isPlainObject, isTypingInEditable, isUUID, mod } from "./utils.js";
@@ -6,6 +9,10 @@ const selectedRowIds = new Set(); // pro markSelectedRows
 let lastSelectedRowId;
 let copyPasteMesContainer;
 
+/**
+ * Zpracuje výběr řádků v tabulce (kliknutí, šipky, shift, ctrl).
+ * @param {Event} event - Událost kliknutí nebo stisku klávesy.
+ */
 export function handleRowSelection(event) {
   if (document.querySelector('.modal')) return;
 
@@ -95,6 +102,9 @@ export function handleRowSelection(event) {
 }
 
 
+/**
+ * Zruší výběr všech řádků v tabulce.
+ */
 export function unselectRows() {
   const selectedRows = document.querySelectorAll('tr[selected]');
   selectedRows.forEach(row => {
@@ -105,6 +115,9 @@ export function unselectRows() {
 }
 
 
+/**
+ * Znovu označí vybrané řádky podle uložených ID.
+ */
 export function markSelectedRows() {
   selectedRowIds.forEach(rowId => {
     const selected = document.querySelector(`[id="${rowId}"]`);
@@ -113,6 +126,11 @@ export function markSelectedRows() {
 }
 
 
+/**
+ * Přesměruje na řádek podle data-direct-to atributu.
+ * @param {HTMLElement} clickedDirectEl - Element s atributem data-direct-to.
+ * @param {HTMLElement} parent - Nadřazený element tabulky.
+ */
 export function directTo(clickedDirectEl, parent) {
   const directToId = clickedDirectEl.dataset.directTo;
   const directToRow = parent.querySelector(`[id="${directToId}"]`);

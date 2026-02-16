@@ -1,9 +1,16 @@
+/**
+ * @file Inicializace a vykreslení postranního panelu (sidebar).
+ */
+
 import { getSessionInfo } from "./session.js";
 
 
 let sidebar, sidebarLinks, overlay;
 
 
+/**
+ * Inicializuje postranní panel (sidebar) a vloží jej do DOM.
+ */
 function initSidebar() {
   if (document.getElementById('sidebar')) return;
 
@@ -31,6 +38,10 @@ function initSidebar() {
 initSidebar();
 
 
+/**
+ * Vykreslí odkazy v postranním panelu podle informací o uživateli.
+ * @returns {Promise<void>}
+ */
 export async function renderSidebar() {
   if (!sidebarLinks) initSidebar();
 

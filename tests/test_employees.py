@@ -1,4 +1,4 @@
-"""Tests for cashier_app.employees route handlers."""
+"""Testy obsluznych funkci tras modulu cashier_app.employees."""
 
 import pytest
 from uuid import uuid4
@@ -102,7 +102,7 @@ class TestAddEmployee:
     def test_invalid_username(self, client):
         with _mock_auth(ADMIN_EMPLOYEE):
             resp = client.post('/api/employees/create', data={
-                'username': 'ab',  # too short
+                'username': 'ab',  # prilis kratke
                 'email': 'test@test.com',
                 'password': 'TestPass1!',
             })

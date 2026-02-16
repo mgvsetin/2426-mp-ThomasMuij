@@ -1,4 +1,4 @@
-"""Tests for cashier_app.users_and_wallets route handlers."""
+"""Testy obsluznych funkci tras modulu cashier_app.users_and_wallets."""
 
 import pytest
 from uuid import uuid4
@@ -275,7 +275,7 @@ class TestAddWallet:
                 'user-id': str(uuid4()),
                 'tag-id': 'CARD1',
                 'change-balance-by': '100',
-                'new-balance': '200',  # doesn't match
+                'new-balance': '200',  # neodpovida
                 'idempotency-key': str(uuid4()),
             })
             assert resp.status_code == 400

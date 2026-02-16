@@ -1,3 +1,8 @@
+"""Modul pro správu produktů v rámci událostí.
+
+Obsahuje API endpointy pro vytváření, úpravu a mazání produktů,
+včetně správy obrázků, vazeb na stánky a kategorie.
+"""
 from pathlib import Path
 from flask import Blueprint, current_app, jsonify, url_for, request
 from uuid import UUID
@@ -19,6 +24,17 @@ api_products_bp = Blueprint('products', __name__, url_prefix='/products')
 
 @api_products_bp.route('/create', methods=('POST',))
 def add_product():
+    """Vytvoří nový produkt v rámci dané události.
+
+    Přijímá POST požadavek s údaji o produktu (název, cena, obrázek,
+    vazby na stánky a kategorie). Ověřuje přihlášení zaměstnance,
+    oprávnění správce, existenci události, stánků a kategorií.
+    Validuje vstupní data a ukládá produkt do databáze včetně
+    případného obrázku a vazeb. Zaznamenává změnu pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -170,6 +186,17 @@ def add_product():
 
 @api_products_bp.route('/edit', methods=('POST',))
 def edit_product():
+    """Upraví existující produkt.
+
+    Přijímá POST požadavek s aktualizovanými údaji o produktu (název, cena,
+    obrázek, vazby na stánky a kategorie). Ověřuje přihlášení zaměstnance,
+    existenci produktu a oprávnění správce. Validuje vstupní data, provádí
+    aktualizaci v databázi včetně případné výměny obrázku a synchronizace
+    vazeb. Zaznamenává staré a nové hodnoty pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -353,6 +380,16 @@ def edit_product():
 
 @api_products_bp.route('/delete', methods=('DELETE',))
 def delete_product():
+    """Smaže existující produkt (měkké smazání).
+
+    Přijímá DELETE požadavek s identifikátorem produktu. Ověřuje přihlášení
+    zaměstnance, existenci produktu a oprávnění správce. Zachytí kaskádové
+    změny před smazáním, odstraní vazby na stánky a kategorie a zaznamená
+    změnu pro funkci zpět/znovu.
+
+    Returns:
+        tuple: JSON odpověď a HTTP stavový kód.
+    """
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:

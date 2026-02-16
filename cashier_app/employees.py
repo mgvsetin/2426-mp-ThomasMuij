@@ -1,3 +1,5 @@
+"""Modul pro správu zaměstnanců – CRUD operace a stránka pro manažery."""
+
 from flask import Blueprint, current_app, jsonify, url_for, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
@@ -18,6 +20,7 @@ bp = Blueprint('employees', __name__, url_prefix='/employees')
 
 @bp.route('/manager')
 def get_employees_manager_page():
+    """Vrátí HTML stránku pro správu zaměstnanců (manažerské rozhraní)."""
     # employee = load_logged_in_employee()
 
     # if employee is None:
@@ -33,6 +36,7 @@ api_bp = Blueprint('employees_api', __name__, url_prefix='/api/employees')
 
 @api_bp.route('')
 def get_employees():
+    """Vrátí seznam všech aktivních zaměstnanců ve formátu JSON."""
     employee = load_logged_in_employee()
 
     if employee is None:
@@ -58,6 +62,7 @@ def get_employees():
 
 @api_bp.route('/create', methods=('POST',))
 def add_employee():
+    """Vytvoří nového zaměstnance s údaji z formuláře a uloží změnu pro vrácení zpět."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -116,7 +121,7 @@ def add_employee():
             with conn.cursor() as cur:
                 new_employee = cur.execute(sql, query_params).fetchone()
 
-                # Save change for undo
+                # Uložení změny pro vrácení zpět
                 save_change(cur, [{
                     'table': 'employees',
                     'old_values': None,
@@ -138,6 +143,7 @@ def add_employee():
 
 @api_bp.route('/edit', methods=('POST',))
 def edit_employee():
+    """Upraví existujícího zaměstnance podle údajů z formuláře a uloží změnu pro vrácení zpět."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -210,7 +216,7 @@ def edit_employee():
                     '''
                 ).fetchall()
 
-                # Capture old values before update
+                # Zachycení starých hodnot před aktualizací
                 old_employee = cur.execute(
                     'SELECT * FROM employees WHERE id = %s AND deleted_at IS NULL FOR UPDATE',
                     (edit_employee_id,)
@@ -232,7 +238,7 @@ def edit_employee():
 
                 new_values = convert_dict_to_serializable(dict(new_employee))
 
-                # Save change for undo
+                # Uložení změny pro vrácení zpět
                 save_change(cur, [{
                     'table': 'employees',
                     'old_values': old_values,
@@ -271,6 +277,7 @@ def edit_employee():
 
 @api_bp.route('/delete', methods=('DELETE',))
 def delete_employee():
+    """Smaže zaměstnance (soft delete), včetně kaskádového zachycení souvisejících dat pro vrácení zpět."""
     logged_employee = load_logged_in_employee()
 
     if logged_employee is None:
@@ -312,7 +319,7 @@ def delete_employee():
                 if not target_row:
                     raise NoRowsAffectedError()
 
-                # Capture all data before delete (employee + roles)
+                # Zachycení všech dat před smazáním (zaměstnanec + role)
                 changes = capture_employee_cascade(cur, delete_employee_id)
 
                 if not changes:
@@ -349,7 +356,7 @@ def delete_employee():
                     (delete_employee_id,))
                 
 
-                # Save change for undo
+                # Uložení změny pro vrácení zpět
                 save_change(cur, changes, logged_employee['id'])
 
     except MultipleRowsAffectedError:

@@ -49,6 +49,10 @@ const orderBy = {
 const eventId = getEventIdFromPath();
 
 
+/**
+ * Načte data o akci ze serveru.
+ * @returns {Promise<Object>} Data akce
+ */
 async function getEventData() {
   try {
     return await getEventDataOriginal();
@@ -1175,6 +1179,10 @@ async function loadPage({
 }
 
 
+/**
+ * Nastaví řazení tabulky podle kliknutého záhlaví.
+ * @param {HTMLElement} headerEl - Element záhlaví tabulky
+ */
 function setOrder(headerEl) {
   const id = headerEl.id || '';
 
@@ -1279,6 +1287,12 @@ function setOrder(headerEl) {
 }
 
 
+/**
+ * Přepne směr řazení a nastaví klíč pro řazení.
+ * @param {Object} dict - Objekt s informací o řazení
+ * @param {string} key - Klíč podle kterého se řadí
+ * @param {HTMLElement} headerEl - Element záhlaví
+ */
 function toggleOrder(dict, key, headerEl) {
   if (dict.key !== key) {
     dict.key = key;
@@ -1302,6 +1316,11 @@ function toggleOrder(dict, key, headerEl) {
 }
 
 
+/**
+ * Vytvoří funkci pro řazení podle zadaného klíče a směru.
+ * @param {Object} dict - Objekt s klíčem a směrem řazení
+ * @returns {Function} Funkce pro použití v sort
+ */
 function sorterFactory(dict) {
   const sorter = (a, b) => {
     if (!dict.key) return 0;
@@ -1332,6 +1351,12 @@ function sorterFactory(dict) {
 }
 
 
+/**
+ * Zjistí, zda stánek odpovídá hledanému dotazu.
+ * @param {Object} booth - Objekt stánku
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function boothIsSearchedFor(booth, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1357,6 +1382,12 @@ function boothIsSearchedFor(booth, searchQuery) {
   return true;
 }
 
+/**
+ * Zjistí, zda zaměstnanec odpovídá hledanému dotazu.
+ * @param {Object} employee - Objekt zaměstnance
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function employeeIsSearchedFor(employee, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1404,6 +1435,12 @@ function employeeIsSearchedFor(employee, searchQuery) {
 }
 
 
+/**
+ * Zjistí, zda produkt odpovídá hledanému dotazu.
+ * @param {Object} product - Objekt produktu
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function productIsSearchedFor(product, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1445,6 +1482,12 @@ function productIsSearchedFor(product, searchQuery) {
 }
 
 
+/**
+ * Zjistí, zda kategorie odpovídá hledanému dotazu.
+ * @param {Object} category - Objekt kategorie
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function categoryIsSearchedFor(category, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1474,6 +1517,12 @@ function categoryIsSearchedFor(category, searchQuery) {
 }
 
 
+/**
+ * Zjistí, zda uživatel odpovídá hledanému dotazu.
+ * @param {Object} user - Objekt uživatele
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function userIsSearchedFor(user, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1511,6 +1560,12 @@ function userIsSearchedFor(user, searchQuery) {
   return true;
 }
 
+/**
+ * Zjistí, zda peněženka odpovídá hledanému dotazu.
+ * @param {Object} wallet - Objekt peněženky
+ * @param {string} searchQuery - Hledaný text
+ * @returns {boolean}
+ */
 function walletIsSearchedFor(wallet, searchQuery) {
   if (!searchQuery) return true;
   const queries = searchQuery.toLowerCase().trim().split(/\s+/);
@@ -1540,6 +1595,11 @@ function walletIsSearchedFor(wallet, searchQuery) {
 }
 
 
+/**
+ * Vygeneruje HTML pro zobrazení stánků ve formě "pills".
+ * @param {Array} booths - Pole stánků
+ * @returns {string} HTML kód
+ */
 function belongingBoothsToDisplay(booths) {
   if (!booths.length) return '-';
   const pills = booths.map(booth =>
@@ -1549,6 +1609,11 @@ function belongingBoothsToDisplay(booths) {
 }
 
 
+/**
+ * Vygeneruje HTML pro zobrazení kategorií ve formě "pills".
+ * @param {Array} categories - Pole kategorií
+ * @returns {string} HTML kód
+ */
 function belongingCategoriesToDisplay(categories) {
   if (!categories.length) return '-';
   const pills = categories.map(category =>
@@ -1558,6 +1623,11 @@ function belongingCategoriesToDisplay(categories) {
 }
 
 
+/**
+ * Vrátí textový popis typu stánku.
+ * @param {string} type - Typ stánku
+ * @returns {string}
+ */
 function boothTypeToDisplay(type) {
   if (type === 'cashier') {
     return 'pokladna';
@@ -1569,6 +1639,10 @@ function boothTypeToDisplay(type) {
 }
 
 
+/**
+ * Vykreslí informace o akci do stránky.
+ * @param {Object} eventData - Data akce
+ */
 function renderEvent(eventData) {
   const event = eventData.event;
   if (!event) return;
@@ -1581,6 +1655,10 @@ function renderEvent(eventData) {
 }
 
 
+/**
+ * Vykreslí tabulku stánků.
+ * @param {Object} eventData - Data akce
+ */
 function renderBooths(eventData) {
   const searchQuery = boothsSearchBar.value;
   const sorter = sorterFactory(orderBy.booths);
@@ -1617,6 +1695,10 @@ function renderBooths(eventData) {
 }
 
 
+/**
+ * Vykreslí tabulku manažerů.
+ * @param {Object} eventData - Data akce
+ */
 function renderManagers(eventData) {
   const searchQuery = managersSearchBar.value;
   const managers = eventData.employees.filter(employee => employee.isManager);
@@ -1650,6 +1732,10 @@ function renderManagers(eventData) {
 }
 
 
+/**
+ * Vykreslí tabulku zaměstnanců.
+ * @param {Object} eventData - Data akce
+ */
 function renderEmployees(eventData) {
   const searchQuery = employeesSearchBar.value;
   const employees = eventData.employees.filter(employee => !employee.isManager);
@@ -1689,6 +1775,10 @@ function renderEmployees(eventData) {
   markSelectedRows(card);
 }
 
+/**
+ * Vykreslí tabulku produktů.
+ * @param {Object} eventData - Data akce
+ */
 function renderProducts(eventData) {
   const searchQuery = productsSearchBar.value;
   const sorter = sorterFactory(orderBy.products);
@@ -1740,6 +1830,10 @@ function renderProducts(eventData) {
 }
 
 
+/**
+ * Vykreslí tabulku kategorií.
+ * @param {Object} eventData - Data akce
+ */
 function renderCategories(eventData) {
   const searchQuery = categoriesSearchBar.value;
   const sorter = sorterFactory(orderBy.categories);
@@ -1777,6 +1871,10 @@ function renderCategories(eventData) {
 }
 
 
+/**
+ * Vykreslí tabulku uživatelů.
+ * @param {Object} eventData - Data akce
+ */
 function renderUsers(eventData) {
   const searchQuery = usersSearchBar.value;
   const sorter = sorterFactory(orderBy.users);
@@ -1824,6 +1922,10 @@ function renderUsers(eventData) {
   markSelectedRows(card);
 }
 
+/**
+ * Vykreslí tabulku peněženek.
+ * @param {Object} eventData - Data akce
+ */
 function renderWallets(eventData) {
   const searchQuery = walletsSearchBar.value;
   const sorter = sorterFactory(orderBy.wallets);
@@ -1863,11 +1965,20 @@ function renderWallets(eventData) {
   markSelectedRows(card);
 }
 
+/**
+ * Formátuje číslo podle české lokalizace.
+ * @param {number|string} num - Číslo
+ * @returns {string}
+ */
 function formatNumber(num) {
   return Number(num || 0).toLocaleString('cs-CZ');
 }
 
 
+/**
+ * Vykreslí multi-select komponentu v daném kontejneru.
+ * @param {HTMLElement} container - Kontejner multi-selectu
+ */
 function renderMultiSelect(container) {
   const state = multiSelectState.get(container);
   if (!state) return;
@@ -1899,6 +2010,10 @@ function renderMultiSelect(container) {
 }
 
 
+/**
+ * Vykreslí dropdown pro multi-select.
+ * @param {HTMLElement} container - Kontejner multi-selectu
+ */
 function renderMultiSelectDropdown(container) {
   const state = multiSelectState.get(container);
   if (!state) return;
@@ -1935,6 +2050,11 @@ function renderMultiSelectDropdown(container) {
 }
 
 
+/**
+ * Přepne výběr položky v multi-selectu.
+ * @param {HTMLElement} container - Kontejner multi-selectu
+ * @param {string|number} itemId - ID položky
+ */
 function multiSelectToggleItem(container, itemId) {
   const state = multiSelectState.get(container);
   if (!state) return;
@@ -1951,6 +2071,10 @@ function multiSelectToggleItem(container, itemId) {
 }
 
 
+/**
+ * Zruší výběr všech položek v multi-selectu.
+ * @param {HTMLElement} container - Kontejner multi-selectu
+ */
 function multiSelectClearAll(container) {
   const state = multiSelectState.get(container);
   if (!state) return;
@@ -1960,6 +2084,10 @@ function multiSelectClearAll(container) {
 }
 
 
+/**
+ * Zavře všechny aktivní dropdowny multi-selectu kromě zadaných.
+ * @param {Array} dropdownsToNotClose - Dropdowny, které se nemají zavírat
+ */
 function closeOtherMultiSelectDropdowns(dropdownsToNotClose = []) {
   document.querySelectorAll('.multi-select-dropdown.active').forEach(dropdown => {
     if (dropdownsToNotClose.includes(dropdown)) return;
@@ -1968,6 +2096,11 @@ function closeOtherMultiSelectDropdowns(dropdownsToNotClose = []) {
 }
 
 
+/**
+ * Zpracuje klávesové události v multi-select inputu.
+ * @param {KeyboardEvent} event
+ * @returns {boolean}
+ */
 function multiSelectKeydownHandler(event) {
   const multiSelectInput = event.target.closest('.multi-select-input');
   if (!multiSelectInput) return false;
@@ -2040,6 +2173,13 @@ function multiSelectKeydownHandler(event) {
 
 
 // Generates initial HTML for a multi-select and queues its state
+/**
+ * Vytvoří HTML pro multi-select s tagy a připraví jeho stav.
+ * @param {Array} items - Položky k výběru
+ * @param {Array} selectedItems - Předvybrané položky
+ * @param {Object} config - Konfigurace
+ * @returns {string} HTML kód
+ */
 function makeTagMultiSelect(items, selectedItems = [], config = {}) {
   const {
     name = 'items',
@@ -2113,6 +2253,9 @@ function makeTagMultiSelect(items, selectedItems = [], config = {}) {
 }
 
 
+/**
+ * Připojí připravené stavy multi-selectů do DOMu.
+ */
 function attachMultiSelectStates() {
   const containers = document.querySelectorAll('.multi-select-container');
   const unattached = [...containers].filter(c => !multiSelectState.has(c));
@@ -2125,6 +2268,13 @@ function attachMultiSelectStates() {
 }
 
 
+/**
+ * Vytvoří picker pro výběr stánků.
+ * @param {Array} booths - Pole stánků
+ * @param {Array} checkBooths - Předvybrané stánky
+ * @param {string} boothType - Typ stánku
+ * @returns {string} HTML kód
+ */
 function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
   return makeTagMultiSelect(
     booths,
@@ -2140,6 +2290,12 @@ function makeBoothsPicker(booths, checkBooths = [], boothType = 'all') {
 }
 
 
+/**
+ * Vytvoří picker pro výběr kategorií.
+ * @param {Array} categories - Pole kategorií
+ * @param {Array} checkCategories - Předvybrané kategorie
+ * @returns {string} HTML kód
+ */
 function makeCategoriesPicker(categories, checkCategories = []) {
   return makeTagMultiSelect(
     categories,
@@ -2154,6 +2310,12 @@ function makeCategoriesPicker(categories, checkCategories = []) {
 }
 
 
+/**
+ * Vytvoří picker pro výběr produktů.
+ * @param {Array} products - Pole produktů
+ * @param {Array} checkProducts - Předvybrané produkty
+ * @returns {string} HTML kód
+ */
 function makeProductsPicker(products, checkProducts = []) {
   return makeTagMultiSelect(
     products,
@@ -4388,6 +4550,10 @@ function showDeleteUserErrors(error) {
 
 
 
+
+/**
+ * Načte statistiky akce ze serveru.
+ */
 async function loadStatistics() {
   if (!eventId) return;
 
@@ -4409,6 +4575,10 @@ async function loadStatistics() {
   }
 }
 
+
+/**
+ * Vykreslí statistiky akce.
+ */
 function renderStatistics() {
   if (!statsData) return;
 
@@ -4480,6 +4650,10 @@ function renderStatistics() {
   }, 100);
 }
 
+
+/**
+ * Vykreslí statistiky stánků.
+ */
 function renderBoothsStatistics() {
   const sellerBooths = statsData.booth_statistics.filter(b => b.booth_type === 'seller');
   const cashierBooths = statsData.booth_statistics.filter(b => b.booth_type === 'cashier');
@@ -4571,6 +4745,10 @@ function renderBoothsStatistics() {
   return html;
 }
 
+
+/**
+ * Vykreslí statistiky produktů.
+ */
 function renderProductsStatistics() {
   const products = statsData.product_statistics.sort((a, b) => b.total_revenue_czk - a.total_revenue_czk);
 
@@ -4607,7 +4785,10 @@ function renderProductsStatistics() {
   return html;
 }
 
-// Funkce pro toggle produktů u stánku
+/**
+* Přepne zobrazení produktů u stánku.
+* @param {string|number} boothId - ID stánku
+*/
 function toggleBoothProducts(boothId) {
   const productsDiv = document.getElementById(`booth-products-${boothId}`);
   if (!productsDiv) return;
