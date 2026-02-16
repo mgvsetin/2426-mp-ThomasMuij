@@ -43,8 +43,8 @@ def update_profile():
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     current_password = request.form.get('current-password', '')
-    new_username = request.form.get('username', '').strip()
-    new_email = request.form.get('email', '').strip().lower()
+    # new_username = request.form.get('username', '').strip()
+    # new_email = request.form.get('email', '').strip().lower()
 
     new_password = request.form.get('new-password', '')
     confirm_password = request.form.get('confirm-password', '')
@@ -52,7 +52,9 @@ def update_profile():
     if not current_password:
         return jsonify(error='missing_current_password'), 400
 
-    if not (new_username or new_email or new_password or confirm_password):
+    # if not (new_username or new_email or new_password or confirm_password):
+    #     return jsonify(error='nothing_to_update'), 400
+    if not (new_password or confirm_password):
         return jsonify(error='nothing_to_update'), 400
     
 
@@ -61,17 +63,17 @@ def update_profile():
     
     params = {}
 
-    if new_username:
-        ok, errors = validate_username(new_username)
-        if not ok:
-            return jsonify(error=errors[0]), 400
-        params['username'] = new_username
+    # if new_username:
+    #     ok, errors = validate_username(new_username)
+    #     if not ok:
+    #         return jsonify(error=errors[0]), 400
+    #     params['username'] = new_username
 
-    if new_email:
-        ok, errors = validate_email(new_email)
-        if not ok:
-            return jsonify(error='invalid_email'), 400
-        params['email'] = new_email
+    # if new_email:
+    #     ok, errors = validate_email(new_email)
+    #     if not ok:
+    #         return jsonify(error='invalid_email'), 400
+    #     params['email'] = new_email
 
 
     if new_password or confirm_password:
@@ -110,14 +112,14 @@ def update_profile():
         return jsonify(error='internal_server_error'), 500
     except NoRowsAffectedError:
         return jsonify(error='employee_not_found'), 404
-    except IntegrityError as e:
-        constraint = get_constraint_name(e)
+    # except IntegrityError as e:
+    #     constraint = get_constraint_name(e)
 
-        if constraint == 'unique_index_employees_username_active':
-            return jsonify(error='username_taken'), 409
-        if constraint == 'unique_index_employees_email_active':
-            return jsonify(error='email_taken'), 409
+    #     if constraint == 'unique_index_employees_username_active':
+    #         return jsonify(error='username_taken'), 409
+    #     if constraint == 'unique_index_employees_email_active':
+    #         return jsonify(error='email_taken'), 409
 
-        return jsonify(error='db_integrity_error'), 400
+    #     return jsonify(error='db_integrity_error'), 400
 
     return jsonify(), 200

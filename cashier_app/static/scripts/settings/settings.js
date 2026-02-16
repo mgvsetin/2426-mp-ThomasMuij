@@ -72,17 +72,17 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  // otevřít modal pro úpravu uživatelského jména
-  if (event.target.closest('#edit-username-button')) {
-    openEditUsernameModal();
-    return;
-  }
+  // // otevřít modal pro úpravu uživatelského jména
+  // if (event.target.closest('#edit-username-button')) {
+  //   openEditUsernameModal();
+  //   return;
+  // }
 
-  // otevřít modal pro úpravu emailu
-  if (event.target.closest('#edit-email-button')) {
-    openEditEmailModal();
-    return;
-  }
+  // // otevřít modal pro úpravu emailu
+  // if (event.target.closest('#edit-email-button')) {
+  //   openEditEmailModal();
+  //   return;
+  // }
 
   // otevřít modal pro změnu hesla
   if (event.target.closest('#change-password-button')) {
@@ -127,52 +127,52 @@ document.addEventListener('keydown', (event) => {
 
 document.addEventListener('submit', async (event) => {
   // uložit uživatelské jméno
-  const usernameForm = event.target.closest('#edit-username-form');
-  if (usernameForm) {
-    event.preventDefault();
-    const saveButton = usernameForm.querySelector('.save-form');
-    saveButton.disabled = true;
-    clearModalErrors();
+  // const usernameForm = event.target.closest('#edit-username-form');
+  // if (usernameForm) {
+  //   event.preventDefault();
+  //   const saveButton = usernameForm.querySelector('.save-form');
+  //   saveButton.disabled = true;
+  //   clearModalErrors();
 
-    const formData = new FormData(usernameForm);
-    formData.set('username', formData.get('username').trim());
+  //   const formData = new FormData(usernameForm);
+  //   formData.set('username', formData.get('username').trim());
 
-    const response = await updateProfile(formData);
-    saveButton.disabled = false;
+  //   const response = await updateProfile(formData);
+  //   saveButton.disabled = false;
 
-    if (response === true) {
-      closeModal();
-      loadPage({ profile: true, header: true });
-      return;
-    }
+  //   if (response === true) {
+  //     closeModal();
+  //     loadPage({ profile: true, header: true });
+  //     return;
+  //   }
 
-    showUsernameModalErrors(response.error);
-    return;
-  }
+  //   showUsernameModalErrors(response.error);
+  //   return;
+  // }
 
-  // uložit email
-  const emailForm = event.target.closest('#edit-email-form');
-  if (emailForm) {
-    event.preventDefault();
-    const saveButton = emailForm.querySelector('.save-form');
-    saveButton.disabled = true;
-    clearModalErrors();
+  // // uložit email
+  // const emailForm = event.target.closest('#edit-email-form');
+  // if (emailForm) {
+  //   event.preventDefault();
+  //   const saveButton = emailForm.querySelector('.save-form');
+  //   saveButton.disabled = true;
+  //   clearModalErrors();
 
-    const formData = new FormData(emailForm);
-    formData.set('email', formData.get('email').trim());
+  //   const formData = new FormData(emailForm);
+  //   formData.set('email', formData.get('email').trim());
 
-    const response = await updateProfile(formData);
-    saveButton.disabled = false;
+  //   const response = await updateProfile(formData);
+  //   saveButton.disabled = false;
 
-    if (response === true) {
-      closeModal();
-      loadPage({ profile: true, header: true });
-      return;
-    }
+  //   if (response === true) {
+  //     closeModal();
+  //     loadPage({ profile: true, header: true });
+  //     return;
+  //   }
 
-    showEmailModalErrors(response.error);
-    return;
-  }
+  //   showEmailModalErrors(response.error);
+  //   return;
+  // }
 
   // změnit heslo
   const passwordForm = event.target.closest('#change-password-form');
@@ -253,78 +253,78 @@ function passwordEyeSVG() {
 
 
 
-function openEditUsernameModal() {
-  const html = `
-    <header>
-      <h2>Změnit uživatelské jméno</h2>
-    </header>
+// function openEditUsernameModal() {
+//   const html = `
+//     <header>
+//       <h2>Změnit uživatelské jméno</h2>
+//     </header>
 
-    <form id="edit-username-form">
-      <div class="form-row">
-        <label for="modal-username">Nové uživatelské jméno</label>
-        <input id="modal-username" name="username" type="text" placeholder="Uživatelské jméno"
-          value="${escapeHTML(currentProfile?.username || '')}" required />
-        <div id="modal-username-error" class="form-error"></div>
-      </div>
+//     <form id="edit-username-form">
+//       <div class="form-row">
+//         <label for="modal-username">Nové uživatelské jméno</label>
+//         <input id="modal-username" name="username" type="text" placeholder="Uživatelské jméno"
+//           value="${escapeHTML(currentProfile?.username || '')}" required />
+//         <div id="modal-username-error" class="form-error"></div>
+//       </div>
 
-      <div class="form-row password-form-row">
-        <label for="modal-username-password">Aktuální heslo</label>
-        <input id="modal-username-password" name="current-password" type="password"
-          placeholder="Zadejte heslo pro potvrzení" required />
-        ${passwordEyeSVG()}
-        <div id="modal-username-password-error" class="form-error"></div>
-      </div>
+//       <div class="form-row password-form-row">
+//         <label for="modal-username-password">Aktuální heslo</label>
+//         <input id="modal-username-password" name="current-password" type="password"
+//           placeholder="Zadejte heslo pro potvrzení" required />
+//         ${passwordEyeSVG()}
+//         <div id="modal-username-password-error" class="form-error"></div>
+//       </div>
 
-      <div class="form-row">
-        <div id="modal-username-general-error" class="form-error"></div>
-      </div>
+//       <div class="form-row">
+//         <div id="modal-username-general-error" class="form-error"></div>
+//       </div>
 
-      <div class="modal-actions">
-        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-        <button type="submit" class="save-form btn btn-primary">Uložit</button>
-      </div>
-    </form>
-  `;
+//       <div class="modal-actions">
+//         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+//         <button type="submit" class="save-form btn btn-primary">Uložit</button>
+//       </div>
+//     </form>
+//   `;
 
-  openModal(html);
-}
+//   openModal(html);
+// }
 
 
-function openEditEmailModal() {
-  const html = `
-    <header>
-      <h2>Změnit email</h2>
-    </header>
+// function openEditEmailModal() {
+//   const html = `
+//     <header>
+//       <h2>Změnit email</h2>
+//     </header>
 
-    <form id="edit-email-form">
-      <div class="form-row">
-        <label for="modal-email">Nový email</label>
-        <input id="modal-email" name="email" type="email" placeholder="Email"
-          value="${escapeHTML(currentProfile?.email || '')}" required />
-        <div id="modal-email-error" class="form-error"></div>
-      </div>
+//     <form id="edit-email-form">
+//       <div class="form-row">
+//         <label for="modal-email">Nový email</label>
+//         <input id="modal-email" name="email" type="email" placeholder="Email"
+//           value="${escapeHTML(currentProfile?.email || '')}" required />
+//         <div id="modal-email-error" class="form-error"></div>
+//       </div>
 
-      <div class="form-row password-form-row">
-        <label for="modal-email-password">Aktuální heslo</label>
-        <input id="modal-email-password" name="current-password" type="password"
-          placeholder="Zadejte heslo pro potvrzení" required />
-        ${passwordEyeSVG()}
-        <div id="modal-email-password-error" class="form-error"></div>
-      </div>
+//       <div class="form-row password-form-row">
+//         <label for="modal-email-password">Aktuální heslo</label>
+//         <input id="modal-email-password" name="current-password" type="password"
+//           placeholder="Zadejte heslo pro potvrzení" required />
+//         ${passwordEyeSVG()}
+//         <div id="modal-email-password-error" class="form-error"></div>
+//       </div>
 
-      <div class="form-row">
-        <div id="modal-email-general-error" class="form-error"></div>
-      </div>
+//       <div class="form-row">
+//         <div id="modal-email-general-error" class="form-error"></div>
+//       </div>
 
-      <div class="modal-actions">
-        <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
-        <button type="submit" class="save-form btn btn-primary">Uložit</button>
-      </div>
-    </form>
-  `;
+//       <div class="modal-actions">
+//         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+//         <button type="submit" class="save-form btn btn-primary">Uložit</button>
+//       </div>
+//     </form>
+//   `;
 
-  openModal(html);
-}
+//   openModal(html);
+// }
 
 
 function openChangePasswordModal() {
@@ -503,127 +503,127 @@ function testReader(index) {
 
 
 
-function showUsernameModalErrors(error) {
-  const usernameError = document.querySelector('#modal-username-error');
-  const passwordError = document.querySelector('#modal-username-password-error');
-  const generalError = document.querySelector('#modal-username-general-error');
+// function showUsernameModalErrors(error) {
+//   const usernameError = document.querySelector('#modal-username-error');
+//   const passwordError = document.querySelector('#modal-username-password-error');
+//   const generalError = document.querySelector('#modal-username-general-error');
 
-  const setErr = (el, text) => {
-    if (!el) return;
-    el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-form-error');
-  };
+//   const setErr = (el, text) => {
+//     if (!el) return;
+//     el.innerHTML = escapeHTML(String(text));
+//     el.classList.add('show-form-error');
+//   };
 
-  if (!error) {
-    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-    return;
-  }
+//   if (!error) {
+//     setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+//     return;
+//   }
 
-  const resStr = String(error);
+//   const resStr = String(error);
 
-  switch (resStr) {
-    case 'missing_current_password':
-      setErr(passwordError, 'Zadejte aktuální heslo.');
-      return;
-    case 'invalid_current_password':
-      setErr(passwordError, 'Nesprávné heslo.');
-      return;
-    case 'username_taken':
-      setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
-      return;
-    case 'db_integrity_error':
-      setErr(generalError, 'Něco se nepovedlo.');
-      return;
-    case 'nothing_to_update':
-      setErr(usernameError, 'Chybí uživatelské jméno.');
-      return;
-    case 'employee_not_found':
-      setErr(generalError, 'Zaměstnanec nenalezen.');
-      return;
-    case 'unexpected_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    default:
-      break;
-  }
+//   switch (resStr) {
+//     case 'missing_current_password':
+//       setErr(passwordError, 'Zadejte aktuální heslo.');
+//       return;
+//     case 'invalid_current_password':
+//       setErr(passwordError, 'Nesprávné heslo.');
+//       return;
+//     case 'username_taken':
+//       setErr(usernameError, 'Uživatelské jméno už má jiný uživatel.');
+//       return;
+//     case 'db_integrity_error':
+//       setErr(generalError, 'Něco se nepovedlo.');
+//       return;
+//     case 'nothing_to_update':
+//       setErr(usernameError, 'Chybí uživatelské jméno.');
+//       return;
+//     case 'employee_not_found':
+//       setErr(generalError, 'Zaměstnanec nenalezen.');
+//       return;
+//     case 'unexpected_error':
+//       setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+//       return;
+//     default:
+//       break;
+//   }
 
-  const low = resStr.toLowerCase();
+//   const low = resStr.toLowerCase();
 
-  if (low.includes('username must be at least')) {
-    let limit = low.split('username must be at least ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
-    return;
-  }
-  if (low.includes('username must be at most')) {
-    let limit = low.split('username must be at most ');
-    limit = limit[1].split(' characters')[0];
-    setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
-    return;
-  }
-  if (low.includes('username must start and end with')) {
-    const allowedChars = low.split('characters: ')[1];
-    setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
-    return;
-  }
-  if (low.includes('username must not contain')) {
-    setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
-    return;
-  }
+//   if (low.includes('username must be at least')) {
+//     let limit = low.split('username must be at least ');
+//     limit = limit[1].split(' characters')[0];
+//     setErr(usernameError, `Minimální délka uživatelského jména je ${limit}.`);
+//     return;
+//   }
+//   if (low.includes('username must be at most')) {
+//     let limit = low.split('username must be at most ');
+//     limit = limit[1].split(' characters')[0];
+//     setErr(usernameError, `Maximální délka uživatelského jména je ${limit}.`);
+//     return;
+//   }
+//   if (low.includes('username must start and end with')) {
+//     const allowedChars = low.split('characters: ')[1];
+//     setErr(usernameError, `Uživatelské jméno musí začínat a končit písmenem nebo číslicí a může pouze obsahovat písmena, číslice a tyto znaky: ${allowedChars}`);
+//     return;
+//   }
+//   if (low.includes('username must not contain')) {
+//     setErr(usernameError, 'Uživatelské jméno nesmí obsahovat více speciálních znaků za sebou.');
+//     return;
+//   }
 
-  setErr(generalError, resStr);
-}
+//   setErr(generalError, resStr);
+// }
 
 
-function showEmailModalErrors(error) {
-  const emailError = document.querySelector('#modal-email-error');
-  const passwordError = document.querySelector('#modal-email-password-error');
-  const generalError = document.querySelector('#modal-email-general-error');
+// function showEmailModalErrors(error) {
+//   const emailError = document.querySelector('#modal-email-error');
+//   const passwordError = document.querySelector('#modal-email-password-error');
+//   const generalError = document.querySelector('#modal-email-general-error');
 
-  const setErr = (el, text) => {
-    if (!el) return;
-    el.innerHTML = escapeHTML(String(text));
-    el.classList.add('show-form-error');
-  };
+//   const setErr = (el, text) => {
+//     if (!el) return;
+//     el.innerHTML = escapeHTML(String(text));
+//     el.classList.add('show-form-error');
+//   };
 
-  if (!error) {
-    setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-    return;
-  }
+//   if (!error) {
+//     setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+//     return;
+//   }
 
-  const resStr = String(error);
+//   const resStr = String(error);
 
-  switch (resStr) {
-    case 'missing_current_password':
-      setErr(passwordError, 'Zadejte aktuální heslo.');
-      return;
-    case 'invalid_current_password':
-      setErr(passwordError, 'Nesprávné heslo.');
-      return;
-    case 'email_taken':
-      setErr(emailError, 'E-mail už má jiný uživatel.');
-      return;
-    case 'db_integrity_error':
-      setErr(generalError, 'Něco se nepovedlo.');
-      return;
-    case 'nothing_to_update':
-      setErr(emailError, 'Chybí email.');
-      return;
-    case 'invalid_email':
-      setErr(emailError, 'Neplatný e-mail.');
-      return;
-    case 'employee_not_found':
-      setErr(generalError, 'Zaměstnanec nenalezen.');
-      return;
-    case 'unexpected_error':
-      setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
-      return;
-    default:
-      break;
-  }
+//   switch (resStr) {
+//     case 'missing_current_password':
+//       setErr(passwordError, 'Zadejte aktuální heslo.');
+//       return;
+//     case 'invalid_current_password':
+//       setErr(passwordError, 'Nesprávné heslo.');
+//       return;
+//     case 'email_taken':
+//       setErr(emailError, 'E-mail už má jiný uživatel.');
+//       return;
+//     case 'db_integrity_error':
+//       setErr(generalError, 'Něco se nepovedlo.');
+//       return;
+//     case 'nothing_to_update':
+//       setErr(emailError, 'Chybí email.');
+//       return;
+//     case 'invalid_email':
+//       setErr(emailError, 'Neplatný e-mail.');
+//       return;
+//     case 'employee_not_found':
+//       setErr(generalError, 'Zaměstnanec nenalezen.');
+//       return;
+//     case 'unexpected_error':
+//       setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
+//       return;
+//     default:
+//       break;
+//   }
 
-  setErr(generalError, resStr);
-}
+//   setErr(generalError, resStr);
+// }
 
 
 function showPasswordModalErrors(error) {

@@ -62,7 +62,7 @@ class TestUpdateProfile:
     def test_missing_current_password(self, client):
         with _mock_auth(ADMIN_EMPLOYEE):
             resp = client.post('/api/settings/update-profile', data={
-                'username': 'newname'
+                'new-password': 'NewPass123'
             })
             assert resp.status_code == 400
             assert resp.get_json()['error'] == 'missing_current_password'
@@ -80,19 +80,19 @@ class TestUpdateProfile:
         with _mock_auth(ADMIN_EMPLOYEE):
             resp = client.post('/api/settings/update-profile', data={
                 'current-password': 'wrongpassword',
-                'username': 'newname'
+                'new-password': 'NewPass123'
             })
             assert resp.status_code == 400
             assert resp.get_json()['error'] == 'invalid_current_password'
 
-    @patch('cashier_app.settings.employee_password_is_correct', return_value=True)
-    def test_invalid_username(self, mock_check, client):
-        with _mock_auth(ADMIN_EMPLOYEE):
-            resp = client.post('/api/settings/update-profile', data={
-                'current-password': 'correctpassword',
-                'username': 'a'  # too short
-            })
-            assert resp.status_code == 400
+    # @patch('cashier_app.settings.employee_password_is_correct', return_value=True)
+    # def test_invalid_username(self, mock_check, client):
+    #     with _mock_auth(ADMIN_EMPLOYEE):
+    #         resp = client.post('/api/settings/update-profile', data={
+    #             'current-password': 'correctpassword',
+    #             'username': 'a'  # too short
+    #         })
+    #         assert resp.status_code == 400
 
     @patch('cashier_app.settings.employee_password_is_correct', return_value=True)
     def test_passwords_do_not_match(self, mock_check, client):
