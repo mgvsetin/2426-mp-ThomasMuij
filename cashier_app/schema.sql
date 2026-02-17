@@ -579,7 +579,7 @@ CREATE OR REPLACE TRIGGER trg_category_product_link_limit_insert_update
 
 
 -- ======================== employee_event_booth_roles ========================
--- seller: může dělat payments
+-- seller: může dělat payments/refunds
 -- cashier: může dělat withdrawals and deposits
 -- event_manager: může dělat cokoliv v akci (např dávat účtům roli cashier)
 -- admin: (není částí této tabulky) může věci mimo akce (např. vytvářet účty)
