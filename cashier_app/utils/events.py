@@ -14,20 +14,20 @@ def validate_event_or_booth_name(
     forbidden_substrings: List[str] | None = None
     ) -> Tuple[bool, List[str]]:
     """
-    Validate an event or booth name.
+    Validuje název události nebo stánku.
 
-    Rules (defaults):
-      - length between min_len and max_len
-      - starts and ends with an alphanumeric character
-      - middle characters may include letters, digits, and characters in allow_chars
-      - no consecutive punctuation from allow_chars (e.g., ".." or "._")
-      - optionally forbid usernames that are entirely numeric
-      - optionally forbid certain substrings (case-insensitive)
+    Pravidla (výchozí):
+        - délka mezi min_len a max_len
+        - začíná a končí alfanumerickým znakem
+        - prostřední znaky mohou být písmena, číslice a znaky z allow_chars
+        - nesmí obsahovat po sobě jdoucí speciální znaky z allow_chars (např. ".." nebo "._")
+        - volitelně zakáže názvy, které jsou celé číselné
+        - volitelně zakáže určité podřetězce (nerozlišuje velikost písmen)
 
-    Returns:
-      (is_valid, errors)
+    Návratová hodnota:
+        (is_valid, errors)
 
-    Possible error messages (one or more may be returned):
+    Možné chybové zprávy (může být vráceno více najednou):
     - "name must be a string"
     - "name must be at least {min_len} characters"
     - "name must be at most {max_len} characters"

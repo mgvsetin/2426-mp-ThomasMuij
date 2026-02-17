@@ -4,7 +4,7 @@ from cashier_app.db import get_pool
 import re
 import unicodedata
 import string
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 from email_validator import validate_email as _validate_email, EmailNotValidError
 import phonenumbers
 from phonenumbers.phonenumberutil import NumberParseException

@@ -4,12 +4,14 @@ Tyto funkce zachytí všechna data, která budou ovlivněna operací mazání,
 a umožní tak vrácení změn jako jedné atomické akce.
 """
 
+
+from typing import Any, List
 from psycopg import Cursor
 from uuid import UUID
 from datetime import datetime, date, time
 
 
-def _convert(value):
+def _convert(value: Any) -> Any:
     """Rekurzivně převede hodnotu na JSON-serializovatelný formát (UUID → str, datetime → ISO)."""
     if value is None:
         return None
@@ -30,7 +32,7 @@ def convert_dict_to_serializable(row: dict) -> dict:
     return {k: _convert(v) for k, v in row.items()}
 
 
-def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
+def capture_event_cascade(cur: Cursor, event_id) -> List[dict]:
     """Zachytí všechna data ovlivněná smazáním události.
 
     Vrátí seznam změnových záznamů pro sledování undo.
@@ -154,7 +156,7 @@ def capture_event_cascade(cur: Cursor, event_id) -> list[dict]:
     return changes
 
 
-def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
+def capture_booth_cascade(cur: Cursor, booth_id) -> List[dict]:
     """Zachytí všechna data ovlivněná smazáním stánku.
 
     Vrátí seznam změnových záznamů pro sledování undo.
@@ -213,7 +215,7 @@ def capture_booth_cascade(cur: Cursor, booth_id) -> list[dict]:
     return changes
 
 
-def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
+def capture_product_cascade(cur: Cursor, product_id) -> List[dict]:
     """Zachytí všechna data ovlivněná smazáním produktu.
 
     Vrátí seznam změnových záznamů pro sledování undo.
@@ -260,7 +262,7 @@ def capture_product_cascade(cur: Cursor, product_id) -> list[dict]:
     return changes
 
 
-def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
+def capture_category_cascade(cur: Cursor, category_id) -> List[dict]:
     """Zachytí všechna data ovlivněná smazáním kategorie.
 
     Vrátí seznam změnových záznamů pro sledování undo.
@@ -307,7 +309,7 @@ def capture_category_cascade(cur: Cursor, category_id) -> list[dict]:
     return changes
 
 
-def capture_employee_cascade(cur: Cursor, employee_id) -> list[dict]:
+def capture_employee_cascade(cur: Cursor, employee_id) -> List[dict]:
     """Zachytí všechna data ovlivněná smazáním zaměstnance.
 
     Vrátí seznam změnových záznamů pro sledování undo.
