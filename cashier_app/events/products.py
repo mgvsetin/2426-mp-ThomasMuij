@@ -10,13 +10,13 @@ from psycopg import IntegrityError
 from cashier_app.auth import load_logged_in_employee
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager
-from cashier_app.utils.products import validate_product_or_category_name, validate_product_price, save_image_get_params
+from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.errors import MultipleRowsAffectedError, NoRowsAffectedError
 from cashier_app.utils.query_builder import build_insert_statement, build_update_statement, build_delete_statement
 from cashier_app.undo_and_redo import save_change
 from cashier_app.utils.cascade_capture import capture_product_cascade, convert_dict_to_serializable
 from cashier_app.utils.link_sync import sync_product_booth_links, sync_product_category_links
-from cashier_app.utils.images import remove_image_if_exists
+from cashier_app.utils.images import remove_image_if_exists, save_image_get_params
 from cashier_app.utils.general import get_constraint_name
 
 api_products_bp = Blueprint('products', __name__, url_prefix='/products')
