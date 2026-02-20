@@ -31,40 +31,31 @@ const pageContainer = document.querySelector('#page-container');
 export let selectingEvent = false;
 
 /**
- * Vytvoří překryvnou vrstvu (overlay) pro výběr akce nebo stánku.
- * @param {HTMLElement} container - Kontejner, do kterého se overlay vloží
- * @returns {HTMLElement} Vytvořený overlay prvek
+ * Vytvoří kontejner pro event nebo booth selector, aby se zarvonal na střed.
+ * @param {HTMLElement} container - Kontejner, do kterého se vloží
+ * @returns {HTMLElement} Vytvořený kontejner
  */
-function makeEventBoothOverlay(container) {
-  const existing = document.querySelector('.overlay');
+function makeEventBoothSelectorContainer(container) {
+  const existing = document.querySelector('#event-booth-selector-container');
   existing?.remove();
 
-  const overlay = document.createElement('div')
-  overlay.className = 'overlay';
+  const eventBoothSelectorContainer = document.createElement('div')
+  eventBoothSelectorContainer.id = 'event-booth-selector-container';
 
   // container.classList.add('disable-children');
 
-  container.appendChild(overlay);
+  container.appendChild(eventBoothSelectorContainer);
 
-  return overlay;
+  return eventBoothSelectorContainer;
 }
 
 
 /**
  * Odstraní překryvnou vrstvu (overlay) pro výběr akce nebo stánku.
  */
-function removeEventBoothOverlay() {
-  const overlay = document.querySelector('.overlay');
-
-  if (!overlay) {
-    return;
-  }
-
-  if (overlay.parentElement) {
-    // productSide.classList.remove('disable-children');
-  }
-
-  if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
+function removeEventBoothSelectorContainer() {
+  const container = document.querySelector('#event-booth-selector-container');
+  container?.remove();
 }
 
 
@@ -87,8 +78,8 @@ export async function renderEventPicker() {
     data = await response.json();
 
   } catch (error) {
-    const overlay = makeEventBoothOverlay(pageContainer);
-    overlay.innerHTML = `
+    const container = makeEventBoothSelectorContainer(pageContainer);
+    container.innerHTML = `
     <div id="event-selector-form-container">
       <div id="event-error-message">
         Nepovedlo se načíst akce. Zkuste to prosím později.
@@ -97,7 +88,7 @@ export async function renderEventPicker() {
     return;
   }
 
-  const overlay = makeEventBoothOverlay(pageContainer);
+  const container = makeEventBoothSelectorContainer(pageContainer);
 
   let html_event_options = ''
   if (data) {
@@ -111,7 +102,7 @@ export async function renderEventPicker() {
     selectingEvent = true;
   }
 
-  overlay.innerHTML = `
+  container.innerHTML = `
   <div id="event-selector-form-container">
     <form id="event-selector-form">
       <label for="event-selector" id="event-selector-label">Vyberte akci</label>
@@ -124,7 +115,7 @@ export async function renderEventPicker() {
   </div>`;
 
   // proti nechtěnému stisknutí:
-  const submit = overlay.querySelector('#submit-event-choice');
+  const submit = container.querySelector('#submit-event-choice');
   setTimeout(() => {
     try { submit.disabled = false; } catch { } // už bylo odendáno
   }, 150);
@@ -137,7 +128,7 @@ export async function renderEventPicker() {
  * @param {FormData} formData - Data z formuláře s vybranou akcí
  * @returns {Promise<boolean>} Vrací true při úspěchu, jinak false
  */
-export async function pickEvent(formData) {
+export async function selectEvent(formData) {
   try {
     const response = await fetch('/api/employees/me/events/select', {
       method: 'PUT',
@@ -175,7 +166,7 @@ export async function pickEvent(formData) {
     return false;
   }
   selectingEvent = false;
-  removeEventBoothOverlay();
+  removeEventBoothSelectorContainer();
   return true;
 }
 
@@ -207,8 +198,8 @@ export async function renderBoothPicker() {
       renderEventPicker();
       return;
     }
-    const overlay = makeEventBoothOverlay();
-    overlay.innerHTML = `
+    const container = makeEventBoothSelectorContainer();
+    container.innerHTML = `
       <div id="booth-selector-form-container">
         <div id="booth-error-message">
           Nepovedlo se načíst stánky. Zkuste to prosím později.
@@ -217,7 +208,7 @@ export async function renderBoothPicker() {
     return;
   }
 
-  const overlay = makeEventBoothOverlay(pageContainer);
+  const container = makeEventBoothSelectorContainer(pageContainer);
 
   let html_booth_options = ''
   if (data) {
@@ -229,7 +220,7 @@ export async function renderBoothPicker() {
     })
   }
 
-  overlay.innerHTML = `
+  container.innerHTML = `
       <div id="booth-selector-form-container">
         <form id="booth-selector-form">
           <label for="booth-selector" id="booth-selector-label">Vyberte stánek</label>
@@ -245,8 +236,8 @@ export async function renderBoothPicker() {
       </div>`;
 
   // proti nechtěnému stisknutí:
-  const submit = overlay.querySelector('#submit-booth-choice');
-  const returnButton = overlay.querySelector('#return-to-event-picker-button');
+  const submit = container.querySelector('#submit-booth-choice');
+  const returnButton = container.querySelector('#return-to-event-picker-button');
   setTimeout(() => {
     try { submit.disabled = false; } catch { } // už bylo odendáno
     try { returnButton.disabled = false; } catch { } // už bylo odendáno
@@ -260,7 +251,7 @@ export async function renderBoothPicker() {
  * @param {FormData} formData - Data z formuláře s vybraným stánkem
  * @returns {Promise<string|null>} Vrací typ stánku při úspěchu, jinak null
  */
-export async function pickBooth(formData) {
+export async function selectBooth(formData) {
   let booth_type = null;
   try {
     const response = await fetch('/api/employees/me/events/booths/select', {
@@ -315,7 +306,7 @@ export async function pickBooth(formData) {
 
     return null;
   }
-  removeEventBoothOverlay();
+  removeEventBoothSelectorContainer();
   return booth_type;
 }
 

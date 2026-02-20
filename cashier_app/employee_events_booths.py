@@ -261,38 +261,23 @@ def select_booth():
     """
     employee = load_logged_in_employee()
 
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here1', file=f)
-
     if employee is None:
         return jsonify(redirect_url=url_for('auth.get_login_page')), 401
 
     event = load_selected_event()
-
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here2', file=f)
 
     if event is None:
         return jsonify(error='no_selected_event'), 400
 
     booth_id_raw = request.form.get('booth')
 
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here3', file=f)
-
     if not booth_id_raw:
         return jsonify(error='missing_booth_id'), 400
-    
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here4', file=f)
 
     try:
         booth_id = str(UUID(booth_id_raw))
     except (TypeError, ValueError):
         return jsonify(error='invalid_booth_id'), 400
-    
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here5', file=f)
 
 
     with get_pool().connection() as conn:
@@ -308,9 +293,6 @@ def select_booth():
             
             if booth is None:
                 return jsonify(error='booth_not_found'), 404
-            
-            with open('prints.txt', 'a', encoding='utf-8') as f:
-                print('here6', file=f)
 
             # ověření, zda je zaměstnanec přiřazen ke stánku
             if not employee['is_admin']:
@@ -325,9 +307,6 @@ def select_booth():
                 if not event_link:
                     return jsonify(error='employee_not_linked_to_event'), 400
                 
-                with open('prints.txt', 'a', encoding='utf-8') as f:
-                    print('here7', file=f)
-                
                 if event_link[0]['role'] != 'event_manager':
                     booth_link = cur.execute(
                         '''
@@ -341,15 +320,7 @@ def select_booth():
                     if not booth_link:
                         return jsonify(error='employee_not_linked_to_booth'), 400
     
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here8', file=f)
-        print(session, file=f)
-    
     session['booth_id'] = str(booth_id)
-
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        print('here9', file=f)
-        print(session, file=f)
     return jsonify(booth_type=booth['booth_type']), 200
 
 

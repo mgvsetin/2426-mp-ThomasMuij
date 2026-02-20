@@ -71,8 +71,8 @@ export async function renderCard(wallet = null) {
     orderPrice = order.getTotalPrice(result.products);
   }
 
-  const balanceCzk = wallet ? `${escapeHTML(wallet.balance_czk)} Kč` : '-';
-  const balanceAfterPurchase = wallet && orderPrice ? `${escapeHTML(wallet.balance_czk - orderPrice)} Kč` : '-';
+  const balanceCzk = wallet ? `<strong>${escapeHTML(wallet.balance_czk)} Kč</strong>` : '-';
+  const balanceAfterPurchase = wallet && orderPrice ? `<strong>${escapeHTML(wallet.balance_czk - orderPrice)} Kč</strong>` : '-';
 
   tagIdDisplay.innerHTML = `Karta: ${escapeHTML(lastReadCardId) || '-'}`;
   balanceDisplay.innerHTML = `Zůstatek: ${balanceCzk}`;

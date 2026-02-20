@@ -1,7 +1,7 @@
 /**
  * @file Hlavní skript indexové stránky – načítání stránek, obsluha událostí, platby, refundace a správa uživatelů.
  */
-import { pickEvent, pickBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent, unselectBooth } from "./event_booth.js";
+import { selectEvent, selectBooth, renderEventPicker, renderBoothPicker, unselectEventBooth, selectingEvent, unselectBooth } from "./event_booth.js";
 import { renderProducts, renderCategories, saveSelectedCategory, findProduct, fetchProductsAndCategories } from "./products.js";
 import { order } from "./order.js";
 import { renderSummary } from "./summary.js";
@@ -13,7 +13,7 @@ import { lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelC
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
-import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, fetchUsers, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { resetWalletsCache } from "./wallets.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { setUpCardReading } from "../general/card_reader.js";
@@ -700,7 +700,7 @@ document.addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(eventForm);
 
-    const ok = await pickEvent(formData);
+    const ok = await selectEvent(formData);
 
     if (ok) {
       loadPage({
@@ -716,9 +716,9 @@ document.addEventListener('submit', async (event) => {
   const boothForm = event.target.closest('#booth-selector-form');
   if (boothForm) {
     event.preventDefault();
-    setUpCardReading(handleCardRead, true);
     const formData = new FormData(boothForm);
-    const booth_type = await pickBooth(formData);
+    const booth_type = await selectBooth(formData);
+    setUpCardReading(handleCardRead, true);
 
     if (booth_type === 'seller') {
       pageContainer.setAttribute('show', 'seller');

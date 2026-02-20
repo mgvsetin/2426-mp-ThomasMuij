@@ -121,8 +121,7 @@ class PgSessionInterface(SessionInterface):
         if not sid:
             return self.session_class(sid=None, new=True)
 
-        pool = self.get_pool()
-        with pool.connection() as conn:
+        with self.get_pool().connection() as conn:
             with conn.cursor() as cur:
                 row = cur.execute(
                     sql.SQL('''
@@ -132,42 +131,34 @@ class PgSessionInterface(SessionInterface):
                         table=sql.Identifier(self.table)
                     ),
                     (sid,)).fetchone()
-        if not row:
-            return self.session_class(sid=None, new=True)
-        
-        if row['expires_at'] is not None and row['expires_at'] < datetime.datetime.now(datetime.timezone.utc):
-            # vypršela platnost
-            with pool.connection() as conn:
-                with conn.cursor() as cur:
+                if not row:
+                    return self.session_class(sid=None, new=True)
+                
+                if row['expires_at'] is not None and row['expires_at'] < datetime.datetime.now(datetime.timezone.utc):
+                    # vypršela platnost
                     query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
                     cur.execute(query, query_params)
 
-            return self.session_class(sid=None, new=True)
-        
-        enforce_ua = app.config.get('SESSION_ENFORCE_UA', False)
-        enforce_ip = app.config.get('SESSION_ENFORCE_IP', False)
-
-        if enforce_ua or enforce_ip:
-            actual_ua_hash = short_ua_hash(request.headers.get('User-Agent', ''))
-            actual_ip = client_ip_from_request()
-
-            if enforce_ua and row['ua_hash'] and row['ua_hash'] != actual_ua_hash:
-                # neshoda UA -> zneplatnění relace
-                with pool.connection() as conn:
-                    with conn.cursor() as cur:
+                    return self.session_class(sid=None, new=True)
+                
+                enforce_ua = app.config.get('SESSION_ENFORCE_UA', False)
+                if enforce_ua:
+                    actual_ua_hash = short_ua_hash(request.headers.get('User-Agent', ''))
+                    if row['ua_hash'] and row['ua_hash'] != actual_ua_hash:
+                        # neshoda UA -> zneplatnění relace
                         query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
                         cur.execute(query, query_params)
-
-                return self.session_class(sid=None, new=True)
-
-            if enforce_ip and row['ip'] and row['ip'] != actual_ip:
-                # neshoda IP -> zneplatnění relace
-                with pool.connection() as conn:
-                    with conn.cursor() as cur:
+                        return self.session_class(sid=None, new=True)
+                    
+                enforce_ip = app.config.get('SESSION_ENFORCE_IP', False)
+                if enforce_ip:
+                    actual_ip = client_ip_from_request()
+                    if row['ip'] and row['ip'] != actual_ip:
+                        # neshoda IP -> zneplatnění relace
                         query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
                         cur.execute(query, query_params)
-                return self.session_class(sid=None, new=True)
-        
+                        return self.session_class(sid=None, new=True)
+                
         data = row['data'] or {}
         return self.session_class(initial=data, sid=sid, new=False)
     
@@ -187,8 +178,7 @@ class PgSessionInterface(SessionInterface):
         # if session is empty -> delete cookie and DB row
         if not session:
             if session.sid:
-                pool = self.get_pool()
-                with pool.connection() as conn:
+                with self.get_pool().connection() as conn:
                     with conn.cursor() as cur:
                         query, query_params = build_delete_statement(self.table, session.sid, soft_delete=False)
                         cur.execute(query, query_params)
@@ -198,6 +188,9 @@ class PgSessionInterface(SessionInterface):
                 domain=domain,
                 path=path
             )
+            return
+        
+        if not session.modified and not session.new and not regenerate:
             return
         
         # Decide if we need a new sid (new session or explicit regeneration)
@@ -215,8 +208,7 @@ class PgSessionInterface(SessionInterface):
         ua_hash = short_ua_hash(request.headers.get('User-Agent', ''))
         ip = client_ip_from_request()
 
-        pool = self.get_pool()
-        with pool.connection() as conn:
+        with self.get_pool().connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     sql.SQL("""
