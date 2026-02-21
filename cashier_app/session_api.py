@@ -18,11 +18,6 @@ def session_info():
 
     event = load_selected_event()
     booth = load_selected_booth()
-
-    with open('prints.txt', 'a', encoding='utf-8') as f:
-        from flask import session
-        print(session, file=f)
-        print(booth, file=f)
     
     is_manager = False
     if event:
