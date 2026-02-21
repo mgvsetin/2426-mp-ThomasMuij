@@ -21,6 +21,8 @@ const totalPaymentsEl = document.querySelector('#total-payments');
 const totalPaymentsCountEl = document.querySelector('#total-payments-count');
 const totalRefundsEl = document.querySelector('#total-refunds');
 const totalRefundsCountEl = document.querySelector('#total-refunds-count');
+const nonRefundedPaymentsEl = document.querySelector('#non-refunded-payments');
+const nonRefundedPaymentsCountEl = document.querySelector('#non-refunded-payments-count');
 const totalBalanceEl = document.querySelector('#total-balance');
 const totalCardsCountEl = document.querySelector('#total-cards-count');
 
@@ -333,6 +335,10 @@ function renderTransactions(transactions) {
   totalPaymentsCountEl.textContent = `${totalPaymentsCount} ${[1, 2, 3, 4].includes(totalPaymentsCount) ? 'transakce' : 'transakcí'}`;
   totalRefundsEl.textContent = `${totalRefunds} Kč`;
   totalRefundsCountEl.textContent = `${totalRefundsCount} ${[1, 2, 3, 4].includes(totalRefundsCount) ? 'transakce' : 'transakcí'}`;
+  const nonRefundedPayments = totalPayments + totalRefunds;
+  const nonRefundedPaymentsCount = totalPaymentsCount - totalRefundsCount;
+  nonRefundedPaymentsEl.textContent = `${nonRefundedPayments} Kč`;
+  nonRefundedPaymentsCountEl.textContent = `${nonRefundedPaymentsCount} ${[1, 2, 3, 4].includes(nonRefundedPaymentsCount) ? 'transakce' : 'transakcí'}`;
   totalBalanceEl.textContent = `${totalBalance} Kč`;
   totalCardsCountEl.textContent = `${cardBalances.size} ${cardBalances.size === 1 ? 'karta' : 0 < cardBalances.size && cardBalances.size < 5 ? 'karty' : 'karet'}`;
 }

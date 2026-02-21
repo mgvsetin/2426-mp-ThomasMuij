@@ -36,9 +36,9 @@ def get_employee_id(username_or_email: str) -> str | UUID | None:
                 '''
                 SELECT id
                 FROM employees
-                WHERE (username = %s OR email = %s)
+                WHERE (LOWER(username) = %s OR LOWER(email) = %s)
                 AND deleted_at IS NULL''',
-                (username_or_email, username_or_email)).fetchone()
+                (username_or_email.lower(), username_or_email.lower())).fetchone()
     
     if not employee:
         return None

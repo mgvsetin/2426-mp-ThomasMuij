@@ -175,7 +175,7 @@ class PgSessionInterface(SessionInterface):
         # je zde, aby se regenerate vždy odstranilo
         regenerate = session.pop('_regenerate', False)
 
-        # if session is empty -> delete cookie and DB row
+        # prázdná relace -> smazat cookie i záznam v DB
         if not session:
             if session.sid:
                 with self.get_pool().connection() as conn:
@@ -193,7 +193,7 @@ class PgSessionInterface(SessionInterface):
         if not session.modified and not session.new and not regenerate:
             return
         
-        # Decide if we need a new sid (new session or explicit regeneration)
+        # Nové SID při nové relaci nebo explicitní regeneraci
         sid = session.sid
         if session.new or not sid or regenerate:
             new_sid = self.generate_sid()
@@ -201,9 +201,9 @@ class PgSessionInterface(SessionInterface):
             new_sid = sid
 
         expires = self.get_expiration_time(app, session)
-        data = dict(session) # JSON serializable items only
+        data = dict(session) # pouze JSON serializovatelné položky
 
-        # extra metadata: employee_id (if present), ua_hash, ip
+        # metadata: employee_id (pokud existuje), ua_hash, ip
         employee_id = data.get('employee_id')
         ua_hash = short_ua_hash(request.headers.get('User-Agent', ''))
         ip = client_ip_from_request()
@@ -231,13 +231,13 @@ class PgSessionInterface(SessionInterface):
                         query, query_params = build_delete_statement(self.table, sid, soft_delete=False)
                         cur.execute(query, query_params)
                     except Exception:
-                        # Ignore delete errors — not fatal; transaction still succeeds.
+                        # Chyba při mazání starého SID není fatální
                         pass
 
         session.sid = new_sid
         session.new = False
                 
-        # set cookie (the cookie value is the opaque sid)
+        # nastavení cookie (hodnota cookie je neprůhledné SID)
         response.set_cookie(
             app.config.get("SESSION_COOKIE_NAME", "session"),
             new_sid,
@@ -250,7 +250,7 @@ class PgSessionInterface(SessionInterface):
         )
 
 
-# --- small helper to delete expired sessions (callable from CLI/cron) ------
+# --- Mazání expirovaných relací (volatelné z CLI/cronu) ---
 def delete_expired_sessions(max_inactive_days: int | None = None) -> int:
     """Smaže z DB expirované sessiony a (volitelně) staré řádky bez expires_at.
 
@@ -266,12 +266,6 @@ def delete_expired_sessions(max_inactive_days: int | None = None) -> int:
     -----
     int
     Počet smazaných řádků.
-    """
-    """
-    Delete expired sessions and optionally stale session-cookie rows (expires_at IS NULL).
-    Returns number of deleted rows.
-    If max_inactive_days is None, reads app.config['SESSION_MAX_INACTIVE_DAYS'] when run under app context,
-    otherwise uses provided value. If the final threshold is None, only deletes rows with a non-null expires_at.
     """
     if max_inactive_days is None:
         try:
@@ -312,6 +306,6 @@ from flask import current_app
 
 @click.command('clear-sessions')
 def clear_sessions_command():
-    """Delete expired sessions from DB."""
+    """Smaže expirované relace z databáze."""
     deleted = delete_expired_sessions()
     click.echo(f"Deleted {deleted} expired sessions.")
