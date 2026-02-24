@@ -1092,6 +1092,30 @@ body {
   column-gap: 15px;
 }
 
+.user-wallets-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.user-wallet-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgb(230, 238, 250);
+  color: rgb(32, 68, 150);
+  cursor: pointer;
+  font-size: 0.85em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 135px;
+}
+
+.user-wallet-tag:hover {
+  background-color: rgb(200, 218, 245);
+}
+
 .edit-wallet-card-info {
   font-weight: 700;
   margin-bottom: 5px;
