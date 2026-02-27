@@ -1,11 +1,11 @@
 """Modul pro zpracování operací zpět (undo) a znovu (redo) nad změnami v databázi."""
 
-from flask import Blueprint, jsonify, url_for, current_app
+from flask import Blueprint, jsonify, current_app, g
 from psycopg import Cursor, IntegrityError
 from psycopg.types.json import Jsonb
 
 from cashier_app.db import get_pool
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import require_login
 from cashier_app.utils.query_builder import build_update_statement, build_delete_statement, build_insert_statement
 from cashier_app.errors import NoChangeToUndoError, ConflictingExistingEmployeeRoles, NoChangeToRedoError, UndoTargetDeletedError, PgTryAdvisoryLockError
 from cashier_app.utils.general import get_employee_lock_key
@@ -411,25 +411,21 @@ def _order_changes_for_redo(changes: list[dict]) -> list[dict]:
 
 
 @bp.route('/undo', methods=('POST',))
+@require_login
 def undo():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 locked = cur.execute(
                     "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                    (get_employee_lock_key(logged_employee['id'], 'undo_redo'),)
+                    (get_employee_lock_key(g.employee['id'], 'undo_redo'),)
                 ).fetchone()['locked']
 
                 if not locked:
                     raise PgTryAdvisoryLockError()
 
                 # Clean up old/excess history rows first
-                _cleanup_old_history(cur, logged_employee['id'])
+                _cleanup_old_history(cur, g.employee['id'])
 
                 # Find the most recent change that hasn't been undone
                 action_to_undo = cur.execute(
@@ -442,7 +438,7 @@ def undo():
                     ORDER BY c.occurred_at DESC
                     LIMIT 1
                     ''',
-                    (logged_employee['id'],)).fetchone()
+                    (g.employee['id'],)).fetchone()
 
                 if not action_to_undo:
                     raise NoChangeToUndoError()
@@ -480,25 +476,21 @@ def undo():
 
 
 @bp.route('/redo', methods=('POST',))
+@require_login
 def redo():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
                 locked = cur.execute(
                     "SELECT pg_try_advisory_xact_lock(%s) AS locked",
-                    (get_employee_lock_key(logged_employee['id'], 'undo_redo'),)
+                    (get_employee_lock_key(g.employee['id'], 'undo_redo'),)
                 ).fetchone()['locked']
 
                 if not locked:
                     raise PgTryAdvisoryLockError()
 
                 # Clean up old/excess history rows first
-                _cleanup_old_history(cur, logged_employee['id'])
+                _cleanup_old_history(cur, g.employee['id'])
 
                 # Find the most recently undone change
                 last_undone = cur.execute(
@@ -510,7 +502,7 @@ def redo():
                     ORDER BY u.occurred_at DESC
                     LIMIT 1
                     ''',
-                    (logged_employee['id'],)).fetchone()
+                    (g.employee['id'],)).fetchone()
 
                 if not last_undone:
                     raise NoChangeToRedoError()

@@ -277,11 +277,11 @@ export async function renderUsers() {
     rows += `
       <tr id="${user.id}">
         <td>${idx + 1}</td>
-        <td>${escapeHTML(user.first_name)}</td>
-        <td>${escapeHTML(user.last_name)}</td>
-        <td>${escapeHTML(user.email || '-')}</td>
-        <td>${escapeHTML(user.phone_number || '-')}</td>
-        <td>${escapeHTML(user.other_identifier || '-')}</td>
+        <td class="truncate-name" title="${escapeHTML(user.first_name)}">${escapeHTML(user.first_name)}</td>
+        <td class="truncate-name" title="${escapeHTML(user.last_name)}">${escapeHTML(user.last_name)}</td>
+        <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
+        <td class="truncate-name" title="${escapeHTML(user.phone_number || '-')}">${escapeHTML(user.phone_number || '-')}</td>
+        <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
         <td class="actions">
           <button class="icon-btn edit edit-user">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="">

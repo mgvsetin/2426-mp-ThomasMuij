@@ -295,14 +295,20 @@ def create_app(test_config=None):
     app.register_blueprint(events.bp)
     app.register_blueprint(events.api_bp)
 
+    from cashier_app.events import transaction_history
+    app.register_blueprint(transaction_history.bp)
+
     from cashier_app import reader_info
     app.register_blueprint(reader_info.api_bp)
 
     from cashier_app import transactions
     app.register_blueprint(transactions.api_bp)
 
-    from cashier_app import users_and_wallets
-    app.register_blueprint(users_and_wallets.api_bp)
+    from cashier_app import users
+    app.register_blueprint(users.api_bp)
+
+    from cashier_app import wallets
+    app.register_blueprint(wallets.api_bp)
 
     from cashier_app import paste
     app.register_blueprint(paste.api_bp)

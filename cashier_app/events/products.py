@@ -4,10 +4,10 @@ Obsahuje API endpointy pro vytváření, úpravu a mazání produktů,
 včetně správy obrázků, vazeb na stánky a kategorie.
 """
 from pathlib import Path
-from flask import Blueprint, current_app, jsonify, url_for, request
+from flask import Blueprint, current_app, g, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import load_logged_in_employee, require_login
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
@@ -23,6 +23,7 @@ api_products_bp = Blueprint('products', __name__, url_prefix='/products')
 
 
 @api_products_bp.route('/create', methods=('POST',))
+@require_login
 def add_product():
     """Vytvoří nový produkt v rámci dané události.
 
@@ -35,11 +36,6 @@ def add_product():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -66,7 +62,7 @@ def add_product():
     except (ValueError, TypeError):
         return jsonify(error='invalid_category_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     params = {
@@ -165,7 +161,7 @@ def add_product():
                 changes.extend(sync_product_booth_links(cur, product_id, booth_ids))
                 changes.extend(sync_product_category_links(cur, product_id, category_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except IntegrityError as e:
         if created_image_path:
             remove_image_if_exists(Path(current_app.config['UPLOAD_FOLDER'], created_image_path))
@@ -185,6 +181,7 @@ def add_product():
 
 
 @api_products_bp.route('/edit', methods=('POST',))
+@require_login
 def edit_product():
     """Upraví existující produkt.
 
@@ -197,11 +194,6 @@ def edit_product():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     product_id = request.form.get('id')
 
     if not product_id:
@@ -227,7 +219,7 @@ def edit_product():
 
     event_id = product['event_id']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
@@ -349,7 +341,7 @@ def edit_product():
                 changes.extend(sync_product_booth_links(cur, product_id, booth_ids))
                 changes.extend(sync_product_category_links(cur, product_id, category_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
 
     except IntegrityError as e:
         if created_image_path:
@@ -379,6 +371,7 @@ def edit_product():
 
 
 @api_products_bp.route('/delete', methods=('DELETE',))
+@require_login
 def delete_product():
     """Smaže existující produkt (měkké smazání).
 
@@ -390,11 +383,6 @@ def delete_product():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     product_id = request.form.get('id')
 
     if not product_id:
@@ -420,7 +408,7 @@ def delete_product():
 
     event_id = product['event_id']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('products', product_id)
@@ -444,7 +432,7 @@ def delete_product():
                 sync_product_booth_links(cur, product_id, [])
                 sync_product_category_links(cur, product_id, [])
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for product id %s', product_id)
         return jsonify(error='internal_server_error'), 500

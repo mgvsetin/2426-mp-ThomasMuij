@@ -4,7 +4,8 @@
       "Bash(python -m py_compile:*)",
       "Bash(dir:*)",
       "Bash(python -m pytest:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(wc -l:*)"
     ]
   }
 }

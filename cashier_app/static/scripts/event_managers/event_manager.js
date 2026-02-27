@@ -1229,6 +1229,9 @@ function setOrder(headerEl) {
     case 'categories-booths-header':
       toggleOrder(orderBy.categories, 'booths', headerEl);
       break;
+    case 'categories-products-header':
+      toggleOrder(orderBy.categories, 'products', headerEl);
+      break;
     case 'users-first-name-header':
       toggleOrder(orderBy.users, 'first_name', headerEl);
       break;
@@ -1334,6 +1337,9 @@ function sorterFactory(dict) {
     } else if (key === 'categories') {
       aValue = aValue.map(category => category.name).join(', ').toLowerCase();
       bValue = bValue.map(category => category.name).join(', ').toLowerCase();
+    } else if (key === 'products') {
+      aValue = aValue.map(product => product.name).join(', ').toLowerCase();
+      bValue = bValue.map(product => product.name).join(', ').toLowerCase();
     } else if (key === 'booth_type') {
       aValue = boothTypeToDisplay(aValue).toLowerCase();
       bValue = boothTypeToDisplay(bValue).toLowerCase();
@@ -1496,8 +1502,12 @@ function categoryIsSearchedFor(category, searchQuery) {
   for (const booth of category.booths) {
     booths += `${booth.name.toLowerCase()} `;
   }
+  let products = category.products.length === 0 ? '-' : '';
+  for (const product of category.products) {
+    products += `${product.name.toLowerCase()} `;
+  }
 
-  const searchable = `${name} ${booths}`;
+  const searchable = `${name} ${booths} ${products}`;
 
   for (const query of queries) {
     if (!query.includes('=')) {
@@ -1508,6 +1518,8 @@ function categoryIsSearchedFor(category, searchQuery) {
         if (!name.includes(search)) return false;
       } else if (['stánek', 'stanek', 'booth', 'stánky', 'stanky', 'booths'].includes(searchKeyWord)) {
         if (!booths.includes(search)) return false;
+      } else if (['produkt', 'product', 'produkty', 'products'].includes(searchKeyWord)) {
+        if (!products.includes(search)) return false;
       } else {
         if (!searchable.includes(query)) return false;
       }
@@ -1596,28 +1608,14 @@ function walletIsSearchedFor(wallet, searchQuery) {
 
 
 /**
- * Vygeneruje HTML pro zobrazení stánků ve formě "pills".
- * @param {Array} booths - Pole stánků
+ * Vygeneruje HTML pro zobrazení stánků/produktů/kategorií ve formě "pills".
+ * @param {Array} entities - Pole věcí k zobrazení
  * @returns {string} HTML kód
  */
-function belongingBoothsToDisplay(booths) {
-  if (!booths.length) return '-';
-  const pills = booths.map(booth =>
-    `<span class="linked-pill" data-direct-to="${booth.id}" title="${escapeHTML(booth.name)}">${escapeHTML(booth.name)}</span>`
-  ).join('');
-  return `<div class="linked-pills">${pills}</div>`;
-}
-
-
-/**
- * Vygeneruje HTML pro zobrazení kategorií ve formě "pills".
- * @param {Array} categories - Pole kategorií
- * @returns {string} HTML kód
- */
-function belongingCategoriesToDisplay(categories) {
-  if (!categories.length) return '-';
-  const pills = categories.map(category =>
-    `<span class="linked-pill" data-direct-to="${category.id}" title="${escapeHTML(category.name)}">${escapeHTML(category.name)}</span>`
+function belongingEntitiesToDisplay(entities) {
+  if (!entities.length) return '-';
+  const pills = entities.map(entity =>
+    `<span class="linked-pill" data-direct-to="${entity.id}" title="${escapeHTML(entity.name)}">${escapeHTML(entity.name)}</span>`
   ).join('');
   return `<div class="linked-pills">${pills}</div>`;
 }
@@ -1747,7 +1745,7 @@ function renderEmployees(eventData) {
 
   sortedEmployees.forEach((employee, idx) => {
     if (!employeeIsSearchedFor(employee, searchQuery)) return;
-    const boothsStr = belongingBoothsToDisplay(employee.booths);
+    const boothsStr = belongingEntitiesToDisplay(employee.booths);
 
     rows += `
       <tr id="${employee.id}">
@@ -1788,8 +1786,8 @@ function renderProducts(eventData) {
 
   sortedProducts.forEach((product, idx) => {
     if (!productIsSearchedFor(product, searchQuery)) return;
-    const boothsStr = belongingBoothsToDisplay(product.booths);
-    const categoriesStr = belongingCategoriesToDisplay(product.categories);
+    const boothsStr = belongingEntitiesToDisplay(product.booths);
+    const categoriesStr = belongingEntitiesToDisplay(product.categories);
     let imageHTML;
     if (product.image_path) {
       imageHTML = `
@@ -1843,13 +1841,15 @@ function renderCategories(eventData) {
 
   sortedCategories.forEach((category, idx) => {
     if (!categoryIsSearchedFor(category, searchQuery)) return;
-    const boothsStr = belongingBoothsToDisplay(category.booths);
+    const boothsStr = belongingEntitiesToDisplay(category.booths);
+    const productsStr = belongingEntitiesToDisplay(category.products);
 
     rows += `
       <tr id="${category.id}">
         <td>${idx + 1}</td>
         <td class="truncate-name" title="${escapeHTML(category.name)}">${escapeHTML(category.name)}</td>
         <td class="linked-pills-cell">${boothsStr}</td>
+        <td class="linked-pills-cell">${productsStr}</td>
         <td class="actions">
           <button class="icon-btn edit edit-category">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -1866,7 +1866,7 @@ function renderCategories(eventData) {
     `;
   });
 
-  categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="4">Žádné kategorie.</td></tr>`;
+  categoriesTableBody.innerHTML = rows || `<tr><td class="muted" colspan="5">Žádné kategorie.</td></tr>`;
   markSelectedRows(card);
 }
 
@@ -2985,13 +2985,8 @@ async function openEditCategoryModal(categoryId) {
   const category = eventData.categories.find(category => category.id === categoryId);
   if (!category) return;
 
-  // Get products for this category
-  const categoryProducts = eventData.products.filter(p =>
-    p.categories.some(c => c.id === categoryId)
-  );
-
   const boothsPickerStr = makeBoothsPicker(eventData.booths, category.booths, 'seller');
-  const productsPickerStr = makeProductsPicker(eventData.products, categoryProducts);
+  const productsPickerStr = makeProductsPicker(eventData.products, category.products);
 
   const html = `
     <header>

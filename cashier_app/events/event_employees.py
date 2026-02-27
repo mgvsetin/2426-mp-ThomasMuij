@@ -1,8 +1,8 @@
 """Modul pro správu zaměstnanců a manažerů přiřazených k událostem."""
 
-from flask import Blueprint, jsonify, url_for, request
+from flask import Blueprint, g, jsonify, url_for, request
 from uuid import UUID
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import load_logged_in_employee, require_login
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.undo_and_redo import save_change
@@ -12,6 +12,7 @@ api_employees_bp = Blueprint('employees', __name__, url_prefix='/employees')
 
 
 @api_employees_bp.route('/assign-manager', methods=('POST',))
+@require_login
 def assign_manager():
     """Přiřadí zaměstnance jako manažera k dané události.
 
@@ -22,11 +23,6 @@ def assign_manager():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -42,7 +38,7 @@ def assign_manager():
     if not username_or_email:
         return jsonify(error='missing_username_or_email'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
@@ -74,12 +70,13 @@ def assign_manager():
 
             changes = []
             changes.extend(sync_employee_event_booth_roles(cur, employee['id'], event_id, [None]))
-            save_change(cur, changes, logged_employee['id'])
+            save_change(cur, changes, g.employee['id'])
 
     return jsonify(), 200
 
 
 @api_employees_bp.route('/assign-employee', methods=('POST',))
+@require_login
 def assign_employee():
     """Přiřadí zaměstnance ke konkrétním stánkům v rámci události.
 
@@ -91,11 +88,6 @@ def assign_employee():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -118,7 +110,7 @@ def assign_employee():
     except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
@@ -175,12 +167,13 @@ def assign_employee():
 
             changes = []
             changes.extend(sync_employee_event_booth_roles(cur, employee['id'], event_id, booth_ids))
-            save_change(cur, changes, logged_employee['id'])
+            save_change(cur, changes, g.employee['id'])
 
     return jsonify(), 200
 
 
 @api_employees_bp.route('/unassign', methods=('POST',))
+@require_login
 def unassign_employee_or_manager():
     """Odebere zaměstnance nebo manažera z dané události.
 
@@ -191,11 +184,6 @@ def unassign_employee_or_manager():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -209,7 +197,7 @@ def unassign_employee_or_manager():
     if not event_id:
         return jsonify(error='missing_event_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
     
     employee_id = request.form.get('id')
@@ -229,6 +217,6 @@ def unassign_employee_or_manager():
             changes.extend(sync_employee_event_booth_roles(cur, employee_id, event_id, []))
 
             if changes:
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
 
     return jsonify(), 200

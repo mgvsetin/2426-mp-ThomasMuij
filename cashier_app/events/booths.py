@@ -1,10 +1,10 @@
 """Modul pro správu stánků – vytváření, úprava, mazání a načítání produktů a kategorií stánku."""
 
-from flask import Blueprint, current_app, jsonify, url_for, request
+from flask import Blueprint, current_app, g, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
-from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.employee_events_booths import load_selected_event, load_selected_booth, require_event_selected, require_booth_selected
+from cashier_app.auth import load_logged_in_employee, require_login
 from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import convert_image_paths_from_relative
@@ -20,6 +20,7 @@ api_booths_bp = Blueprint('booths', __name__, url_prefix='/booths')
 
 
 @api_booths_bp.route('/create', methods=('POST',))
+@require_login
 def add_booth():
     """Vytvoří nový stánek v rámci akce.
 
@@ -28,11 +29,6 @@ def add_booth():
     Pokladní stánek nesmí mít přiřazené produkty ani kategorie.
     Uloží změnu pro funkci zpět/vpřed.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -43,14 +39,14 @@ def add_booth():
     except (ValueError, TypeError):
         return jsonify(error='invalid_event_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
     booth_type = request.form.get('type', '').strip()
 
     params = {
-        'created_by': logged_employee['id'],
+        'created_by': g.employee['id'],
         'event_id': event_id
     }
 
@@ -127,7 +123,7 @@ def add_booth():
                 changes.extend(sync_booth_product_links(cur, booth_id, product_ids))
                 changes.extend(sync_booth_category_links(cur, booth_id, category_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except IntegrityError as e:
         constraint = get_constraint_name(e)
 
@@ -140,6 +136,7 @@ def add_booth():
 
 
 @api_booths_bp.route('/edit', methods=('POST',))
+@require_login
 def edit_booth():
     """Upraví existující stánek.
 
@@ -148,11 +145,6 @@ def edit_booth():
     Pokladní stánek nesmí mít přiřazené produkty ani kategorie.
     Uloží staré a nové hodnoty pro funkci zpět/vpřed.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     booth_id = request.form.get('id')
 
     if not booth_id:
@@ -179,7 +171,7 @@ def edit_booth():
     event_id = booth['event_id']
     booth_type = booth['booth_type']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
@@ -269,7 +261,7 @@ def edit_booth():
                 changes.extend(sync_booth_product_links(cur, booth_id, product_ids))
                 changes.extend(sync_booth_category_links(cur, booth_id, category_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except IntegrityError as e:
         constraint = get_constraint_name(e)
 
@@ -287,6 +279,7 @@ def edit_booth():
 
 
 @api_booths_bp.route('/delete', methods=('DELETE',))
+@require_login
 def delete_booth():
     """Smaže stánek (soft-delete).
 
@@ -295,11 +288,6 @@ def delete_booth():
     kategorie a role zaměstnanců u stánku.
     Uloží změny pro funkci zpět/vpřed.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     booth_id = request.form.get('id')
 
     if not booth_id:
@@ -325,7 +313,7 @@ def delete_booth():
 
     event_id = booth_row['event_id']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('booths', booth_id)
@@ -354,7 +342,7 @@ def delete_booth():
                     (booth_id,)
                 )
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for booth id %s', booth_id)
         return jsonify(error='internal_server_error'), 500
@@ -365,21 +353,11 @@ def delete_booth():
 
 
 @api_booths_bp.route('/products-categories')
+@require_login
+@require_event_selected
+@require_booth_selected
 def get_products_and_categories():
     """Vrátí produkty a kategorie dostupné pro vybraný stánek."""
-    employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             products = cur.execute(
@@ -398,7 +376,7 @@ def get_products_and_categories():
                 WHERE bo_link.booth_id = %s
                 AND p.deleted_at IS NULL
                 GROUP BY p.id, img.id''',
-                (booth['id'],)).fetchall()
+                (g.booth['id'],)).fetchall()
 
             categories = cur.execute(
                 '''
@@ -407,7 +385,7 @@ def get_products_and_categories():
                 JOIN category_booth_link AS link ON link.category_id = cat.id
                 WHERE link.booth_id = %s
                 AND cat.deleted_at IS NULL''',
-                (booth['id'],)).fetchall()
+                (g.booth['id'],)).fetchall()
 
     convert_image_paths_from_relative(products)
 

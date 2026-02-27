@@ -1,11 +1,11 @@
 """Modul pro správu zaměstnanců – CRUD operace a stránka pro manažery."""
 
-from flask import Blueprint, current_app, jsonify, url_for, request, render_template
+from flask import Blueprint, current_app, g, jsonify, url_for, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
 from argon2 import PasswordHasher
 from cashier_app.employee_events_booths import load_selected_event
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import load_logged_in_employee, require_login, require_admin
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager, validate_username, validate_email, validate_new_password
 from cashier_app.errors import NoRowsAffectedError, MultipleRowsAffectedError, CanNotDeleteLastAdminError
@@ -35,17 +35,13 @@ api_bp = Blueprint('employees_api', __name__, url_prefix='/api/employees')
 
 
 @api_bp.route('')
+@require_login
 def get_employees():
     """Vrátí seznam všech aktivních zaměstnanců ve formátu JSON."""
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not employee['is_admin']:
+    if not g.employee['is_admin']:
         event = load_selected_event()
 
-        if not event or not is_manager(employee['id'], event['id']):
+        if not event or not is_manager(g.employee['id'], event['id']):
             return jsonify(error='admin_or_manager_required'), 403
 
     with get_pool().connection() as conn:
@@ -55,22 +51,15 @@ def get_employees():
                 SELECT e.id, e.username, e.email, e.is_admin, e.created_by, e.created_at
                 FROM employees as e
                 WHERE e.deleted_at IS NULL
-                ORDER BY created_at''').fetchall()
+                ORDER BY username, id''').fetchall()
             
     return jsonify(employees=employees), 200
 
 
 @api_bp.route('/create', methods=('POST',))
+@require_admin
 def add_employee():
     """Vytvoří nového zaměstnance s údaji z formuláře a uloží změnu pro vrácení zpět."""
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not logged_employee['is_admin']:
-        return jsonify(error='insufficient_privileges'), 403
-
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip().lower()
     password_raw = request.form.get('password', '')
@@ -111,7 +100,7 @@ def add_employee():
         'email': email,
         'password_hash': password_hash,
         'is_admin': is_admin,
-        'created_by': logged_employee['id']
+        'created_by': g.employee['id']
     }
 
     sql, query_params = build_insert_statement('employees', params, returning='*')
@@ -126,7 +115,7 @@ def add_employee():
                     'table': 'employees',
                     'old_values': None,
                     'new_values': convert_dict_to_serializable(dict(new_employee))
-                }], logged_employee['id'])
+                }], g.employee['id'])
 
     except IntegrityError as e:
         constraint = get_constraint_name(e)
@@ -142,13 +131,9 @@ def add_employee():
 
 
 @api_bp.route('/edit', methods=('POST',))
+@require_admin
 def edit_employee():
     """Upraví existujícího zaměstnance podle údajů z formuláře a uloží změnu pro vrácení zpět."""
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     edit_employee_id = request.form.get('id')
 
     if not edit_employee_id:
@@ -157,10 +142,7 @@ def edit_employee():
     try:
         edit_employee_id = UUID(edit_employee_id)
     except (ValueError, TypeError):
-        return jsonify(error='invalid_id'), 400    
-
-    if not logged_employee['is_admin']:
-        return jsonify(error='insufficient_privileges'), 403
+        return jsonify(error='invalid_id'), 400
 
     new_username = request.form.get('username', '').strip()
     new_email = request.form.get('email', '').strip().lower()
@@ -243,7 +225,7 @@ def edit_employee():
                     'table': 'employees',
                     'old_values': old_values,
                     'new_values': new_values
-                }], logged_employee['id'])
+                }], g.employee['id'])
 
                 an_admin_exists = cur.execute(
                         '''
@@ -276,13 +258,9 @@ def edit_employee():
 
 
 @api_bp.route('/delete', methods=('DELETE',))
+@require_login
 def delete_employee():
     """Smaže zaměstnance (soft delete), včetně kaskádového zachycení souvisejících dat pro vrácení zpět."""
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     delete_employee_id = request.form.get('id')
 
     if not delete_employee_id:
@@ -293,7 +271,7 @@ def delete_employee():
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
-    if not logged_employee['is_admin'] and logged_employee['id'] != delete_employee_id:
+    if not g.employee['is_admin'] and g.employee['id'] != delete_employee_id:
         return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('employees', delete_employee_id)
@@ -357,7 +335,7 @@ def delete_employee():
                 
 
                 # Uložení změny pro vrácení zpět
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
 
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for employee id %s', delete_employee_id)

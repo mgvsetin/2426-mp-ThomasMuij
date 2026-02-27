@@ -5,6 +5,7 @@ pro ověření přihlašovacích údajů a načtení přihlášeného zaměstnan
 """
 
 from uuid import UUID
+import functools
 from flask import Blueprint, request, render_template, current_app, session, redirect, url_for, g, jsonify
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
@@ -149,13 +150,25 @@ def logout():
     return redirect(url_for('auth.get_login_page'))
 
 
-# def login_required(view):
-#     @functools.wraps(view)
-#     def wrapped_view(**kwargs):
-#         load_logged_in_employee()
-#         if g.employee is None:
-#             return redirect(url_for('auth.login'))
+def require_login(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        load_logged_in_employee()
+        if g.employee is None:
+            return jsonify(redirect_url=url_for('auth.get_login_page')), 401
         
-#         return view(**kwargs)
+        return view(**kwargs)
     
-#     return wrapped_view
+    return wrapped_view
+
+
+def require_admin(view):
+    @functools.wraps(view)
+    @require_login
+    def wrapped_view(**kwargs):
+        if not g.employee['is_admin']:
+            return jsonify(error='insufficient_privileges'), 403
+
+        return view(**kwargs)
+
+    return wrapped_view

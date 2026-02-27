@@ -1,12 +1,12 @@
 """Modul pro zpracování transakcí (platby, změny zůstatku a refundace) v pokladní aplikaci."""
 
-from flask import Blueprint, jsonify, url_for, request, current_app
+from flask import Blueprint, jsonify, request, current_app, g
 from uuid import UUID
 import json
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import require_login
 from cashier_app.db import get_pool
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
-from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
+from cashier_app.employee_events_booths import require_seller_booth_selected, require_cashier_booth_selected, require_event_selected
 from cashier_app.utils.transactions import make_transaction
 from cashier_app.errors import UnexpectedError, InsufficientBalanceError, IdempotencyKeyDataConflict
 
@@ -15,6 +15,9 @@ api_bp = Blueprint('transactions_api', __name__, url_prefix='/api/transactions')
 
 
 @api_bp.route('/make-payment', methods=('POST',))
+@require_login
+@require_event_selected
+@require_seller_booth_selected
 def make_payment():
     """Zpracuje platbu z peněženky zákazníka za produkty na prodejním stánku.
 
@@ -25,22 +28,6 @@ def make_payment():
     Returns:
         JSON odpověď s částkou změny zůstatku nebo chybovou zprávou.
     """
-    logged_employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-
-    if booth['booth_type'] != 'seller':
-        return jsonify(error='invalid_booth_type'), 400
-
     tag_id = request.form.get('tag-id', '').strip()
     amount_czk = request.form.get('amount-czk', '')
     products_info = request.form.get('products-info', '[]')
@@ -105,7 +92,7 @@ def make_payment():
                     AND event_id = %s
                     AND deleted_at IS NULL
                     FOR UPDATE''',
-                    (tag_id, event['id'])).fetchone()
+                    (tag_id, g.event['id'])).fetchone()
 
                 if not wallet:
                     return jsonify(error='wallet_not_found'), 400
@@ -119,11 +106,11 @@ def make_payment():
                     'tag_id': tag_id,
                     'wallet_id': wallet['id'],
                     'user_id': wallet['owner_id'],
-                    'event_id': event['id'],
-                    'booth_id': booth['id'],
+                    'event_id': g.event['id'],
+                    'booth_id': g.booth['id'],
                     'transaction_type': 'payment',
                     'amount_czk': amount_czk,
-                    'performed_by': logged_employee['id'],
+                    'performed_by': g.employee['id'],
                     'products_info': products_info,
                     'idempotency_key': idemp_key
                 }
@@ -140,6 +127,9 @@ def make_payment():
 
 
 @api_bp.route('/make-balance-change', methods=('POST',))
+@require_login
+@require_event_selected
+@require_cashier_booth_selected
 def make_balance_change():
     """Provede změnu zůstatku peněženky na pokladním stánku.
 
@@ -150,22 +140,6 @@ def make_balance_change():
     Returns:
         JSON odpověď s částkou změny zůstatku nebo chybovou zprávou.
     """
-    logged_employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-
-    if booth['booth_type'] != 'cashier':
-        return jsonify(error='invalid_booth_type'), 400
-
     tag_id = request.form.get('tag-id', '').strip()
     change_balance_by = request.form.get('change-balance-by', '')
     new_balance = request.form.get('new-balance', '')
@@ -218,7 +192,7 @@ def make_balance_change():
                     AND event_id = %s
                     AND deleted_at IS NULL
                     FOR UPDATE''',
-                    (tag_id, event['id'])).fetchone()
+                    (tag_id, g.event['id'])).fetchone()
 
                 if not wallet:
                     return jsonify(error='wallet_not_found'), 400
@@ -235,11 +209,11 @@ def make_balance_change():
                     'tag_id': tag_id,
                     'wallet_id': wallet['id'],
                     'user_id': wallet['owner_id'],
-                    'event_id': event['id'],
-                    'booth_id': booth['id'],
+                    'event_id': g.event['id'],
+                    'booth_id': g.booth['id'],
                     'transaction_type': 'balance-change',
                     'amount_czk': change_balance_by,
-                    'performed_by': logged_employee['id'],
+                    'performed_by': g.employee['id'],
                     'products_info': [],
                     'idempotency_key': idemp_key
                 }
@@ -290,6 +264,9 @@ def _find_last_refundable_payment(cur, wallet_id, booth_id, event_id, time_limit
 
 
 @api_bp.route('/last-refundable', methods=('GET',))
+@require_login
+@require_event_selected
+@require_seller_booth_selected
 def get_last_refundable():
     """Získá poslední refundovatelnou platbu pro danou peněženku a stánek.
 
@@ -300,22 +277,6 @@ def get_last_refundable():
         JSON odpověď s částkou refundace, informacemi o produktech a časem platby,
         nebo chybovou zprávou.
     """
-    logged_employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-
-    if booth['booth_type'] != 'seller':
-        return jsonify(error='invalid_booth_type'), 400
-
     tag_id = request.args.get('tag-id', '').strip()
 
     if not tag_id:
@@ -330,13 +291,13 @@ def get_last_refundable():
                 WHERE tag_id = %s
                 AND event_id = %s
                 AND deleted_at IS NULL''',
-                (tag_id, event['id'])).fetchone()
+                (tag_id, g.event['id'])).fetchone()
 
             if not wallet:
                 return jsonify(error='wallet_not_found'), 400
 
             time_limit = current_app.config.get('REFUND_TIME_LIMIT_MINUTES', 5)
-            payment = _find_last_refundable_payment(cur, wallet['id'], booth['id'], event['id'], time_limit)
+            payment = _find_last_refundable_payment(cur, wallet['id'], g.booth['id'], g.event['id'], time_limit)
 
     if not payment:
         return jsonify(error='no_refundable_transaction'), 400
@@ -351,6 +312,9 @@ def get_last_refundable():
 
 
 @api_bp.route('/make-refund', methods=('POST',))
+@require_login
+@require_event_selected
+@require_seller_booth_selected
 def make_refund():
     """Provede refundaci poslední refundovatelné platby na prodejním stánku.
 
@@ -362,22 +326,6 @@ def make_refund():
         JSON odpověď s částkou změny zůstatku, refundovanými produkty a refundovanou částkou,
         nebo chybovou zprávou.
     """
-    logged_employee = load_logged_in_employee()
-    event = load_selected_event()
-    booth = load_selected_booth()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
-    if booth is None:
-        return jsonify(error='no_selected_booth'), 400
-
-    if booth['booth_type'] != 'seller':
-        return jsonify(error='invalid_booth_type'), 400
-
     tag_id = request.form.get('tag-id', '').strip()
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
 
@@ -398,13 +346,13 @@ def make_refund():
                     AND event_id = %s
                     AND deleted_at IS NULL
                     FOR UPDATE''',
-                    (tag_id, event['id'])).fetchone()
+                    (tag_id, g.event['id'])).fetchone()
 
                 if not wallet:
                     return jsonify(error='wallet_not_found'), 400
 
                 time_limit = current_app.config.get('REFUND_TIME_LIMIT_MINUTES', 5)
-                payment = _find_last_refundable_payment(cur, wallet['id'], booth['id'], event['id'], time_limit)
+                payment = _find_last_refundable_payment(cur, wallet['id'], g.booth['id'], g.event['id'], time_limit)
 
                 if not payment:
                     return jsonify(error='no_refundable_transaction'), 400
@@ -418,11 +366,11 @@ def make_refund():
                     'tag_id': tag_id,
                     'wallet_id': wallet['id'],
                     'user_id': wallet['owner_id'],
-                    'event_id': event['id'],
-                    'booth_id': booth['id'],
+                    'event_id': g.event['id'],
+                    'booth_id': g.booth['id'],
                     'transaction_type': 'refund',
                     'amount_czk': refund_amount,
-                    'performed_by': logged_employee['id'],
+                    'performed_by': g.employee['id'],
                     'products_info': payment['products_info'],
                     'idempotency_key': idemp_key,
                     'refunded_transaction_id': payment['id']

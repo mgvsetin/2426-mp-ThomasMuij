@@ -2,11 +2,11 @@
 
 from datetime import timezone
 from dateutil import parser
-from flask import Blueprint, current_app, jsonify, url_for, request, render_template
+from flask import Blueprint, current_app, g, jsonify, url_for, request, render_template
 from uuid import UUID
 from psycopg import IntegrityError
-from cashier_app.employee_events_booths import load_selected_event, load_selected_booth
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.employee_events_booths import load_selected_event, require_event_selected
+from cashier_app.auth import load_logged_in_employee, require_login, require_admin
 from cashier_app.db import get_pool
 from cashier_app.utils.events import validate_event_or_booth_name
 from cashier_app.utils.products import convert_image_paths_from_relative
@@ -32,37 +32,21 @@ def get_event_manager_page(event_id):
     return render_template('event_managers/event_manager.html')
 
 
-@bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
-def get_user_transaction_history_page(event_id, user_id):
-    """Vrátí stránku s historií transakcí konkrétního uživatele pro danou událost."""
-    return render_template('index/user_transaction_history.html')
-
-
-@bp.route('/<uuid:event_id>/transaction-history')
-def get_event_transaction_history_page(event_id):
-    """Vrátí stránku s historií všech transakcí pro danou událost."""
-    return render_template('event_managers/event_transaction_history.html')
-
-
 api_bp = Blueprint('events_api', __name__, url_prefix='/api/events')
 
 
 @api_bp.route('')
+@require_login
 def get_events_to_manage():
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            if employee['is_admin']:
+            if g.employee['is_admin']:
                 events = cur.execute(
                     '''
                     SELECT id, name, start_at, end_at, created_at
                     FROM events
                     WHERE deleted_at IS NULL
-                    ORDER BY created_at''').fetchall()
+                    ORDER BY name, id''').fetchall()
             else:
                 events = cur.execute(
                     '''
@@ -72,20 +56,16 @@ def get_events_to_manage():
                     WHERE e.deleted_at IS NULL
                     AND employee_id = %s
                     AND booth_id IS NULL
-                    ORDER BY e.created_at''',
-                    (employee['id'],)).fetchall()
+                    ORDER BY e.name, e.id''',
+                    (g.employee['id'],)).fetchall()
 
     return jsonify(events=events), 200
 
 
 @api_bp.route('/<uuid:event_id>')
+@require_login
 def get_event(event_id):
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
@@ -116,7 +96,7 @@ def get_event(event_id):
                 AND em.is_admin IS FALSE
                 AND link.event_id = %s
                 GROUP BY em.id
-                ORDER BY em.created_at''',
+                ORDER BY em.username, em.id''',
                 (event_id,)).fetchall()
 
             products = cur.execute(
@@ -141,7 +121,7 @@ def get_event(event_id):
                 WHERE p.event_id = %s
                 AND p.deleted_at IS NULL
                 GROUP BY p.id, img.id
-                ORDER BY p.created_at''',
+                ORDER BY p.name, p.id''',
                 (event_id,)).fetchall()
 
 
@@ -151,7 +131,7 @@ def get_event(event_id):
                 FROM booths
                 WHERE event_id = %s
                 AND deleted_at IS NULL
-                ORDER BY created_at''',
+                ORDER BY name, id''',
                 (event_id,)).fetchall()
 
             categories = cur.execute(
@@ -161,10 +141,17 @@ def get_event(event_id):
                         DISTINCT jsonb_build_object('id', bo_link.booth_id, 'name', booths.name)
                         ) FILTER (WHERE bo_link.booth_id IS NOT NULL AND booths.deleted_at IS NULL),
                         '[]'
-                    ) AS booths
+                    ) AS booths,
+                    COALESCE(jsonb_agg(
+                        DISTINCT jsonb_build_object('id', pr_link.product_id, 'name', pr.name)
+                        ) FILTER (WHERE pr_link.product_id IS NOT NULL AND pr.deleted_at IS NULL),
+                        '[]'
+                    ) AS products
                 FROM categories AS cat
                 LEFT JOIN category_booth_link AS bo_link ON bo_link.category_id = cat.id
                 LEFT JOIN booths ON booths.id = bo_link.booth_id
+                LEFT JOIN category_product_link AS pr_link ON pr_link.category_id = cat.id
+                LEFT JOIN products AS pr ON pr.id = pr_link.product_id
                 WHERE cat.event_id = %s
                 AND cat.deleted_at IS NULL
                 GROUP BY cat.id''',
@@ -185,7 +172,7 @@ def get_event(event_id):
                     END as event_connected
                 FROM users u
                 WHERE u.deleted_at IS NULL
-                ORDER BY u.created_at''',
+                ORDER BY u.first_name, u.last_name, u.id''',
                 (event_id, event_id)).fetchall()
 
             wallets = cur.execute(
@@ -196,7 +183,7 @@ def get_event(event_id):
                 LEFT JOIN users u ON u.id = w.owner_id
                 WHERE w.event_id = %s
                 AND w.deleted_at IS NULL
-                ORDER BY w.created_at''',
+                ORDER BY w.owner_id, w.tag_id, w.id''',
                 (event_id,)).fetchall()
 
     add_more_phone_number_info(users)
@@ -206,15 +193,8 @@ def get_event(event_id):
 
 
 @api_bp.route('/create', methods=('POST',))
+@require_admin
 def add_event():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not logged_employee['is_admin']:
-        return jsonify(error='insufficient_privileges'), 403
-
     name = request.form.get('name', '').strip()
     start_at = request.form.get('start-at', '').strip()
     end_at = request.form.get('end-at', '').strip()
@@ -228,7 +208,7 @@ def add_event():
 
     params = {
         'name': name,
-        'created_by': logged_employee['id']
+        'created_by': g.employee['id']
     }
 
     start_at_utc = None
@@ -266,7 +246,7 @@ def add_event():
                     'table': 'events',
                     'old_values': None,
                     'new_values': convert_dict_to_serializable(dict(new_event))
-                }], logged_employee['id'])
+                }], g.employee['id'])
     except IntegrityError as e:
         constraint = get_constraint_name(e)
 
@@ -279,12 +259,8 @@ def add_event():
 
 
 @api_bp.route('/edit', methods=('POST',))
+@require_login
 def edit_event():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id = request.form.get('id')
 
     if not event_id:
@@ -295,7 +271,7 @@ def edit_event():
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
@@ -369,7 +345,7 @@ def edit_event():
                     'table': 'events',
                     'old_values': old_values,
                     'new_values': new_values
-                }], logged_employee['id'])
+                }], g.employee['id'])
     except IntegrityError as e:
         constraint = get_constraint_name(e)
 
@@ -388,12 +364,8 @@ def edit_event():
 
 
 @api_bp.route('/delete', methods=('DELETE',))
+@require_login
 def delete_event():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id = request.form.get('id')
 
     if not event_id:
@@ -404,7 +376,7 @@ def delete_event():
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('events', event_id)
@@ -461,7 +433,7 @@ def delete_event():
                     'UPDATE wallets SET deleted_at = now() WHERE event_id = %s AND deleted_at IS NULL',
                     (event_id,))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for event id %s', event_id)
         return jsonify(error='internal_server_error'), 500
@@ -472,14 +444,8 @@ def delete_event():
 
 
 @api_bp.route('/deleted')
+@require_admin
 def get_deleted_events():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not logged_employee['is_admin']:
-            return jsonify(error='insufficient_privileges'), 403
 
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
@@ -488,22 +454,15 @@ def get_deleted_events():
                 SELECT id, name, start_at, end_at, deleted_at
                 FROM events
                 WHERE deleted_at IS NOT NULL
-                ORDER BY deleted_at DESC''',
+                ORDER BY deleted_at DESC, id''',
             ).fetchall()
 
     return jsonify(events=events), 200
 
 
 @api_bp.route('/restore', methods=('POST',))
+@require_admin
 def restore_event():
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not logged_employee['is_admin']:
-            return jsonify(error='insufficient_privileges'), 403
-
     try:
         event_id = UUID(request.form.get('event-id'))
     except (ValueError, TypeError):
@@ -590,16 +549,9 @@ def restore_event():
 
 
 @api_bp.route('/wallets')
+@require_login
+@require_event_selected
 def get_event_wallets():
-    employee = load_logged_in_employee()
-    event = load_selected_event()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
             wallets = cur.execute(
@@ -608,397 +560,9 @@ def get_event_wallets():
                 FROM wallets
                 WHERE event_id = %s
                 AND deleted_at IS NULL''',
-                (event['id'],)).fetchall()
+                (g.event['id'],)).fetchall()
 
     return jsonify(wallets=wallets), 200
-
-
-@api_bp.route('/<uuid:event_id>/users/<uuid:user_id>/transaction-history')
-def get_user_transaction_history_for_event(event_id, user_id):
-    logged_employee = load_logged_in_employee()
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not event_id:
-        return jsonify(error='missing_event_id'), 400
-
-    try:
-        event_id = UUID(str(event_id))
-    except (TypeError, ValueError):
-        return jsonify(error='invalid_event_id'), 400
-
-    if not user_id:
-        return jsonify(error='missing_user_id'), 400
-
-    try:
-        user_id = UUID(str(user_id))
-    except (TypeError, ValueError):
-        return jsonify(error='invalid_user_id'), 400
-
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        selected_event = load_selected_event()
-        if not selected_event or selected_event['id'] != event_id:
-            return jsonify(error='insufficient_privileges'), 403
-
-        selected_booth = load_selected_booth()
-
-        if not selected_booth or selected_booth['booth_type'] != 'cashier':
-            return jsonify(error='insufficient_privileges'), 403
-
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            user_transaction_history = cur.execute(
-                '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info, e.username AS performed_by_username, b.name AS booth_name
-                FROM transactions t
-                JOIN users u ON u.id = t.user_id
-                JOIN employees e ON e.id = t.performed_by
-                JOIN booths b ON b.id = t.booth_id
-                WHERE t.user_id = %s
-                AND t.event_id = %s
-                ORDER BY t.occurred_at
-                ''',
-                (user_id, event_id)).fetchall()
-
-    return jsonify(user_transaction_history=user_transaction_history), 200
-
-
-@api_bp.route('/<uuid:event_id>/transaction-history')
-def get_event_transaction_history(event_id):
-    logged_employee = load_logged_in_employee()
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not event_id:
-        return jsonify(error='missing_event_id'), 400
-
-    try:
-        event_id = UUID(str(event_id))
-    except (TypeError, ValueError):
-        return jsonify(error='invalid_event_id'), 400
-
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_privileges'), 403
-
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            event_transaction_history = cur.execute(
-                '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
-                       e.username AS performed_by_username,
-                       u.first_name AS user_first_name, u.last_name AS user_last_name,
-                       b.name AS booth_name
-                FROM transactions t
-                JOIN employees e ON e.id = t.performed_by
-                JOIN booths b ON b.id = t.booth_id
-                LEFT JOIN users u ON u.id = t.user_id
-                WHERE t.event_id = %s
-                ORDER BY t.occurred_at
-                ''',
-                (event_id,)).fetchall()
-
-    return jsonify(event_transaction_history=event_transaction_history), 200
-
-
-@api_bp.route('/<uuid:event_id>/statistics')
-def get_event_statistics(event_id):
-    logged_employee = load_logged_in_employee()
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    if not event_id:
-        return jsonify(error='missing_event_id'), 400
-
-    try:
-        event_id = UUID(str(event_id))
-    except (TypeError, ValueError):
-        return jsonify(error='invalid_event_id'), 400
-
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
-        return jsonify(error='insufficient_privileges'), 403
-
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            event = cur.execute(
-                '''
-                SELECT id, name, start_at, end_at, created_at
-                FROM events
-                WHERE id = %s
-                AND deleted_at IS NULL
-                ''',
-                (event_id,)
-            ).fetchone()
-
-            if not event:
-                return jsonify(error='event_not_found'), 404
-
-            overall_stats = cur.execute(
-                '''
-                SELECT
-                    COUNT(*) as total_transactions,
-                    COUNT(DISTINCT wallet_id) as unique_wallets,
-                    COUNT(DISTINCT user_id) as unique_users,
-                    SUM(CASE WHEN transaction_type = 'payment' THEN 1 ELSE 0 END) as payment_count,
-                    SUM(CASE WHEN transaction_type = 'balance-change' THEN 1 ELSE 0 END) as balance_change_count,
-                    SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as total_revenue_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as total_deposits_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk < 0 THEN -amount_czk ELSE 0 END) as total_withdrawals_czk
-                FROM transactions t
-                WHERE event_id = %s
-                AND transaction_type != 'refund'
-                AND NOT EXISTS (
-                    SELECT 1 FROM transactions r
-                    WHERE r.refunded_transaction_id = t.id
-                )
-                ''',
-                (event_id,)
-            ).fetchone()
-
-            booth_stats = cur.execute(
-                '''
-                SELECT
-                    b.id as booth_id,
-                    b.name as booth_name,
-                    b.booth_type,
-                    COUNT(t.id) as transaction_count,
-                    SUM(CASE WHEN t.transaction_type = 'payment' THEN 1 ELSE 0 END) as payment_count,
-                    SUM(CASE WHEN t.transaction_type = 'balance-change' THEN 1 ELSE 0 END) as balance_change_count,
-                    SUM(CASE WHEN t.transaction_type = 'payment' THEN -t.amount_czk ELSE 0 END) as revenue_czk,
-                    SUM(CASE WHEN t.transaction_type = 'balance-change' AND t.amount_czk > 0 THEN t.amount_czk ELSE 0 END) as deposits_czk,
-                    SUM(CASE WHEN t.transaction_type = 'balance-change' AND t.amount_czk < 0 THEN -t.amount_czk ELSE 0 END) as withdrawals_czk
-                FROM booths b
-                LEFT JOIN transactions t ON t.booth_id = b.id
-                    AND t.transaction_type != 'refund'
-                    AND NOT EXISTS (
-                        SELECT 1 FROM transactions r
-                        WHERE r.refunded_transaction_id = t.id
-                    )
-                WHERE b.event_id = %s AND b.deleted_at IS NULL
-                GROUP BY b.id, b.name, b.booth_type
-                ORDER BY revenue_czk DESC NULLS LAST
-                ''',
-                (event_id,)
-            ).fetchall()
-
-            product_stats = cur.execute(
-                '''
-                WITH product_items AS (
-                    SELECT
-                        t.id as transaction_id,
-                        t.booth_id,
-                        t.occurred_at,
-                        jsonb_array_elements(t.products_info) as product_item
-                    FROM transactions t
-                    WHERE t.event_id = %s
-                    AND t.transaction_type = 'payment'
-                    AND t.products_info IS NOT NULL
-                    AND jsonb_array_length(t.products_info) > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM transactions r
-                        WHERE r.refunded_transaction_id = t.id
-                    )
-                )
-                SELECT
-                    product_item->>'name' as product_name,
-                    SUM((product_item->>'quantity')::int) as total_quantity,
-                    SUM((product_item->>'price')::int * (product_item->>'quantity')::int) as total_revenue_czk,
-                    AVG((product_item->>'price')::int) as avg_price_czk,
-                    COUNT(DISTINCT transaction_id) as transaction_count,
-                    COUNT(DISTINCT booth_id) as booth_count
-                FROM product_items
-                GROUP BY product_item->>'name'
-                ORDER BY total_revenue_czk DESC
-                ''',
-                (event_id,)
-            ).fetchall()
-
-            hourly_stats = cur.execute(
-                '''
-                SELECT
-                    DATE_TRUNC('hour', occurred_at) as hour,
-                    COUNT(*) as transaction_count,
-                    SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as revenue_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as deposits_czk
-                FROM transactions t
-                WHERE event_id = %s
-                AND transaction_type != 'refund'
-                AND NOT EXISTS (
-                    SELECT 1 FROM transactions r
-                    WHERE r.refunded_transaction_id = t.id
-                )
-                GROUP BY DATE_TRUNC('hour', occurred_at)
-                ORDER BY hour ASC
-                ''',
-                (event_id,)
-            ).fetchall()
-
-            daily_stats = cur.execute(
-                '''
-                SELECT
-                    DATE_TRUNC('day', occurred_at) as day,
-                    COUNT(*) as transaction_count,
-                    SUM(CASE WHEN transaction_type = 'payment' THEN -amount_czk ELSE 0 END) as revenue_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk > 0 THEN amount_czk ELSE 0 END) as deposits_czk,
-                    SUM(CASE WHEN transaction_type = 'balance-change' AND amount_czk < 0 THEN -amount_czk ELSE 0 END) as withdrawals_czk
-                FROM transactions t
-                WHERE event_id = %s
-                AND transaction_type != 'refund'
-                AND NOT EXISTS (
-                    SELECT 1 FROM transactions r
-                    WHERE r.refunded_transaction_id = t.id
-                )
-                GROUP BY DATE_TRUNC('day', occurred_at)
-                ORDER BY day ASC
-                ''',
-                (event_id,)
-            ).fetchall()
-
-            top_products = cur.execute(
-                '''
-                WITH product_items AS (
-                    SELECT
-                        jsonb_array_elements(t.products_info) as product_item
-                    FROM transactions t
-                    WHERE t.event_id = %s
-                    AND t.transaction_type = 'payment'
-                    AND t.products_info IS NOT NULL
-                    AND jsonb_array_length(t.products_info) > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM transactions r
-                        WHERE r.refunded_transaction_id = t.id
-                    )
-                )
-                SELECT
-                    product_item->>'name' as product_name,
-                    SUM((product_item->>'quantity')::int) as total_quantity,
-                    SUM((product_item->>'price')::int * (product_item->>'quantity')::int) as total_revenue_czk
-                FROM product_items
-                GROUP BY product_item->>'name'
-                ORDER BY total_revenue_czk DESC
-                LIMIT 10
-                ''',
-                (event_id,)
-            ).fetchall()
-
-            wallet_stats = cur.execute(
-                '''
-                SELECT
-                    COUNT(*) as total_wallets,
-                    SUM(balance_czk) as total_balance_czk,
-                    AVG(balance_czk) as avg_balance_czk,
-                    MAX(balance_czk) as max_balance_czk,
-                    MIN(balance_czk) as min_balance_czk
-                FROM wallets
-                WHERE event_id = %s AND deleted_at IS NULL
-                ''',
-                (event_id,)
-            ).fetchone()
-
-            booth_product_stats = cur.execute(
-                '''
-                WITH product_items AS (
-                    SELECT
-                        t.booth_id,
-                        b.name as booth_name,
-                        jsonb_array_elements(t.products_info) as product_item
-                    FROM transactions t
-                    JOIN booths b ON b.id = t.booth_id
-                    WHERE t.event_id = %s
-                    AND t.transaction_type = 'payment'
-                    AND t.products_info IS NOT NULL
-                    AND jsonb_array_length(t.products_info) > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM transactions r
-                        WHERE r.refunded_transaction_id = t.id
-                    )
-                )
-                SELECT
-                    booth_id,
-                    booth_name,
-                    product_item->>'name' as product_name,
-                    SUM((product_item->>'quantity')::int) as total_quantity,
-                    SUM((product_item->>'price')::int * (product_item->>'quantity')::int) as total_revenue_czk,
-                    AVG((product_item->>'price')::int) as avg_price_czk,
-                    COUNT(*) as transaction_count
-                FROM product_items
-                GROUP BY booth_id, booth_name, product_item->>'name'
-                ORDER BY booth_name, total_revenue_czk DESC
-                ''',
-                (event_id,)
-            ).fetchall()
-
-    return jsonify(
-        event={
-            'id': event['id'],
-            'name': event['name'],
-            'start_at': event['start_at'].isoformat() if event['start_at'] else None,
-            'end_at': event['end_at'].isoformat() if event['end_at'] else None,
-            'created_at': event['created_at'].isoformat() if event['created_at'] else None
-        },
-        overall_statistics={
-            'total_transactions': overall_stats['total_transactions'] or 0,
-            'unique_wallets': overall_stats['unique_wallets'] or 0,
-            'unique_users': overall_stats['unique_users'] or 0,
-            'payment_count': overall_stats['payment_count'] or 0,
-            'balance_change_count': overall_stats['balance_change_count'] or 0,
-            'total_revenue_czk': overall_stats['total_revenue_czk'] or 0,
-            'total_deposits_czk': overall_stats['total_deposits_czk'] or 0,
-            'total_withdrawals_czk': overall_stats['total_withdrawals_czk'] or 0
-        },
-        booth_statistics=[{
-            'booth_id': b['booth_id'],
-            'booth_name': b['booth_name'],
-            'booth_type': b['booth_type'],
-            'transaction_count': b['transaction_count'] or 0,
-            'payment_count': b['payment_count'] or 0,
-            'balance_change_count': b['balance_change_count'] or 0,
-            'revenue_czk': b['revenue_czk'] or 0,
-            'deposits_czk': b['deposits_czk'] or 0,
-            'withdrawals_czk': b['withdrawals_czk'] or 0
-        } for b in booth_stats],
-        product_statistics=[{
-            'product_name': p['product_name'],
-            'total_quantity': p['total_quantity'] or 0,
-            'total_revenue_czk': p['total_revenue_czk'] or 0,
-            'avg_price_czk': float(p['avg_price_czk']) if p['avg_price_czk'] else 0,
-            'transaction_count': p['transaction_count'] or 0,
-            'booth_count': p['booth_count'] or 0
-        } for p in product_stats],
-        top_products=[{
-            'product_name': p['product_name'],
-            'total_quantity': p['total_quantity'] or 0,
-            'total_revenue_czk': p['total_revenue_czk'] or 0
-        } for p in top_products],
-        hourly_statistics=[{
-            'hour': h['hour'].isoformat() if h['hour'] else None,
-            'transaction_count': h['transaction_count'] or 0,
-            'revenue_czk': h['revenue_czk'] or 0,
-            'deposits_czk': h['deposits_czk'] or 0
-        } for h in hourly_stats],
-        daily_statistics=[{
-            'day': d['day'].isoformat() if d['day'] else None,
-            'transaction_count': d['transaction_count'] or 0,
-            'revenue_czk': d['revenue_czk'] or 0,
-            'deposits_czk': d['deposits_czk'] or 0,
-            'withdrawals_czk': d['withdrawals_czk'] or 0
-        } for d in daily_stats],
-        wallet_statistics={
-            'total_wallets': wallet_stats['total_wallets'] or 0,
-            'total_balance_czk': wallet_stats['total_balance_czk'] or 0,
-            'avg_balance_czk': float(wallet_stats['avg_balance_czk']) if wallet_stats['avg_balance_czk'] else 0,
-            'max_balance_czk': wallet_stats['max_balance_czk'] or 0,
-            'min_balance_czk': wallet_stats['min_balance_czk'] or 0
-        },
-        booth_product_statistics=[{
-            'booth_id': bp['booth_id'],
-            'booth_name': bp['booth_name'],
-            'product_name': bp['product_name'],
-            'total_quantity': bp['total_quantity'] or 0,
-            'total_revenue_czk': bp['total_revenue_czk'] or 0,
-            'avg_price_czk': float(bp['avg_price_czk']) if bp['avg_price_czk'] else 0,
-            'transaction_count': bp['transaction_count'] or 0
-        } for bp in booth_product_stats]
-    ), 200
 
 
 # Register sub-blueprints
@@ -1006,8 +570,12 @@ from cashier_app.events.booths import api_booths_bp
 from cashier_app.events.products import api_products_bp
 from cashier_app.events.categories import api_categories_bp
 from cashier_app.events.event_employees import api_employees_bp
+from cashier_app.events.transaction_history import api_transaction_history_bp
+from cashier_app.events.statistics import api_statistics_bp
 
 api_bp.register_blueprint(api_booths_bp)
 api_bp.register_blueprint(api_products_bp)
 api_bp.register_blueprint(api_categories_bp)
 api_bp.register_blueprint(api_employees_bp)
+api_bp.register_blueprint(api_transaction_history_bp)
+api_bp.register_blueprint(api_statistics_bp)

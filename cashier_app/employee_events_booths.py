@@ -5,17 +5,18 @@ Definuje dva Flask blueprinty: 'employee_events_api' pro události
 a 'booths' (vnořený pod '/booths') pro stánky.
 """
 
-# import functools
+import functools
 from uuid import UUID
-from flask import Blueprint, request, session, g, jsonify, url_for
+from flask import Blueprint, request, session, g, jsonify
 from cashier_app.db import get_pool
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import load_logged_in_employee, require_login
 from cashier_app.utils.employees_users import is_manager
 
 api_bp = Blueprint('employee_events_api', __name__, url_prefix='/api/employees/me/events')
 
 
 @api_bp.route('/active')
+@require_login
 def get_active_events_for_employee():
     """Získá seznam aktivních událostí pro přihlášeného zaměstnance.
 
@@ -27,15 +28,9 @@ def get_active_events_for_employee():
         tuple: JSON seznam událostí (id, name) s kódem 200,
                nebo přesměrování na přihlášení s kódem 401.
     """
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            if employee['is_admin']:
+            if g.employee['is_admin']:
                 events = cur.execute(
                     '''
                     SELECT id, name
@@ -44,7 +39,7 @@ def get_active_events_for_employee():
                     AND start_at <= now()
                     AND (end_at IS NULL OR end_at > now())
                     AND deleted_at IS NULL
-                    ORDER BY name'''
+                    ORDER BY name, id'''
                     ).fetchall()
             else:
                 events = cur.execute(
@@ -58,13 +53,14 @@ def get_active_events_for_employee():
                     AND events.deleted_at IS NULL
                     AND link.employee_id = %s
                     GROUP BY events.id
-                    ORDER BY name''',
-                    (employee['id'],)).fetchall()
+                    ORDER BY name, id''',
+                    (g.employee['id'],)).fetchall()
             
     return jsonify(events), 200
 
 
 @api_bp.route('/select', methods=('PUT',))
+@require_login
 def select_event():
     """Nastaví vybranou událost do session přihlášeného zaměstnance.
 
@@ -76,11 +72,6 @@ def select_event():
         tuple: Prázdný JSON s kódem 200 při úspěchu,
                nebo chybová zpráva s odpovídajícím HTTP kódem (400, 401, 403, 404).
     """
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
     event_id_raw = request.form.get('event')
     if not event_id_raw:
         return jsonify(error='missing_event_id'), 400
@@ -106,14 +97,14 @@ def select_event():
                 return jsonify(error='event_not_found_or_inactive'), 404
     
             # ověření, zda je zaměstnanec přiřazen k události
-            if not employee['is_admin']:
+            if not g.employee['is_admin']:
                 role = cur.execute(
                     '''
                     SELECT role
                     FROM employee_event_booth_roles
                     WHERE employee_id = %s
                     AND event_id = %s''',
-                    (employee['id'], event_id)).fetchall()
+                    (g.employee['id'], event_id)).fetchall()
         
                 if not role:
                     return jsonify(error='employee_not_linked_to_event'), 403
@@ -175,16 +166,16 @@ def load_selected_event() -> dict | None:
     return g.event
 
 
-# def event_required(view):
-#     @functools.wraps(view)
-#     def wrapped_view(**kwargs):
-#         load_selected_event()
-#         if g.event is None:
-#             jsonify(success=False, error='event_required', redirect_url=url_for('order.index')), 401
-        
-#         return view(**kwargs)
-    
-#     return wrapped_view
+def require_event_selected(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        load_selected_event()
+        if g.event is None:
+            return jsonify(error='no_selected_event'), 400
+
+        return view(**kwargs)
+
+    return wrapped_view
 
 
 
@@ -193,6 +184,8 @@ api_bp.register_blueprint(api_booths_bp)
 
 
 @api_booths_bp.route('/active')
+@require_login
+@require_event_selected
 def get_event_booths_for_employee():
     """Získá seznam stánků vybrané události, které může zaměstnanec obsluhovat.
 
@@ -204,17 +197,6 @@ def get_event_booths_for_employee():
         tuple: JSON seznam stánků (id, name) s kódem 200,
                nebo chybová zpráva s kódem 400 či 401.
     """
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    event = load_selected_event()
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-    
-
     all_event_booths_sql = '''
                     SELECT id, name
                     FROM booths
@@ -225,13 +207,13 @@ def get_event_booths_for_employee():
         with conn.cursor() as cur:
             # is_event_manager =
 
-            if employee['is_admin']:
+            if g.employee['is_admin']:
                 booths = cur.execute(all_event_booths_sql,
-                    (event['id'],)).fetchall()
-            else:                
-                if is_manager(employee['id'], event['id']):
+                    (g.event['id'],)).fetchall()
+            else:
+                if is_manager(g.employee['id'], g.event['id']):
                     booths = cur.execute(all_event_booths_sql,
-                    (event['id'],)).fetchall()
+                    (g.event['id'],)).fetchall()
                 else:
                     booths = cur.execute(
                         '''
@@ -241,12 +223,14 @@ def get_event_booths_for_employee():
                         WHERE booths.event_id = %s
                         AND booths.deleted_at IS NULL
                         AND roles.employee_id = %s
-                        ORDER BY name''',
-                        (event['id'], employee['id'])).fetchall()
+                        ORDER BY name, id''',
+                        (g.event['id'], g.employee['id'])).fetchall()
     return jsonify(booths), 200
 
 
 @api_booths_bp.route('/select', methods=('PUT',))
+@require_login
+@require_event_selected
 def select_booth():
     """Nastaví vybraný stánek do session přihlášeného zaměstnance.
 
@@ -259,16 +243,6 @@ def select_booth():
         tuple: JSON s booth_type a kódem 200 při úspěchu,
                nebo chybová zpráva s odpovídajícím HTTP kódem (400, 401, 404).
     """
-    employee = load_logged_in_employee()
-
-    if employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-
-    event = load_selected_event()
-
-    if event is None:
-        return jsonify(error='no_selected_event'), 400
-
     booth_id_raw = request.form.get('booth')
 
     if not booth_id_raw:
@@ -289,20 +263,20 @@ def select_booth():
                 WHERE id = %s
                 AND event_id = %s
                 AND deleted_at IS NULL''',
-                (booth_id, event['id'])).fetchone()
-            
+                (booth_id, g.event['id'])).fetchone()
+
             if booth is None:
                 return jsonify(error='booth_not_found'), 404
 
             # ověření, zda je zaměstnanec přiřazen ke stánku
-            if not employee['is_admin']:
+            if not g.employee['is_admin']:
                 event_link = cur.execute(
                     '''
                     SELECT role
                     FROM employee_event_booth_roles
                     WHERE employee_id = %s
                     AND event_id = %s''',
-                    (employee['id'], event['id'])).fetchall()
+                    (g.employee['id'], g.event['id'])).fetchall()
                 
                 if not event_link:
                     return jsonify(error='employee_not_linked_to_event'), 400
@@ -315,7 +289,7 @@ def select_booth():
                         WHERE employee_id = %s
                         AND event_id = %s
                         AND booth_id = %s''',
-                        (employee['id'], event['id'], booth_id)).fetchone()
+                        (g.employee['id'], g.event['id'], booth_id)).fetchone()
                     
                     if not booth_link:
                         return jsonify(error='employee_not_linked_to_booth'), 400
@@ -369,3 +343,39 @@ def load_selected_booth():
                 (booth_id, event['id'])).fetchone()
 
     return g.booth
+
+
+def require_booth_selected(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        load_selected_booth()
+        if g.booth is None:
+            return jsonify(error='no_selected_booth'), 400
+
+        return view(**kwargs)
+
+    return wrapped_view
+
+
+def require_seller_booth_selected(view):
+    @functools.wraps(view)
+    @require_booth_selected
+    def wrapped_view(**kwargs):
+        if g.booth['booth_type'] != 'seller':
+            return jsonify(error='invalid_booth_type'), 400
+
+        return view(**kwargs)
+
+    return wrapped_view
+
+
+def require_cashier_booth_selected(view):
+    @functools.wraps(view)
+    @require_booth_selected
+    def wrapped_view(**kwargs):
+        if g.booth['booth_type'] != 'cashier':
+            return jsonify(error='invalid_booth_type'), 400
+
+        return view(**kwargs)
+
+    return wrapped_view

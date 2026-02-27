@@ -536,7 +536,7 @@ document.addEventListener('click', async (event) => {
     headers.set('Idempotency-Key', idempotencyKey);
 
     try {
-      const response = await fetch('/api/users/wallets/return', {
+      const response = await fetch('/api/wallets/return', {
         method: 'post',
         headers,
         body: formData
@@ -818,7 +818,7 @@ document.addEventListener('submit', async (event) => {
       headers.set('Idempotency-Key', idempotencyKey);
 
       try {
-        const response = await fetch('/api/users/wallets/create', {
+        const response = await fetch('/api/wallets/create', {
           method: 'post',
           headers,
           body: formData
@@ -878,7 +878,7 @@ document.addEventListener('submit', async (event) => {
       headers.set('Idempotency-Key', idempotencyKey);
 
       try {
-        const response = await fetch('/api/users/wallets/return', {
+        const response = await fetch('/api/wallets/return', {
           method: 'post',
           headers,
           body: formData

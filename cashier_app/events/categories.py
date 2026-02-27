@@ -4,10 +4,10 @@ Poskytuje API endpointy pro vytváření, úpravu a mazání kategorií,
 včetně synchronizace vazeb na stánky a produkty.
 """
 
-from flask import Blueprint, current_app, jsonify, url_for, request
+from flask import Blueprint, current_app, g, jsonify, url_for, request
 from uuid import UUID
 from psycopg import IntegrityError
-from cashier_app.auth import load_logged_in_employee
+from cashier_app.auth import load_logged_in_employee, require_login
 from cashier_app.db import get_pool
 from cashier_app.utils.employees_users import is_manager
 from cashier_app.utils.products import validate_product_or_category_name
@@ -22,6 +22,7 @@ api_categories_bp = Blueprint('categories', __name__, url_prefix='/categories')
 
 
 @api_categories_bp.route('/create', methods=('POST',))
+@require_login
 def add_category():
     """Vytvoří novou kategorii pro danou událost.
 
@@ -32,11 +33,6 @@ def add_category():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     event_id = request.form.get('event-id')
 
     if not event_id:
@@ -62,7 +58,7 @@ def add_category():
     except (ValueError, TypeError):
         return jsonify(error='invalid_product_id'), 400
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     params = {
@@ -133,7 +129,7 @@ def add_category():
                 changes.extend(sync_category_booth_links(cur, category_id, booth_ids))
                 changes.extend(sync_category_product_links(cur, category_id, product_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except IntegrityError as e:
         constraint = get_constraint_name(e)
 
@@ -146,6 +142,7 @@ def add_category():
 
 
 @api_categories_bp.route('/edit', methods=('POST',))
+@require_login
 def edit_category():
     """Upraví existující kategorii.
 
@@ -156,11 +153,6 @@ def edit_category():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     category_id = request.form.get('id')
 
     if not category_id:
@@ -186,7 +178,7 @@ def edit_category():
 
     event_id = category['event_id']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     name = request.form.get('name', '').strip()
@@ -285,7 +277,7 @@ def edit_category():
                 changes.extend(sync_category_booth_links(cur, category_id, booth_ids))
                 changes.extend(sync_category_product_links(cur, category_id, product_ids))
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
 
     except IntegrityError as e:
         constraint = get_constraint_name(e)
@@ -304,6 +296,7 @@ def edit_category():
 
 
 @api_categories_bp.route('/delete', methods=('DELETE',))
+@require_login
 def delete_category():
     """Smaže existující kategorii (soft delete).
 
@@ -314,11 +307,6 @@ def delete_category():
     Returns:
         tuple: JSON odpověď a HTTP stavový kód.
     """
-    logged_employee = load_logged_in_employee()
-
-    if logged_employee is None:
-        return jsonify(redirect_url=url_for('auth.get_login_page')), 401
-    
     category_id = request.form.get('id')
 
     if not category_id:
@@ -344,7 +332,7 @@ def delete_category():
 
     event_id = category['event_id']
 
-    if not logged_employee['is_admin'] and not is_manager(logged_employee['id'], event_id):
+    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('categories', category_id)
@@ -368,7 +356,7 @@ def delete_category():
                 sync_category_booth_links(cur, category_id, [])
                 sync_category_product_links(cur, category_id, [])
 
-                save_change(cur, changes, logged_employee['id'])
+                save_change(cur, changes, g.employee['id'])
     except MultipleRowsAffectedError:
         current_app.logger.exception('multiple rows deleted for category id %s', category_id)
         return jsonify(error='internal_server_error'), 500

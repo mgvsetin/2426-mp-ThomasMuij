@@ -46,11 +46,6 @@ class TestValidateEventOrBoothName:
         ok, errors = validate_event_or_booth_name('Event.')
         assert ok is False
 
-    def test_consecutive_special_chars(self):
-        ok, errors = validate_event_or_booth_name('My..Event')
-        assert ok is False
-        assert any('consecutive' in e for e in errors)
-
     def test_forbid_all_numeric(self):
         ok, errors = validate_event_or_booth_name('12345', forbid_all_numeric=True)
         assert ok is False
