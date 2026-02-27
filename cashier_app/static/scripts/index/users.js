@@ -288,22 +288,14 @@ export async function renderUsers() {
     rows += `
       <tr id="${user.id}">
         <td>${idx + 1}</td>
-<<<<<<< HEAD
         <td class="truncate-name" title="${escapeHTML(user.first_name)}">${escapeHTML(user.first_name)}</td>
         <td class="truncate-name" title="${escapeHTML(user.last_name)}">${escapeHTML(user.last_name)}</td>
         <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.phone_number || '-')}">${escapeHTML(user.phone_number || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
-=======
-        <td>${escapeHTML(user.first_name)}</td>
-        <td>${escapeHTML(user.last_name)}</td>
-        <td>${escapeHTML(user.email || '-')}</td>
-        <td>${escapeHTML(user.phone_number || '-')}</td>
-        <td>${escapeHTML(user.other_identifier || '-')}</td>
         <td><div class="user-wallets-container">${(walletsByOwner[user.id] || []).map(wallet =>
           `<span class="user-wallet-tag" data-tag-id="${escapeHTML(wallet.tag_id)}" data-user-id="${user.id}" title="${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})">${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})</span>`
         ).join('') || '-'}</div></td>
->>>>>>> 81221b3c81f3566cfd2878e4a5eddd527e6e30a5
         <td class="actions">
           <button class="icon-btn view view-user-transactions" data-user-id="${user.id}" title="Zobrazit transakce">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
