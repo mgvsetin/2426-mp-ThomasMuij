@@ -2,7 +2,7 @@ import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { cacheFunctionFactory } from "../general/cache_factory.js";
 import { BoothNotSelectedError, EventNotSelectedError, InvalidBoothTypeError, UnexpectedError } from "../general/errors.js";
 import { escapeHTML } from "../general/html_display_utils.js";
-import { clearModalErrors } from "../general/modals_forms.js";
+import { clearModalErrors, openModal } from "../general/modals_forms.js";
 import { getSessionInfo } from "../general/session.js";
 import { markSelectedRows } from "../general/table_utils.js";
 import { lastReadCardId, removeReadCard, renderCard } from "./cards.js";
@@ -243,11 +243,22 @@ function userIsSearchedFor(user) {
  * @returns {Promise<void>}
  */
 export async function renderUsers() {
-  const users = await fetchUsers().catch((error) => {
-    usersTableBody.innerHTML = '<tr><td colspan="7">Nepovedlo se načíst uživatele.</td></tr>';
-  });
+  const [users, wallets] = await Promise.all([
+    fetchUsers().catch((error) => {
+      usersTableBody.innerHTML = '<tr><td colspan="8">Nepovedlo se načíst uživatele.</td></tr>';
+    }),
+    fetchWallets().catch(() => [])
+  ]);
   if (!users) return;
 
+  const walletsByOwner = {};
+  if (wallets) {
+    for (const wallet of wallets) {
+      if (!wallet.owner_id) continue;
+      if (!walletsByOwner[wallet.owner_id]) walletsByOwner[wallet.owner_id] = [];
+      walletsByOwner[wallet.owner_id].push(wallet);
+    }
+  }
 
   const sorter = (a, b) => {
     if (!orderBy.key) return 0;
@@ -277,12 +288,29 @@ export async function renderUsers() {
     rows += `
       <tr id="${user.id}">
         <td>${idx + 1}</td>
+<<<<<<< HEAD
         <td class="truncate-name" title="${escapeHTML(user.first_name)}">${escapeHTML(user.first_name)}</td>
         <td class="truncate-name" title="${escapeHTML(user.last_name)}">${escapeHTML(user.last_name)}</td>
         <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.phone_number || '-')}">${escapeHTML(user.phone_number || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
+=======
+        <td>${escapeHTML(user.first_name)}</td>
+        <td>${escapeHTML(user.last_name)}</td>
+        <td>${escapeHTML(user.email || '-')}</td>
+        <td>${escapeHTML(user.phone_number || '-')}</td>
+        <td>${escapeHTML(user.other_identifier || '-')}</td>
+        <td><div class="user-wallets-container">${(walletsByOwner[user.id] || []).map(wallet =>
+          `<span class="user-wallet-tag" data-tag-id="${escapeHTML(wallet.tag_id)}" data-user-id="${user.id}" title="${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})">${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})</span>`
+        ).join('') || '-'}</div></td>
+>>>>>>> 81221b3c81f3566cfd2878e4a5eddd527e6e30a5
         <td class="actions">
+          <button class="icon-btn view view-user-transactions" data-user-id="${user.id}" title="Zobrazit transakce">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.4"/>
+            </svg>
+          </button>
           <button class="icon-btn edit edit-user">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="">
               <path d="M3 21l3-1 11-11 1-3-3 1L4 20z" stroke="currentColor" stroke-width="1.4"
@@ -300,7 +328,7 @@ export async function renderUsers() {
     `;
   });
 
-  usersTableBody.innerHTML = rows || '<tr><td colspan="7">Žádní uživatelé.</td></tr>';
+  usersTableBody.innerHTML = rows || '<tr><td colspan="8">Žádní uživatelé.</td></tr>';
   markSelectedRows(usersTableBody);
 
   if (selectedUserForUpdate) {
@@ -509,11 +537,6 @@ export async function openDeleteUserModal(userId) {
     <div class="modal">
       <header>
         <h2 class="delete-form-text">Smazat uživatele</h2>
-        <button class="close-modal cross-close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
       </header>
       <form id="delete-user-form">
         <input type="hidden" name="user-id" value="${userId}"/>
@@ -533,11 +556,7 @@ export async function openDeleteUserModal(userId) {
     </div>
   `;
 
-  if (document.querySelector('.overlay')) return;
-  const div = document.createElement('div');
-  div.className = 'overlay';
-  div.innerHTML = html;
-  document.body.appendChild(div);
+  openModal(html);
 }
 
 
@@ -556,36 +575,26 @@ export async function openMoreUserOptionsModal(userId) {
   const sessionInfo = await getSessionInfo().catch(() => { });
   if (!sessionInfo || !sessionInfo.event) return;
 
-  const overlay = document.createElement('div');
-  overlay.classList.add('overlay');
-  overlay.innerHTML = `
-    <div class="modal">
-      <header>
-        <h2>Dalsí možnosti pro "${user.first_name} ${user.last_name}"</h2>
-        <button class="close-modal cross-close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </header>
-      <div id="more-user-options-actions">
-        <button id="open-user-cards-modal">Zobrazit všechny karty</button>
-        <a href="/events/${sessionInfo.event.id}/users/${user.id}/transaction-history" target="_blank"><button id="open-user-transaction-history">Zobrazit transakce</button></a>
-      </div>
+  const html = `
+    <header>
+      <h2>Dalsí možnosti pro "${user.first_name} ${user.last_name}"</h2>
+    </header>
+    <div id="more-user-options-actions">
+      <button id="open-user-cards-modal">Zobrazit všechny karty</button>
+      <a href="/events/${sessionInfo.event.id}/users/${user.id}/transaction-history" target="_blank"><button id="open-user-transaction-history">Zobrazit transakce</button></a>
     </div>
   `;
 
-  document.body.appendChild(overlay);
+  openModal(html);
 }
 
 
 /**
  * Otevře modální okno se seznamem karet uživatele.
  * @param {string} userId - ID uživatele.
- * @param {HTMLElement|null} modal - Volitelně existující modal pro přepsání.
  * @returns {Promise<void>}
  */
-export async function openUserCardsModal(userId, modal = null) {
+export async function openUserCardsModal(userId) {
   userId = userId.trim();
   const users = await fetchUsers().catch(() => { });
   if (!users) return;
@@ -611,44 +620,22 @@ export async function openUserCardsModal(userId, modal = null) {
   const html = `
     <header>
       <h2>Karty uživatele "${user.first_name} ${user.last_name}"</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
     <ul id="user-wallets-list">
       ${userWalletsHTML ? userWalletsHTML : 'Uživatel nemá žádné karty.'}
     </ul>
   `;
 
-  if (!modal) {
-    if (document.querySelector('.overlay')) return;
-    const div = document.createElement('div');
-    div.className = 'overlay';
-    div.innerHTML = `
-    <div class="modal">
-      ${html}
-    </div>
-  `;
-    document.body.appendChild(div);
-  } else {
-    modal.innerHTML = html;
-  }
+  openModal(html);
 }
 
 
 /**
  * Otevře detailní modal pro konkrétní kartu uživatele.
- * @param {HTMLElement} userWalletLi - Element <li> reprezentující kartu.
+ * @param {string} tagId - ID tagu karty.
  * @returns {Promise<void>}
  */
-export async function openUserCardModal(userWalletLi) {
-  const tagId = userWalletLi.getAttribute('tag-id').trim();
-  const modal = userWalletLi.closest('.modal');
-
-  if (!modal) return;
-
+export async function openUserCardModal(tagId) {
   const [wallets, users] = await Promise.all([
     fetchWallets().catch(() => { }),
     fetchUsers().catch(() => { })
@@ -661,14 +648,9 @@ export async function openUserCardModal(userWalletLi) {
   const user = users.find(user => user.id === wallet.owner_id);
   if (!user) return;
 
-  modal.innerHTML = `
+  const html = `
     <header>
       <h2>Karta uživatele "${user.first_name} ${user.last_name}"</h2>
-      <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
     </header>
     <div class="edit-wallet-card-info">ID: ${wallet.tag_id}</div>
     <div class="edit-wallet-card-info">Zůstatek: ${wallet.balance_czk} Kč</div>
@@ -699,6 +681,8 @@ export async function openUserCardModal(userWalletLi) {
       </div>
     </form>
   `;
+
+  openModal(html);
 }
 
 
@@ -1135,42 +1119,23 @@ export function showEditWalletFormErrors(error) {
  * @param {number} balanceChangedBy - Změna zůstatku v Kč.
  */
 export function showMoneyToExchangeModal(balanceChangedBy) {
-  document.querySelector('.overlay')?.remove();
   let html = '';
 
   if (balanceChangedBy <= 0) {
     html = `
-      <div class="modal">
-        <header>
-          <h2>Peníze k vrácení zákazníkovi</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <div class="money-to-exchange">${-balanceChangedBy} Kč</div>
-      </div>
+      <header>
+        <h2>Peníze k vrácení zákazníkovi</h2>
+      </header>
+      <div class="money-to-exchange">${-balanceChangedBy} Kč</div>
     `;
   } else if (balanceChangedBy > 0) {
     html = `
-      <div class="modal">
-        <header>
-          <h2>Peníze k zaplacení zákazníkem</h2>
-          <button class="close-modal cross-close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </header>
-        <div class="money-to-exchange">${balanceChangedBy} Kč</div>
-      </div>
+      <header>
+        <h2>Peníze k zaplacení zákazníkem</h2>
+      </header>
+      <div class="money-to-exchange">${balanceChangedBy} Kč</div>
     `;
   }
 
-  const overlay = document.createElement('div');
-  overlay.classList.add('overlay');
-  overlay.innerHTML = html;
-
-  document.body.appendChild(overlay);
+  openModal();
 }

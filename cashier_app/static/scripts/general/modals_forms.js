@@ -15,7 +15,7 @@ export function openModal(html, focusFirstInput=true) {
   overlay.innerHTML = `
     <div class="modal">
       <button class="close-modal cross-close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden>
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>

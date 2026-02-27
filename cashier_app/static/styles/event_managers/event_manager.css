@@ -438,9 +438,3 @@ body.no-scroll {
 .event-connected-no {
   color: #6b7280;
 }
-
-.icon-btn.view {
-  background: #f7fbff;
-  border-color: rgba(59, 130, 246, 0.06);
-  color: #3b82f6;
-}

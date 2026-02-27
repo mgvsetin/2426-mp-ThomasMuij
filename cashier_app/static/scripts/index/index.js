@@ -447,6 +447,18 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  // zobrazit transakce uživatele
+  const viewUserTransactionsBtn = event.target.closest('.view-user-transactions');
+  if (viewUserTransactionsBtn) {
+    const userId = viewUserTransactionsBtn.getAttribute('data-user-id');
+    const sessionInfo = await getSessionInfo().catch(() => {});
+    if (!sessionInfo) return;
+    const event = sessionInfo.event;
+    if (!event) return;
+    window.open(`/events/${encodeURIComponent(event.id)}/users/${userId}/transaction-history`, '_blank');
+    return;
+  }
+
   // upravit uživatele
   const editUserBtn = event.target.closest('.edit-user');
   if (editUserBtn) {
@@ -505,15 +517,22 @@ document.addEventListener('click', async (event) => {
     }
   }
 
+  const userWalletTag = event.target.closest('.user-wallet-tag[data-tag-id]');
+  if (userWalletTag) {
+    const tagId = userWalletTag.getAttribute('data-tag-id');
+    openUserCardModal(tagId);
+    return;
+  }
+
   const userWalletLi = event.target.closest('li[tag-id]');
   if (userWalletLi) {
-    openUserCardModal(userWalletLi);
+    openUserCardModal(userWalletLi.getAttribute('tag-id'));
     return;
   }
 
   const backToUserCardsBtn = event.target.closest('#back-to-user-cards');
   if (backToUserCardsBtn) {
-    openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'), backToUserCardsBtn.closest('.modal'));
+    openUserCardsModal(backToUserCardsBtn.getAttribute('user-id'));
     return;
   }
 
