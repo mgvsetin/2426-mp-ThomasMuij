@@ -35,7 +35,7 @@
   border: none;
   height: 26px;
   width: 26px;
-  border-radius: 8px;
+  border-radius: 100px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -53,6 +53,10 @@
 
 .cross-close:hover {
   background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cross-close:active {
+  background-color: rgba(0, 0, 0, 0.07);
 }
 
 .modal header {

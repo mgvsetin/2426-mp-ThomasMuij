@@ -24,7 +24,7 @@ const otherIdentifierInput = document.querySelector('#other-identifier-input');
 const changeBalanceByInput = document.querySelector('#change-balance-by-input');
 const setNewBalanceInput = document.querySelector('#set-new-balance-input');
 
-const openMoreUserOptionsModalBtn = document.querySelector('#open-more-user-options');
+// const openMoreUserOptionsModalBtn = document.querySelector('#open-more-user-options');
 const saveUserFormBtn = document.querySelector('#save-user-form');
 
 const searchUsersWithInputs = document.querySelector('#user-inputs-search-table-toggle');
@@ -293,7 +293,7 @@ export async function renderUsers() {
         <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.phone_number || '-')}">${escapeHTML(user.phone_number || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
-        <td><div class="user-wallets-container">${(walletsByOwner[user.id] || []).map(wallet =>
+        <td class="truncate-name"><div class="user-wallets-container">${(walletsByOwner[user.id] || []).map(wallet =>
           `<span class="user-wallet-tag" data-tag-id="${escapeHTML(wallet.tag_id)}" data-user-id="${user.id}" title="${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})">${wallet.balance_czk} Kč (${escapeHTML(wallet.tag_id)})</span>`
         ).join('') || '-'}</div></td>
         <td class="actions">
@@ -421,33 +421,36 @@ export async function editUserFormOnChange(inputEvent = null) {
   }
 
   const userId = userIdInput.value.trim();
-  const firstName = firstNameInput.value.toLowerCase().trim();
-  const lastName = lastNameInput.value.toLowerCase().trim();
-  const email = emailInput.value.toLowerCase().trim();
-  const countryCode = countryCodeInput.value.toLowerCase().trim();
-  const phoneNumber = phoneNumberInput.value.toLowerCase().trim();
-  const otherIdentifier = otherIdentifierInput.value.toLowerCase().trim();
-
   const user = users?.find((user) => { return user.id === userId; });
 
-  const firstNamesMatch = user?.first_name.toLowerCase() === firstName;
-  const lastNamesMatch = user?.last_name.toLowerCase() === lastName;
-  const emailsMatch = user?.email === (email ? email : null);
-  const phoneNumbersMatch = user?.phone_number === (countryCode && phoneNumber ? `${countryCode}${phoneNumber}` : null);
-  const otherIdentifiersMatch = user?.other_identifier === (otherIdentifier ? otherIdentifier : null);
+  const userValueIsLooselyEqual = (a, b) => {
+    if (!a && !b) return true;
+    if ((a && !b) || (!a && b)) return false;
+    a = String(a);
+    b = String(b);
+    return a.toLowerCase().trim() === b.toLowerCase().trim();
+  };
+
+  const firstNamesMatch = userValueIsLooselyEqual(user?.first_name, firstNameInput.value);
+  const lastNamesMatch = userValueIsLooselyEqual(user?.last_name, lastNameInput.value);
+  const emailsMatch = userValueIsLooselyEqual(user?.email, emailInput.value);
+  const phoneNumbersMatch = userValueIsLooselyEqual(
+    user?.phone_number,
+    (countryCodeInput.value && phoneNumberInput.value ? `${countryCodeInput.value}${phoneNumberInput.value}` : undefined));
+  const otherIdentifiersMatch = user?.other_identifier?.trim() === (otherIdentifierInput.value ? otherIdentifierInput.value.trim() : undefined);
 
   const valuesMatch = firstNamesMatch && lastNamesMatch && emailsMatch && phoneNumbersMatch && otherIdentifiersMatch;
 
   if (user && valuesMatch) {
     saveUserFormBtn.textContent = 'Žádná změna';
     saveUserFormBtn.setAttribute('user-job', '');
-    openMoreUserOptionsModalBtn.disabled = false;
+    // openMoreUserOptionsModalBtn.disabled = false;
   } else if (user && !valuesMatch) {
     saveUserFormBtn.textContent = 'Upravit';
     saveUserFormBtn.setAttribute('user-job', 'edit');
-    openMoreUserOptionsModalBtn.disabled = false;
+    // openMoreUserOptionsModalBtn.disabled = false;
   } else {
-    openMoreUserOptionsModalBtn.disabled = true;
+    // openMoreUserOptionsModalBtn.disabled = true;
     if (userId) {
       userIdInput.value = '';
       const selectedRow = document.querySelector('tr.selected-for-update');
@@ -526,59 +529,57 @@ export async function openDeleteUserModal(userId) {
   if (!user) return;
 
   const html = `
-    <div class="modal">
-      <header>
-        <h2 class="delete-form-text">Smazat uživatele</h2>
-      </header>
-      <form id="delete-user-form">
-        <input type="hidden" name="user-id" value="${userId}"/>
-        <div class="form-row">
-          <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
-        </div>
-
-        <div class="form-row">
-          <div id="delete-user-general-error" class="form-error"></div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost close-modal">Zrušit</button>
-          <button type="submit" class="btn btn-delete">Smazat</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  openModal(html);
-}
-
-
-/**
- * Otevře modální okno s dalšími možnostmi pro uživatele.
- * @param {string} userId - ID uživatele.
- * @returns {Promise<void>}
- */
-export async function openMoreUserOptionsModal(userId) {
-  userId = userId.trim();
-  const users = await fetchUsers().catch(() => { });
-  if (!users) return;
-  const user = users.find(user => user.id === userId);
-  if (!user) return;
-
-  const sessionInfo = await getSessionInfo().catch(() => { });
-  if (!sessionInfo || !sessionInfo.event) return;
-
-  const html = `
     <header>
-      <h2>Dalsí možnosti pro "${user.first_name} ${user.last_name}"</h2>
+      <h2 class="delete-form-text">Smazat uživatele</h2>
     </header>
-    <div id="more-user-options-actions">
-      <button id="open-user-cards-modal">Zobrazit všechny karty</button>
-      <a href="/events/${sessionInfo.event.id}/users/${user.id}/transaction-history" target="_blank"><button id="open-user-transaction-history">Zobrazit transakce</button></a>
-    </div>
+    <form id="delete-user-form">
+      <input type="hidden" name="user-id" value="${userId}"/>
+      <div class="form-row">
+        <div>Opravdu chcete smazat uživatele "${escapeHTML(user.first_name)} ${escapeHTML(user.last_name)}"?</div>
+      </div>
+
+      <div class="form-row">
+        <div id="delete-user-general-error" class="form-error"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost close-modal">Zrušit</button>
+        <button type="submit" class="btn btn-delete">Smazat</button>
+      </div>
+    </form>
   `;
 
   openModal(html);
 }
+
+
+// /**
+//  * Otevře modální okno s dalšími možnostmi pro uživatele.
+//  * @param {string} userId - ID uživatele.
+//  * @returns {Promise<void>}
+//  */
+// export async function openMoreUserOptionsModal(userId) {
+//   userId = userId.trim();
+//   const users = await fetchUsers().catch(() => { });
+//   if (!users) return;
+//   const user = users.find(user => user.id === userId);
+//   if (!user) return;
+
+//   const sessionInfo = await getSessionInfo().catch(() => { });
+//   if (!sessionInfo || !sessionInfo.event) return;
+
+//   const html = `
+//     <header>
+//       <h2>Dalsí možnosti pro "${user.first_name} ${user.last_name}"</h2>
+//     </header>
+//     <div id="more-user-options-actions">
+//       <button id="open-user-cards-modal">Zobrazit všechny karty</button>
+//       <a href="/events/${sessionInfo.event.id}/users/${user.id}/transaction-history" target="_blank"><button id="open-user-transaction-history">Zobrazit transakce</button></a>
+//     </div>
+//   `;
+
+//   openModal(html);
+// }
 
 
 /**
@@ -1129,5 +1130,5 @@ export function showMoneyToExchangeModal(balanceChangedBy) {
     `;
   }
 
-  openModal();
+  openModal(html);
 }

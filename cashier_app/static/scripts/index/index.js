@@ -13,7 +13,7 @@ import { lastReadCardId, newCardReadPromise, renderCard, removeReadCard, cancelC
 import { escapeHTML } from "../general/html_display_utils.js";
 import { phoneInputClickListeners, phoneInputFocusinisteners, phoneInputInputisteners, phoneInputKeydownListeners } from "./phone_number_input.js";
 import { handleRowSelection, unselectRows } from "../general/table_utils.js";
-import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, openDeleteUserModal, openMoreUserOptionsModal, openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
+import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, openDeleteUserModal, /*openMoreUserOptionsModal,*/ openUserCardModal, openUserCardsModal, renderUsers, resetUsersCache, selectedUserForUpdate, selectUserForUpdate, setOrder, showDeleteUserFormErrors, showEditWalletFormErrors, showMoneyToExchangeModal, showUserFormErrors, unselectUserForUpdate } from "./users.js";
 import { resetWalletsCache } from "./wallets.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { setUpCardReading } from "../general/card_reader.js";
@@ -500,22 +500,22 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  if (event.target.matches('#open-more-user-options')) {
-    const userId = userIdInput.value.trim();
-    if (userId) {
-      openMoreUserOptionsModal(userId);
-      return;
-    }
-  }
+  // if (event.target.matches('#open-more-user-options')) {
+  //   const userId = userIdInput.value.trim();
+  //   if (userId) {
+  //     openMoreUserOptionsModal(userId);
+  //     return;
+  //   }
+  // }
 
-  if (event.target.matches('#open-user-cards-modal')) {
-    closeModal();
-    const userId = userIdInput.value.trim();
-    if (userId) {
-      openUserCardsModal(userId);
-      return;
-    }
-  }
+  // if (event.target.matches('#open-user-cards-modal')) {
+  //   closeModal();
+  //   const userId = userIdInput.value.trim();
+  //   if (userId) {
+  //     openUserCardsModal(userId);
+  //     return;
+  //   }
+  // }
 
   const userWalletTag = event.target.closest('.user-wallet-tag[data-tag-id]');
   if (userWalletTag) {
@@ -852,7 +852,7 @@ document.addEventListener('submit', async (event) => {
           saveButton.disabled = false;
           return;
         }
-
+        
         showMoneyToExchangeModal(data.balance_changed_by);
       } catch (err) {
         showUserFormErrors('unexpected_error');

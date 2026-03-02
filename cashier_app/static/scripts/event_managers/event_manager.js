@@ -1882,10 +1882,23 @@ function renderUsers(eventData) {
 
   let rows = '';
 
+  const walletsByOwner = {};
+  for (const wallet of eventData.wallets) {
+    if (!wallet.owner_id) continue;
+    if (!walletsByOwner[wallet.owner_id]) walletsByOwner[wallet.owner_id] = [];
+    walletsByOwner[wallet.owner_id].push(wallet);
+  }
+
   sortedUsers.forEach((user, idx) => {
     if (!userIsSearchedFor(user, searchQuery)) return;
     const eventConnectedText = user.event_connected ? 'Ano' : 'Ne';
     const eventConnectedClass = user.event_connected ? 'event-connected-yes' : 'event-connected-no';
+    const userWallets = walletsByOwner[user.id] || [];
+    const walletsStr = userWallets.length
+      ? `<div class="linked-pills">${userWallets.map(w =>
+          `<span class="linked-pill" data-direct-to="${w.id}" title="${escapeHTML(w.tag_id)}">${formatNumber(w.balance_czk)} Kč</span>`
+        ).join('')}</div>`
+      : '-';
 
     rows += `
       <tr id="${user.id}">
@@ -1895,6 +1908,7 @@ function renderUsers(eventData) {
         <td class="truncate-name" title="${escapeHTML(user.email || '-')}">${escapeHTML(user.email || '-')}</td>
         <td>${escapeHTML(user.phone_number || '-')}</td>
         <td class="truncate-name" title="${escapeHTML(user.other_identifier || '-')}">${escapeHTML(user.other_identifier || '-')}</td>
+        <td class="linked-pills-cell">${walletsStr}</td>
         <td><span class="${eventConnectedClass}">${eventConnectedText}</span></td>
         <td class="actions">
           <button class="icon-btn view view-user-transactions" data-user-id="${user.id}" title="Zobrazit transakce">
@@ -1918,7 +1932,7 @@ function renderUsers(eventData) {
     `;
   });
 
-  usersTableBody.innerHTML = rows || `<tr><td class="muted" colspan="8">Žádní uživatelé.</td></tr>`;
+  usersTableBody.innerHTML = rows || `<tr><td class="muted" colspan="9">Žádní uživatelé.</td></tr>`;
   markSelectedRows(card);
 }
 
@@ -4818,7 +4832,7 @@ function renderRevenueTimelineChart() {
           data: data.map(d => d.revenue_czk),
           borderColor: 'rgb(0, 120, 212)',
           backgroundColor: 'rgba(0, 120, 212, 0.1)',
-          tension: 0.3,
+          tension: 0,
           fill: true
         }
       ]

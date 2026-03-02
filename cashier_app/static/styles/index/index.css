@@ -998,6 +998,7 @@ body {
   display: grid;
   grid-template-rows: max-content 1fr;
   padding: 10px;
+  padding-bottom: 12px;
   row-gap: 12px;
   overflow: auto;
 }
@@ -1028,6 +1029,10 @@ body {
   margin-top: 6px;
 }
 
+#user-actions button {
+  padding: 12px 0;
+}
+
 .no-results {
   padding: 20px;
   text-align: center;
@@ -1035,8 +1040,8 @@ body {
   font-size: 0.9rem;
 }
 
-#more-user-options-actions button,
-#open-more-user-options {
+#more-user-options-actions button/* ,
+#open-more-user-options */ {
   background: rgb(68, 68, 235);
   color: white;
   box-shadow: 0 6px 18px rgba(68, 68, 235, 0.1);
@@ -1048,14 +1053,14 @@ body {
   font-size: 14px;
 }
 
-#more-user-options-actions button:hover,
-#open-more-user-options:hover {
+#more-user-options-actions button:hover/* ,
+#open-more-user-options:hover */ {
   background: rgb(62, 62, 234);
   box-shadow: 3px 3px 8px rgba(62, 62, 234, 0.3);
 }
 
-#more-user-options-actions button:disabled,
-#open-more-user-options:disabled {
+#more-user-options-actions button:disabled/* ,
+#open-more-user-options:disabled */ {
   background: rgba(68, 68, 235, 0.6);
   box-shadow: 0 6px 18px rgba(68, 68, 235, 0.1);
   cursor: initial;
@@ -1102,8 +1107,8 @@ body {
   display: inline-block;
   padding: 2px 6px;
   border-radius: 4px;
-  background-color: rgb(230, 238, 250);
-  color: rgb(32, 68, 150);
+  background-color: rgb(225, 234, 248);
+  color: rgb(27, 57, 128);
   cursor: pointer;
   font-size: 0.85em;
   white-space: nowrap;
