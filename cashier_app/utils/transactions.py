@@ -42,7 +42,8 @@ def make_transaction(params: dict, cursor: Cursor | None = None):
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
 
     params = dict(params)
-    params['products_info'] = Jsonb(params['products_info'])
+    if 'products_info' in params:
+        params['products_info'] = Jsonb(params['products_info'])
     params['request_fingerprint'] = request_fingerprint
 
 

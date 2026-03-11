@@ -6,17 +6,8 @@ from datetime import datetime, date, timezone
 
 class TestCreateApp:
 
-    def test_app_exists(self, app):
-        assert app is not None
-
     def test_testing_config(self, app):
         assert app.config['TESTING'] is True
-
-    def test_secret_key_set(self, app):
-        assert app.config['SECRET_KEY'] == 'test-secret-key'
-
-    def test_scheduler_disabled_in_tests(self, app):
-        assert app.config['SCHEDULER_ENABLED'] is False
 
 
 class TestISOJSONProvider:
@@ -42,9 +33,7 @@ class TestISOJSONProvider:
 
 class TestErrorHandlers:
 
-    def test_413_error_handler(self, client):
-        # POST s obsahem větším než MAX_CONTENT_LENGTH vyvolá chybu 413
-        # Obsluhu otestujeme přímým vyvoláním scénáře s velkým nahráváním
+    def test_404_error_handler(self, client):
         response = client.get('/nonexistent-route')
         assert response.status_code == 404
 

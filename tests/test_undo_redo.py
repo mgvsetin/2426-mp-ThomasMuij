@@ -2,17 +2,13 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from tests.conftest import ADMIN_EMPLOYEE, REGULAR_EMPLOYEE
+from tests.conftest import ADMIN_EMPLOYEE, REGULAR_EMPLOYEE, mock_auth
 
 from cashier_app.undo_and_redo import (
     _get_change_type,
     _order_changes_for_undo,
     _order_changes_for_redo,
 )
-
-
-def _mock_auth(employee):
-    return patch('cashier_app.undo_and_redo.load_logged_in_employee', return_value=employee)
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +125,7 @@ class TestOrderChangesForRedo:
 class TestUndo:
 
     def test_unauthenticated(self, client):
-        with _mock_auth(None):
+        with mock_auth(None):
             resp = client.post('/api/undo')
             assert resp.status_code == 401
 
@@ -141,6 +137,108 @@ class TestUndo:
 class TestRedo:
 
     def test_unauthenticated(self, client):
-        with _mock_auth(None):
+        with mock_auth(None):
             resp = client.post('/api/redo')
             assert resp.status_code == 401
+
+
+# ===========================================================================
+# DB-backed integrační testy (pytest -m db)
+# ===========================================================================
+
+from tests.conftest import mock_auth_db
+
+
+@pytest.mark.db
+class TestUndoRedoDB:
+    """Integrační testy undo/redo s reálnou DB."""
+
+    def _undo_patches(self, db_pool):
+        from contextlib import ExitStack
+        stack = ExitStack()
+        stack.enter_context(patch('cashier_app.undo_and_redo.get_pool', return_value=db_pool))
+        stack.enter_context(patch('cashier_app.undo_and_redo.delete_unused_images'))
+        return stack
+
+    def _event_patches(self, db_pool):
+        from contextlib import ExitStack
+        stack = ExitStack()
+        stack.enter_context(patch('cashier_app.events.get_pool', return_value=db_pool))
+        return stack
+
+    def test_undo_event_create(self, client, db_pool, db_cursor, db_employee_admin):
+        """Undo vytvoření události ji soft-deletne."""
+        with mock_auth_db(db_employee_admin), self._event_patches(db_pool):
+            resp = client.post('/api/events/create', data={
+                'name': 'Undo Event',
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute(
+            "SELECT id FROM events WHERE name = 'Undo Event' AND deleted_at IS NULL")
+        event = db_cursor.fetchone()
+        assert event is not None
+
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            resp = client.post('/api/undo')
+            assert resp.status_code == 200
+            assert resp.get_json() is None or 'message' not in resp.get_json()
+
+        db_cursor.execute("SELECT deleted_at FROM events WHERE name = 'Undo Event'")
+        assert db_cursor.fetchone()['deleted_at'] is not None
+
+    def test_redo_event_create(self, client, db_pool, db_cursor, db_employee_admin):
+        """Redo po undo obnoví vytvořenou událost."""
+        with mock_auth_db(db_employee_admin), self._event_patches(db_pool):
+            client.post('/api/events/create', data={
+                'name': 'Redo Event',
+            })
+
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            client.post('/api/undo')
+
+        db_cursor.execute("SELECT deleted_at FROM events WHERE name = 'Redo Event'")
+        assert db_cursor.fetchone()['deleted_at'] is not None
+
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            resp = client.post('/api/redo')
+            assert resp.status_code == 200
+
+        db_cursor.execute("SELECT deleted_at FROM events WHERE name = 'Redo Event'")
+        assert db_cursor.fetchone()['deleted_at'] is None
+
+    def test_undo_event_edit(self, client, db_pool, db_cursor,
+                              db_employee_admin, db_event):
+        """Undo úpravy události obnoví původní hodnoty."""
+        original_name = db_event['name']
+
+        with mock_auth_db(db_employee_admin), self._event_patches(db_pool):
+            resp = client.post('/api/events/edit', data={
+                'id': str(db_event['id']),
+                'name': 'Changed Event Name',
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute("SELECT name FROM events WHERE id = %s", (db_event['id'],))
+        assert db_cursor.fetchone()['name'] == 'Changed Event Name'
+
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            resp = client.post('/api/undo')
+            assert resp.status_code == 200
+
+        db_cursor.execute("SELECT name FROM events WHERE id = %s", (db_event['id'],))
+        assert db_cursor.fetchone()['name'] == original_name
+
+    def test_undo_no_change(self, client, db_pool, db_cursor, db_employee_admin):
+        """Undo bez dostupných změn vrátí zprávu."""
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            resp = client.post('/api/undo')
+            assert resp.status_code == 200
+            assert resp.get_json()['message'] == 'no_change_to_undo'
+
+    def test_redo_no_change(self, client, db_pool, db_cursor, db_employee_admin):
+        """Redo bez vrácených změn vrátí zprávu."""
+        with mock_auth_db(db_employee_admin), self._undo_patches(db_pool):
+            resp = client.post('/api/redo')
+            assert resp.status_code == 200
+            assert resp.get_json()['message'] == 'no_change_to_redo'

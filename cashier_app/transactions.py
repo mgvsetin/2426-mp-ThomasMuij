@@ -362,16 +362,13 @@ def make_refund():
                 if wallet['balance_czk'] + refund_amount > 1_000_000:
                     return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
 
+                # tag_id, wallet_id, user_id, amount_czk, products_info
+                # se nastavují automaticky v triggeru z refundované transakce
                 params = {
-                    'tag_id': tag_id,
-                    'wallet_id': wallet['id'],
-                    'user_id': wallet['owner_id'],
                     'event_id': g.event['id'],
                     'booth_id': g.booth['id'],
                     'transaction_type': 'refund',
-                    'amount_czk': refund_amount,
                     'performed_by': g.employee['id'],
-                    'products_info': payment['products_info'],
                     'idempotency_key': idemp_key,
                     'refunded_transaction_id': payment['id']
                 }
