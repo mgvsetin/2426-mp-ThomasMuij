@@ -19,6 +19,9 @@ class TestLoginEndpoint:
         data = response.get_json()
         assert 'redirect_url' in data
 
+        with client.session_transaction() as sess:
+            assert 'employee_id' in sess
+
     @patch('cashier_app.auth.get_employee_id', return_value=None)
     def test_login_with_invalid_credentials(self, mock_get_id, client):
         response = client.post('/api/auth/login', data={
@@ -50,6 +53,10 @@ class TestLoginEndpoint:
         })
         assert response.status_code == 201
 
+        with client.session_transaction() as sess:
+            assert 'employee_id' in sess
+            assert sess.permanent is True
+
     @patch('cashier_app.auth.get_employee_id', return_value=None)
     def test_login_empty_fields(self, mock_get_id, client):
         response = client.post('/api/auth/login', data={
@@ -62,8 +69,14 @@ class TestLoginEndpoint:
 class TestLogoutEndpoint:
 
     def test_logout_redirects_to_login(self, client):
+        with client.session_transaction() as sess:
+            sess['employee_id'] = str(uuid4())
+
         response = client.get('/api/auth/logout', follow_redirects=False)
         assert response.status_code == 302
+
+        with client.session_transaction() as sess:
+            assert 'employee_id' not in sess
 
 
 class TestGetLoginPage:

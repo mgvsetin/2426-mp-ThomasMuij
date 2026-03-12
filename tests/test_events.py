@@ -306,7 +306,7 @@ class TestGetEventStatistics:
 # DB-backed integrační testy (pytest -m db)
 # ===========================================================================
 
-from tests.conftest import mock_auth_db
+from tests.conftest import mock_auth_db, mock_event_db, mock_booth_db
 
 
 @pytest.mark.db
@@ -452,3 +452,116 @@ class TestEventsDB:
         restored = db_cursor.fetchone()
         assert restored['deleted_at'] is None
         assert restored['name'] != db_event['name']
+
+    def test_get_event(self, client, db_pool, db_cursor, db_employee_admin, db_event,
+                       db_booth_seller, db_product, db_category):
+        """Získání detailu události vrátí událost i s potomky."""
+        with mock_auth_db(db_employee_admin), self._patches(db_pool):
+            resp = client.get(f'/api/events/{db_event["id"]}')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data['event']['name'] == 'Test Event'
+            assert 'employees' in data
+            assert 'products' in data
+            assert 'booths' in data
+            assert 'categories' in data
+            assert 'users' in data
+            assert 'wallets' in data
+            assert any(str(db_booth_seller['id']) == str(b['id']) for b in data['booths'])
+            assert any(str(db_product['id']) == str(p['id']) for p in data['products'])
+            assert any(str(db_category['id']) == str(c['id']) for c in data['categories'])
+
+    def test_get_event_wallets(self, client, db_pool, db_cursor, db_employee_admin,
+                               db_event, db_wallet):
+        """Získání peněženek události."""
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             self._patches(db_pool):
+            resp = client.get('/api/events/wallets')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert 'wallets' in data
+            assert len(data['wallets']) == 1
+            assert data['wallets'][0]['tag_id'] == db_wallet['tag_id']
+
+
+def _deposit_for_history(cursor, wallet, event, booth, employee, amount):
+    """Pomocná funkce pro vklad na peněženku přes přímý INSERT."""
+    cursor.execute("""
+        INSERT INTO transactions (tag_id, wallet_id, user_id, event_id, booth_id,
+            transaction_type, amount_czk, balance_before, balance_after,
+            performed_by, idempotency_key)
+        VALUES (%s, %s, %s, %s, %s, 'balance-change', %s, 0, %s, %s, %s)
+        RETURNING *
+    """, (wallet['tag_id'], wallet['id'], wallet['owner_id'],
+          event['id'], booth['id'], amount, amount, employee['id'], str(uuid4())))
+    return cursor.fetchone()
+
+
+@pytest.mark.db
+class TestTransactionHistoryDB:
+    """Integrační testy historie transakcí s reálnou DB."""
+
+    def _patches(self, db_pool):
+        from contextlib import ExitStack
+        stack = ExitStack()
+        stack.enter_context(patch('cashier_app.events.transaction_history.get_pool', return_value=db_pool))
+        return stack
+
+    def test_get_user_transaction_history(self, client, db_pool, db_cursor,
+                                          db_employee_admin, db_event, db_wallet,
+                                          db_booth_cashier, db_employee_role):
+        """Získání historie transakcí uživatele pro událost."""
+        _deposit_for_history(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        with mock_auth_db(db_employee_admin), self._patches(db_pool):
+            resp = client.get(
+                f'/api/events/{db_event["id"]}/users/{db_wallet["owner_id"]}/transaction-history')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert 'user_transaction_history' in data
+            assert len(data['user_transaction_history']) == 1
+            assert data['user_transaction_history'][0]['amount_czk'] == 500
+
+    def test_get_event_transaction_history(self, client, db_pool, db_cursor,
+                                           db_employee_admin, db_event, db_wallet,
+                                           db_booth_cashier, db_employee_role):
+        """Získání historie transakcí celé události."""
+        _deposit_for_history(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 300)
+
+        with mock_auth_db(db_employee_admin), self._patches(db_pool):
+            resp = client.get(f'/api/events/{db_event["id"]}/transaction-history')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert 'event_transaction_history' in data
+            assert len(data['event_transaction_history']) == 1
+            assert data['event_transaction_history'][0]['amount_czk'] == 300
+
+
+@pytest.mark.db
+class TestStatisticsDB:
+    """Integrační testy statistik událostí s reálnou DB."""
+
+    def _patches(self, db_pool):
+        from contextlib import ExitStack
+        stack = ExitStack()
+        stack.enter_context(patch('cashier_app.events.statistics.get_pool', return_value=db_pool))
+        return stack
+
+    def test_get_event_statistics(self, client, db_pool, db_cursor,
+                                  db_employee_admin, db_event, db_wallet,
+                                  db_booth_cashier, db_employee_role):
+        """Získání statistik události s transakcemi."""
+        _deposit_for_history(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        with mock_auth_db(db_employee_admin), self._patches(db_pool):
+            resp = client.get(f'/api/events/{db_event["id"]}/statistics')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data['event']['name'] == 'Test Event'
+            assert 'overall_statistics' in data
+            assert data['overall_statistics']['balance_change_count'] == 1
+            assert data['overall_statistics']['total_deposits_czk'] == 500
+            assert 'booth_statistics' in data
+            assert 'product_statistics' in data
+            assert 'wallet_statistics' in data
+            assert data['wallet_statistics']['total_wallets'] == 1

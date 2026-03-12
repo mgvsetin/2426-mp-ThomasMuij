@@ -419,3 +419,38 @@ class TestMakeRefundDB:
 
         db_cursor.execute("SELECT balance_czk FROM wallets WHERE id = %s", (db_wallet['id'],))
         assert db_cursor.fetchone()['balance_czk'] == 500
+
+
+@pytest.mark.db
+class TestGetLastRefundableDB:
+    """Integrační testy pro získání poslední refundovatelné transakce s reálnou DB."""
+
+    def test_successful_get_last_refundable(self, client, db_pool, db_cursor,
+                                             db_wallet, db_event, db_employee_admin,
+                                             db_booth_cashier, db_booth_seller,
+                                             db_employee_role, db_employee_seller_role):
+        """Vklad + platba -> last-refundable vrátí informace o platbě."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Hamburger', 'price': 89, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-89',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.get(
+                f'/api/transactions/last-refundable?tag-id={db_wallet["tag_id"]}')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data['refund_amount'] == 89
+            assert data['products_info'] == products
+            assert 'occurred_at' in data

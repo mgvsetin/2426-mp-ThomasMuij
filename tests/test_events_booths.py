@@ -170,7 +170,7 @@ class TestGetProductsAndCategories:
 # DB-backed integrační testy (pytest -m db)
 # ===========================================================================
 
-from tests.conftest import mock_auth_db
+from tests.conftest import mock_auth_db, mock_event_db, mock_booth_db
 
 
 @pytest.mark.db
@@ -265,3 +265,31 @@ class TestBoothsDB:
         db_cursor.execute("SELECT deleted_at FROM booths WHERE id = %s",
                           (db_booth_seller['id'],))
         assert db_cursor.fetchone()['deleted_at'] is not None
+
+    def test_get_products_and_categories(self, client, db_pool, db_cursor,
+                                          db_employee_admin, db_event,
+                                          db_booth_seller, db_product, db_category):
+        """Získání produktů a kategorií pro stánek."""
+        db_cursor.execute("""
+            INSERT INTO product_booth_link (product_id, booth_id)
+            VALUES (%s, %s)
+        """, (db_product['id'], db_booth_seller['id']))
+
+        db_cursor.execute("""
+            INSERT INTO category_booth_link (category_id, booth_id)
+            VALUES (%s, %s)
+        """, (db_category['id'], db_booth_seller['id']))
+
+        with mock_auth_db(db_employee_admin), \
+             mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller, db_event), \
+             self._patches(db_pool):
+            resp = client.get('/api/events/booths/products-categories')
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert 'products' in data
+            assert 'categories' in data
+            assert len(data['products']) == 1
+            assert data['products'][0]['name'] == 'Test Product'
+            assert len(data['categories']) == 1
+            assert data['categories'][0]['name'] == 'Test Category'

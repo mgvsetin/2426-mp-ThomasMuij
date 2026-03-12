@@ -115,3 +115,39 @@ class TestUpdateProfile:
             })
             assert resp.status_code == 400
             assert resp.get_json()['error'] == 'missing_new_password'
+
+
+# ===========================================================================
+# DB-backed integrační testy (pytest -m db)
+# ===========================================================================
+
+
+def _mock_auth_db(employee_dict):
+    """Mock auth pro settings s reálnými DB daty."""
+    emp = {k: str(v) if hasattr(v, 'hex') else v for k, v in employee_dict.items()}
+    return patch('cashier_app.settings.load_logged_in_employee', return_value=emp)
+
+
+@pytest.mark.db
+class TestUpdateProfileDB:
+    """Integrační testy aktualizace profilu s reálnou DB."""
+
+    def test_successful_password_update(self, client, db_pool, db_cursor, db_employee_admin):
+        """Úspěšná změna hesla přes API změní hash v DB."""
+        old_hash = db_employee_admin['password_hash']
+
+        with _mock_auth_db(db_employee_admin), \
+             patch('cashier_app.settings.employee_password_is_correct', return_value=True), \
+             patch('cashier_app.settings.get_pool', return_value=db_pool):
+            resp = client.post('/api/settings/update-profile', data={
+                'current-password': 'OldPass123!',
+                'new-password': 'NewSecureP@ss1',
+                'confirm-password': 'NewSecureP@ss1',
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute("SELECT password_hash FROM employees WHERE id = %s",
+                          (db_employee_admin['id'],))
+        emp = db_cursor.fetchone()
+        assert emp['password_hash'] != old_hash
+        assert emp['password_hash'].startswith('$argon2id$')
