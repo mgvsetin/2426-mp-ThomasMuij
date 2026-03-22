@@ -41,6 +41,16 @@ def init_db():
             cur.execute(sql)
 
 
+    # TODO: remove this
+    # development values:
+    with current_app.open_resource('development_values.sql', 'r', 'utf-8') as f:
+        dev_values = f.read()
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(dev_values)
+
+
 @click.command('init-db') # flask --app cashier_app init-db
 def init_db_command():
     """CLI příkaz pro inicializaci databáze.

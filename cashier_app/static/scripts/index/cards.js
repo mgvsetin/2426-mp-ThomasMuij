@@ -25,7 +25,7 @@ export let newCardReadPromise = new Promise(resolve => {
   newCardReadResolve = resolve;
 });
 
-handleCardRead('newcard1'); /////////
+handleCardRead('00B824B800000000'); ///////// 
 
 
 /**
