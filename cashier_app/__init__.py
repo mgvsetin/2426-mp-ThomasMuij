@@ -133,6 +133,9 @@ def create_app(test_config=None):
         SCHEDULER_SESSION_CLEANUP_MINUTES = 60,
         SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES = 180,
         SCHEDULER_DISK_ORPHANS_CLEANUP_MINUTES = 720,
+        SCHEDULER_BACKUP_MINUTES = 30,  # 0 = automatické zálohování vypnuto; nastavte např. 1440 pro denní zálohu
+        BACKUP_DIR = os.path.join(app.instance_path, 'backups'),
+        BACKUP_MAX_COUNT = 48,  # maximální počet uchovávaných záloh
     )
 
     os.makedirs(app.instance_path, exist_ok=True)

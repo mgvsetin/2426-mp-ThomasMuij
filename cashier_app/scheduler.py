@@ -56,6 +56,17 @@ def _job_delete_disk_orphans(app: Flask):
             logger.exception("Error in delete_disk_orphans job")
 
 
+def _job_backup_db(app: Flask):
+    """Vytvoří periodickou zálohu databáze."""
+    with app.app_context():
+        from cashier_app.db import backup_db
+        try:
+            filepath = backup_db()
+            logger.info("Scheduled backup created: %s", filepath)
+        except Exception:
+            logger.exception("Error in backup_db job")
+
+
 # ---------------------------------------------------------------------------
 # APScheduler listener chyb (obrana do hloubky)
 # ---------------------------------------------------------------------------
@@ -101,6 +112,7 @@ def init_scheduler(app: Flask):
     session_min = app.config.get("SCHEDULER_SESSION_CLEANUP_MINUTES", 60)
     unused_img_min = app.config.get("SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES", 180)
     disk_orphan_min = app.config.get("SCHEDULER_DISK_ORPHANS_CLEANUP_MINUTES", 720)
+    backup_min = app.config.get("SCHEDULER_BACKUP_MINUTES", 0)
 
     _scheduler = BackgroundScheduler(daemon=True)
     _scheduler.add_listener(_on_job_error, EVENT_JOB_ERROR)
@@ -135,12 +147,24 @@ def init_scheduler(app: Flask):
         replace_existing=True,
     )
 
+    if backup_min > 0:
+        _scheduler.add_job(
+            _job_backup_db,
+            trigger="interval",
+            minutes=backup_min,
+            args=[app],
+            id="backup_db",
+            name="Backup database",
+            replace_existing=True,
+        )
+
     _scheduler.start()
     logger.info(
-        "Scheduler started — sessions=%dm, unused_images=%dm, disk_orphans=%dm",
+        "Scheduler started — sessions=%dm, unused_images=%dm, disk_orphans=%dm, backup=%s",
         session_min,
         unused_img_min,
         disk_orphan_min,
+        f"{backup_min}m" if backup_min > 0 else "disabled",
     )
 
     def _shutdown():

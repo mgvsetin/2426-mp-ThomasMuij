@@ -1246,7 +1246,7 @@ function showPayError(error) {
     return;
   }
 
-  setErr(errorStr); // nezapomenout toto odstranit a nahradit obecnou chybovou hláškou
+  setErr('Něco se nepovedlo.');
 }
 
 
@@ -1349,7 +1349,7 @@ function showRefundError(error) {
     return;
   }
 
-  setErr(errorStr); // nezapomenout toto odstranit a nahradit obecnou chybovou hláškou
+  setErr('Něco se nepovedlo.');
 }
 
 

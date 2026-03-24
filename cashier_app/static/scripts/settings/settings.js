@@ -768,5 +768,5 @@ function showPasswordModalErrors(error) {
     return;
   }
 
-  setErr(generalError, resStr);
+  setErr(generalError, 'Něco se nepovedlo.');
 }
