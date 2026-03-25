@@ -1,0 +1,158 @@
+@startuml Use Case Diagram - Muijsenberg Cashier System
+
+left to right direction
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+
+title Muijsenberg Cashier System - Use Case Diagram
+
+' ===== Actors =====
+actor "Administrator" as Admin
+actor "Event Manager" as EM
+actor "Cashier" as Cash
+actor "Seller" as Sell
+actor "Customer" as Cust <<external>>
+
+' ===== System Boundary =====
+rectangle "Muijsenberg Cashier System" {
+
+  ' --- Authentication ---
+  package "Authentication" {
+    usecase "Log In" as UC_Login
+    usecase "Log Out" as UC_Logout
+    usecase "Change Password" as UC_ChangePW
+  }
+
+  ' --- Employee Management ---
+  package "Employee Management" {
+    usecase "Create Employee" as UC_CreateEmp
+    usecase "Edit Employee" as UC_EditEmp
+    usecase "Delete Employee" as UC_DeleteEmp
+    usecase "Assign Employee\nto Booth" as UC_AssignEmp
+  }
+
+  ' --- Event Management ---
+  package "Event Management" {
+    usecase "Create Event" as UC_CreateEvt
+    usecase "Edit Event" as UC_EditEvt
+    usecase "Delete Event" as UC_DeleteEvt
+    usecase "Clone Event" as UC_CloneEvt
+  }
+
+  ' --- Booth Management ---
+  package "Booth Management" {
+    usecase "Create Booth" as UC_CreateBooth
+    usecase "Edit Booth" as UC_EditBooth
+    usecase "Delete Booth" as UC_DeleteBooth
+    usecase "Select Booth" as UC_SelectBooth
+  }
+
+  ' --- Product & Category Management ---
+  package "Product & Category\nManagement" {
+    usecase "Manage Products" as UC_Products
+    usecase "Upload Product Image" as UC_UploadImg
+    usecase "Manage Categories" as UC_Categories
+  }
+
+  ' --- Wallet Management ---
+  package "Wallet Management" {
+    usecase "Create Wallet" as UC_CreateWallet
+    usecase "Deposit Money" as UC_Deposit
+    usecase "Withdraw Money" as UC_Withdraw
+  }
+
+  ' --- Transaction Processing ---
+  package "Transaction Processing" {
+    usecase "Process Payment" as UC_Payment
+    usecase "Issue Refund" as UC_Refund
+    usecase "Read RFID Card" as UC_ReadCard
+  }
+
+  ' --- Reporting ---
+  package "Reporting & Statistics" {
+    usecase "View Event Statistics" as UC_Stats
+    usecase "View Transaction\nHistory" as UC_TxHistory
+  }
+
+  ' --- Undo/Redo ---
+  package "History" {
+    usecase "Undo Change" as UC_Undo
+    usecase "Redo Change" as UC_Redo
+  }
+}
+
+' ===== Administrator Associations =====
+Admin --> UC_Login
+Admin --> UC_Logout
+Admin --> UC_ChangePW
+Admin --> UC_CreateEmp
+Admin --> UC_EditEmp
+Admin --> UC_DeleteEmp
+Admin --> UC_CreateEvt
+Admin --> UC_EditEvt
+Admin --> UC_DeleteEvt
+Admin --> UC_CloneEvt
+Admin --> UC_CreateBooth
+Admin --> UC_EditBooth
+Admin --> UC_DeleteBooth
+Admin --> UC_Products
+Admin --> UC_UploadImg
+Admin --> UC_Categories
+Admin --> UC_Stats
+Admin --> UC_TxHistory
+Admin --> UC_Undo
+Admin --> UC_Redo
+
+' ===== Event Manager Associations =====
+EM --> UC_Login
+EM --> UC_Logout
+EM --> UC_ChangePW
+EM --> UC_AssignEmp
+EM --> UC_CreateBooth
+EM --> UC_EditBooth
+EM --> UC_DeleteBooth
+EM --> UC_Products
+EM --> UC_UploadImg
+EM --> UC_Categories
+EM --> UC_CloneEvt
+EM --> UC_Stats
+EM --> UC_TxHistory
+EM --> UC_Undo
+EM --> UC_Redo
+
+' ===== Cashier Associations =====
+Cash --> UC_Login
+Cash --> UC_Logout
+Cash --> UC_ChangePW
+Cash --> UC_SelectBooth
+Cash --> UC_ReadCard
+Cash --> UC_CreateWallet
+Cash --> UC_Deposit
+Cash --> UC_Withdraw
+Cash --> UC_TxHistory
+Cash --> UC_Undo
+Cash --> UC_Redo
+
+' ===== Seller Associations =====
+Sell --> UC_Login
+Sell --> UC_Logout
+Sell --> UC_ChangePW
+Sell --> UC_SelectBooth
+Sell --> UC_ReadCard
+Sell --> UC_Payment
+Sell --> UC_Refund
+Sell --> UC_TxHistory
+Sell --> UC_Undo
+Sell --> UC_Redo
+
+' ===== Customer Associations =====
+Cust --> UC_ReadCard
+
+' ===== Relationships =====
+UC_Payment ..> UC_ReadCard : <<include>>
+UC_Deposit ..> UC_ReadCard : <<include>>
+UC_Withdraw ..> UC_ReadCard : <<include>>
+UC_Refund ..> UC_Payment : <<extend>>
+UC_UploadImg ..> UC_Products : <<extend>>
+
+@enduml
