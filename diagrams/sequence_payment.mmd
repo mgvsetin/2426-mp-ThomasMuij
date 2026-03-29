@@ -1,0 +1,91 @@
+sequenceDiagram
+    actor Prodejce as Prodejce (Seller)
+    participant FE as Frontend (JavaScript)
+    participant API as Flask Backend (API)
+    participant DB as PostgreSQL
+    participant Trigger as DB Trigger
+
+    Note over Prodejce, Trigger: Fáze 1 – Načtení karty & sestavení objednávky
+
+    Prodejce->>FE: Naskenuje RFID/NFC kartu
+    FE->>FE: Web Serial API zachytí tag_id
+    FE->>FE: Uloží tag_id do lastReadCardId
+
+    Prodejce->>FE: Vybere produkty & množství
+    FE->>FE: Uloží objednávku do sessionStorage<br/>(items: [{productId, quantity, price}])
+    FE->>FE: Zobrazí souhrn objednávky & celkovou cenu
+
+    Note over Prodejce, Trigger: Fáze 2 – Odeslání platby
+
+    Prodejce->>FE: Klikne na "Zaplatit"
+    FE->>FE: Vygeneruje idempotency_key (crypto.randomUUID())
+    FE->>API: POST /api/transactions/make-payment<br/>{ tag-id, products-info, amount-czk, idempotency-key }
+
+    Note over API, Trigger: Fáze 3 – Validace & zpracování
+
+    API->>API: Validace vstupů<br/>(amount je integer, rozsah ±1M,<br/>JSON produktů, součet cen = amount)
+    API->>API: Kontrola oprávnění<br/>(přihlášený zaměstnanec,<br/>role 'seller', aktivní event, stánek typu 'seller')
+
+    alt Validace selhala
+        API-->>FE: HTTP 400/403 — chybová zpráva
+        FE-->>Prodejce: Zobrazí chybu
+    end
+
+    API->>DB: SELECT ... FROM wallets<br/>WHERE tag_id = ? FOR UPDATE
+    DB-->>API: Vrátí peněženku (wallet) s row-lock
+
+    alt Nedostatečný zůstatek
+        API-->>FE: HTTP 400 — nedostatečný zůstatek
+        FE-->>Prodejce: Zobrazí chybu
+    end
+
+    Note over API, Trigger: Fáze 4 – Vytvoření transakce
+
+    API->>API: Výpočet SHA-256 fingerprint parametrů
+    API->>DB: INSERT INTO transactions<br/>(wallet_id, event_id, booth_id, amount_czk,<br/>transaction_type='payment', products_info,<br/>idempotency_key, request_fingerprint)<br/>ON CONFLICT (idempotency_key) DO NOTHING
+
+    alt Duplicitní požadavek (stejný idempotency_key)
+        DB-->>API: INSERT — 0 řádků (conflict)
+        API->>DB: SELECT existující transakce dle idempotency_key
+        DB-->>API: Existující transakce
+
+        alt Fingerprint se shoduje
+            API-->>FE: HTTP 200 — úspěch (idempotentní odpověď)
+        else Fingerprint se neshoduje
+            API-->>FE: HTTP 409 — konflikt
+        end
+    end
+
+    DB->>Trigger: BEFORE INSERT trigger se spustí
+
+    Note over Trigger: trg_transactions_block_delete_update_limit_insert
+
+    Trigger->>Trigger: Validace: event je aktivní<br/>(start_at ≤ now < end_at)
+    Trigger->>Trigger: Validace: stánek existuje a patří k eventu
+    Trigger->>Trigger: Validace: zaměstnanec má oprávnění
+    Trigger->>Trigger: Validace: typ stánku odpovídá typu transakce
+    Trigger->>Trigger: Validace: peněženka existuje a patří uživateli
+    Trigger->>Trigger: Výpočet: balance_before = wallet.balance_czk
+    Trigger->>Trigger: Výpočet: balance_after = balance_before + amount_czk
+    Trigger->>Trigger: Validace: balance_after ≥ 0
+
+    alt Trigger validace selhala
+        Trigger-->>DB: RAISE EXCEPTION
+        DB-->>API: Chyba transakce
+        API-->>FE: HTTP 400/500 — chyba
+        FE-->>Prodejce: Zobrazí chybu
+    end
+
+    Trigger->>DB: UPDATE wallets<br/>SET balance_czk = balance_after
+    Trigger-->>DB: INSERT transakce úspěšný<br/>(s balance_before & balance_after)
+
+    DB-->>API: Transakce vytvořena (COMMIT)
+    API-->>FE: HTTP 200 — úspěch + data transakce
+
+    Note over Prodejce, Trigger: Fáze 5 – Aktualizace UI
+
+    FE->>FE: Vymaže objednávku (order.reset())
+    FE->>FE: Invaliduje cache peněženek (resetWalletsCache())
+    FE->>FE: Odstraní kartu z displeje (removeReadCard())
+    FE->>FE: Znovu načte produkty & souhrn
+    FE-->>Prodejce: Zobrazí potvrzení úspěchu

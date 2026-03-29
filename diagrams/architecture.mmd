@@ -1,0 +1,125 @@
+graph TB
+    subgraph HW["🔌 Hardware"]
+        CARD["RFID/NFC čtečka karet<br/>(USB)"]
+    end
+
+    subgraph CLIENT["🖥️ Frontend (Vanilla JavaScript ES6)"]
+        direction TB
+        SERIAL["Web Serial API<br/>(čtení karet)"]
+        UI["Cashier UI<br/>(Jinja2 šablony + JS)"]
+
+        subgraph PAGES["Stránky"]
+            LOGIN["Přihlášení"]
+            INDEX["Hlavní rozhraní<br/>(platby, dobíjení)"]
+            ADMIN["Administrace<br/>(zaměstnanci, eventy)"]
+            STATS["Statistiky<br/>& historie"]
+        end
+
+        subgraph JS_MODULES["JavaScript moduly"]
+            ORDER["order.js<br/>(správa košíku,<br/>sessionStorage)"]
+            PRODUCTS["products.js<br/>(zobrazení produktů)"]
+            WALLETS_JS["wallets.js<br/>(zobrazení peněženek)"]
+            CARDS["cards.js<br/>(UI čtečky karet)"]
+            API_CLIENT["api.js<br/>(fetch wrapper,<br/>autorizace)"]
+            AUTH_JS["auth.js<br/>(session handling)"]
+        end
+    end
+
+    subgraph SERVER["⚙️ Backend (Flask + Gunicorn)"]
+        direction TB
+
+        subgraph MIDDLEWARE["Middleware"]
+            RATE["Rate Limiter<br/>(300 req/min)"]
+            SESSION["Session Management<br/>(PostgreSQL sessions,<br/>7denní expirace)"]
+            RBAC["RBAC<br/>(admin, event_manager,<br/>cashier, seller)"]
+        end
+
+        subgraph ROUTES["API Endpointy"]
+            AUTH_API["/api/auth<br/>login, logout"]
+            TRANS_API["/api/transactions<br/>make-payment<br/>make-balance-change<br/>make-refund"]
+            WALLET_API["/api/wallets<br/>create, list"]
+            USER_API["/api/users<br/>CRUD"]
+            EMP_API["/api/employees<br/>CRUD"]
+            EVENT_API["/api/events<br/>CRUD, booths,<br/>products, categories"]
+            STAT_API["/api/events/statistics<br/>tržby, historie"]
+        end
+
+        subgraph UTILS["Utility vrstvy"]
+            TRANS_UTIL["transactions.py<br/>(idempotence,<br/>SHA-256 fingerprint)"]
+            QUERY["query_builder.py<br/>(dynamický SQL)"]
+            ARGON["Argon2<br/>(hashování hesel)"]
+            PILLOW["Pillow<br/>(zpracování obrázků)"]
+        end
+
+        DB_POOL["Connection Pool<br/>(psycopg pool)"]
+    end
+
+    subgraph DATABASE["🗄️ PostgreSQL"]
+        direction TB
+
+        subgraph TABLES["Tabulky"]
+            T_EMP["employees"]
+            T_EVENTS["events"]
+            T_BOOTHS["booths"]
+            T_USERS["users"]
+            T_WALLETS["wallets"]
+            T_TRANS["transactions<br/>(immutable ledger)"]
+            T_PRODUCTS["products"]
+            T_CATEGORIES["categories"]
+            T_ROLES["employee_event<br/>_booth_roles"]
+            T_SESSIONS["sessions"]
+            T_HISTORY["change_history"]
+        end
+
+        subgraph TRIGGERS["Databázové triggery"]
+            TRG_TRANS["trg_transactions<br/>• validace business pravidel<br/>• výpočet balance_before/after<br/>• aktualizace balance peněženky<br/>• blokace DELETE/UPDATE"]
+            TRG_WALLET["trg_wallets<br/>• soft-delete<br/>• immutable created_at"]
+            TRG_EMP["trg_employees<br/>• immutable fields<br/>• uniqueness"]
+            TRG_USER["trg_users<br/>• validace kontaktu<br/>• capitalize jmen"]
+        end
+
+        CONSTRAINTS["Integritní omezení<br/>• FK s ON DELETE RESTRICT<br/>• UNIQUE (event_id, tag_id)<br/>• CHECK constraints<br/>• Row-level locking<br/>(SELECT ... FOR UPDATE)"]
+    end
+
+    %% Connections
+    CARD -->|USB| SERIAL
+    SERIAL --> CARDS
+    UI --> PAGES
+    PAGES --> JS_MODULES
+    API_CLIENT -->|"HTTP (fetch)<br/>+ session cookie"| RATE
+
+    RATE --> SESSION
+    SESSION --> RBAC
+    RBAC --> ROUTES
+
+    AUTH_API --> DB_POOL
+    TRANS_API --> TRANS_UTIL
+    TRANS_UTIL --> DB_POOL
+    WALLET_API --> DB_POOL
+    USER_API --> DB_POOL
+    EMP_API --> DB_POOL
+    EVENT_API --> DB_POOL
+    STAT_API --> QUERY
+    QUERY --> DB_POOL
+
+    DB_POOL -->|"SQL (parameterized)"| TABLES
+    TABLES --> TRIGGERS
+    TABLES --> CONSTRAINTS
+
+    T_TRANS -.->|"INSERT spustí"| TRG_TRANS
+    T_WALLETS -.-> TRG_WALLET
+    T_EMP -.-> TRG_EMP
+    T_USERS -.-> TRG_USER
+
+    %% Styling
+    classDef hw fill:#ffeaa7,stroke:#fdcb6e,color:#2d3436
+    classDef fe fill:#74b9ff,stroke:#0984e3,color:#2d3436
+    classDef be fill:#a29bfe,stroke:#6c5ce7,color:#2d3436
+    classDef db fill:#55efc4,stroke:#00b894,color:#2d3436
+    classDef trigger fill:#fab1a0,stroke:#e17055,color:#2d3436
+
+    class CARD hw
+    class SERIAL,UI,PAGES,LOGIN,INDEX,ADMIN,STATS,JS_MODULES,ORDER,PRODUCTS,WALLETS_JS,CARDS,API_CLIENT,AUTH_JS fe
+    class RATE,SESSION,RBAC,AUTH_API,TRANS_API,WALLET_API,USER_API,EMP_API,EVENT_API,STAT_API,TRANS_UTIL,QUERY,ARGON,PILLOW,DB_POOL be
+    class T_EMP,T_EVENTS,T_BOOTHS,T_USERS,T_WALLETS,T_TRANS,T_PRODUCTS,T_CATEGORIES,T_ROLES,T_SESSIONS,T_HISTORY,CONSTRAINTS db
+    class TRG_TRANS,TRG_WALLET,TRG_EMP,TRG_USER trigger

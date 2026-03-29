@@ -4777,7 +4777,7 @@ function renderProductsStatistics() {
           </tr>
         </thead>
         <tbody>
-          ${products.slice(0, 20).map((p, idx) => `
+          ${products.map((p, idx) => `
             <tr>
               <td>${idx + 1}</td>
               <td>${escapeHTML(p.product_name)}</td>

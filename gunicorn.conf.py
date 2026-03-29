@@ -2,22 +2,22 @@ import multiprocessing
 import os
 
 # temporary
-def get_all_sub(folder_path):
-    files = []
+# def get_all_sub(folder_path):
+#     files = []
 
-    for dir_or_file in os.listdir(folder_path):
-        dir_or_file = os.path.join(folder_path, dir_or_file)
-        if os.path.isfile(dir_or_file):
-            files.append(dir_or_file)
-            continue
+#     for dir_or_file in os.listdir(folder_path):
+#         dir_or_file = os.path.join(folder_path, dir_or_file)
+#         if os.path.isfile(dir_or_file):
+#             files.append(dir_or_file)
+#             continue
 
-        files.extend(get_all_sub(dir_or_file))
+#         files.extend(get_all_sub(dir_or_file))
 
-    return files
+#     return files
 
 
-reload = True
-reload_extra_files = get_all_sub(os.path.join('cashier_app', 'static'))
+# reload = True
+# reload_extra_files = get_all_sub(os.path.join('cashier_app', 'static'))
 
 
 # maybe (+ require changes)

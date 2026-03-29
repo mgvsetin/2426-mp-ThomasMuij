@@ -258,7 +258,7 @@ def edit_employee():
 
 
 @api_bp.route('/delete', methods=('DELETE',))
-@require_login
+@require_admin
 def delete_employee():
     """Smaže zaměstnance (soft delete), včetně kaskádového zachycení souvisejících dat pro vrácení zpět."""
     delete_employee_id = request.form.get('id')
@@ -270,9 +270,6 @@ def delete_employee():
         delete_employee_id = UUID(delete_employee_id)
     except (ValueError, TypeError):
         return jsonify(error='invalid_id'), 400
-
-    if not g.employee['is_admin'] and g.employee['id'] != delete_employee_id:
-        return jsonify(error='insufficient_privileges'), 403
 
     sql, query_params = build_delete_statement('employees', delete_employee_id)
 
@@ -344,5 +341,37 @@ def delete_employee():
         return jsonify(error='employee_not_found'), 404
     except CanNotDeleteLastAdminError:
         return jsonify(error='can_not_delete_last_admin'), 400
+
+    return jsonify(), 200
+
+
+@api_bp.route('/sign-out-everywhere', methods=('POST',))
+@require_admin
+def sign_out_employee_everywhere():
+    """Odhlásí zaměstnance ze všech aktivních relací (smaže všechny jeho sessions)."""
+    employee_id = request.form.get('id')
+
+    if not employee_id:
+        return jsonify(error='missing_id'), 400
+
+    try:
+        employee_id = UUID(employee_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_id'), 400
+
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            employee = cur.execute(
+                'SELECT id FROM employees WHERE id = %s AND deleted_at IS NULL',
+                (employee_id,)
+            ).fetchone()
+
+            if not employee:
+                return jsonify(error='employee_not_found'), 404
+
+            cur.execute(
+                'DELETE FROM sessions WHERE employee_id = %s',
+                (employee_id,)
+            )
 
     return jsonify(), 200

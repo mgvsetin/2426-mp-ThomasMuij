@@ -153,6 +153,24 @@ document.addEventListener('click', (event) => {
     return;
   }
 
+  const signOutBtn = event.target.closest('.sign-out-everywhere');
+  if (signOutBtn) {
+    const empId = signOutBtn.getAttribute('data-employee-id');
+    signOutBtn.disabled = true;
+    signOutEmployeeEverywhere(empId).then((response) => {
+      signOutBtn.disabled = false;
+      if (response === true) {
+        closeModal();
+        return;
+      }
+      const generalError = document.querySelector('#edit-employee-general-error');
+      if (generalError) {
+        showEditErrors('logout_everywhere_failed');
+      }
+    });
+    return;
+  }
+
 
   // ukaž nebo skryj heslo a změň oko
   const showPassword = event.target.closest('.pw-eye');
@@ -739,6 +757,7 @@ async function openEditModal(employeeId) {
 
       <div class="modal-actions">
         <button type="button" class="close-modal btn btn-ghost">Zrušit</button>
+        <button type="button" class="btn btn-ghost sign-out-everywhere" data-employee-id="${employee.id}">Odhlásit všude</button>
         <button type="button" class="btn btn-delete open-delete-modal" data-employee-id="${employee.id}">Smazat</button>
         <button type="submit" class="save-form btn btn-primary">Uložit</button>
       </div>
@@ -1011,6 +1030,9 @@ function showEditErrors(error) {
     case 'unexpected_error':
       setErr(generalError, 'Něco se nepovedlo. Zkuste to prosím později.');
       return;
+    case 'logout_everywhere_failed':
+      setErr(generalError, 'Nepodařilo se odhlásit zaměstnance.');
+      return;
     default:
       break;
   }
@@ -1212,6 +1234,37 @@ async function deleteEmployee(formData) {
   try {
     const response = await fetch('/api/employees/delete', {
       method: 'delete',
+      body: formData
+    });
+
+    await handleUnauthorizedRedirect(response);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return data;
+    }
+
+    return true;
+
+  } catch (error) {
+    return { error: 'unexpected_error' };
+  }
+}
+
+
+/**
+ * Odhlásí zaměstnance ze všech aktivních relací pomocí API.
+ * @param {string} employeeId - ID zaměstnance.
+ * @returns {Promise<Object|boolean>} - True při úspěchu, jinak objekt s chybou.
+ */
+async function signOutEmployeeEverywhere(employeeId) {
+  try {
+    const formData = new FormData();
+    formData.set('id', employeeId);
+
+    const response = await fetch('/api/employees/sign-out-everywhere', {
+      method: 'post',
       body: formData
     });
 

@@ -271,12 +271,19 @@ def init_app(app: Flask):
     """
     # app.extensions = getattr(app, "extensions", {})
     conninfo = app.config.get('DATABASE_CONNINFO')
+
+    def _configure_connection(conn):
+        """Nastaví časovou zónu UTC pro každé nové fyzické připojení."""
+        conn.execute("SET timezone = 'UTC'")
+        conn.commit()
+
     pool = ConnectionPool(
         conninfo,
         kwargs={'row_factory': dict_row},
         min_size=1,
         max_size=5,
         timeout=30,
+        configure=_configure_connection,
         # check=ConnectionPool.check_connection,
         open=True) # pokud se proces předem načte a poté forkne, použij open=False a zavolej pool.open() po forku
     app.extensions['db_pool'] = pool

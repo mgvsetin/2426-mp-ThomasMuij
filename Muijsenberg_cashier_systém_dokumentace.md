@@ -7,15 +7,15 @@ Maturitní práce
 Vedoucí práce: Mgr. Vladislav Válek
 2026 
 
-Prohlašuji, že jsem maturitní práci vypracoval/a samostatně s využitím uvedených pramenů a literatury.
-Ve Vsetíně dne 17. února.
+Prohlašuji, že jsem maturitní práci vypracoval samostatně s využitím uvedených pramenů a literatury.
+Ve Vsetíně dne 1. dubna.
 ……………………………………………..
 (podpis autora práce)
  
 
 Souhlas se zveřejněním
 Souhlasím se zveřejněním své maturitní práce pro potřeby školy.
-Ve Vsetíně dne 17. února
+Ve Vsetíně dne 1. dubna
 ……………………………………………..
 (podpis autora práce)
 Poděkování
@@ -29,97 +29,112 @@ OBSAH
 ANOTACE	3
 ANNOTATION	3
 OBSAH	4
-ÚVOD	9
-1 Historie a kontext	10
-1.1 Vývoj bezhotovostních platebních systémů	10
-1.2 Webové technologie a jejich role	10
-1.3 RFID a NFC technologie	11
-2 Teoretická východiska	11
-2.1 Architektura webových aplikací	11
-2.2 REST API a komunikace klient-server	12
-2.3 Relační databáze a transakční zpracování	12
-2.4 Soft-delete vzor	13
-2.5 Idempotence v síťové komunikaci	14
-2.6 Zamykání a souběžný přístup	14
-3 Použité technologie a nástroje	15
-3.1 Python	15
-3.2 Flask	15
-3.3 PostgreSQL	16
-3.4 JavaScript a Web Serial API	16
-3.5 Další technologie a knihovny	17
-4 Bezpečnostní aspekty	18
-4.1 Autentizace a správa hesel	18
-4.2 Správa sessions	18
-4.3 Ochrana proti běžným útokům	18
-4.4 Zabezpečení finančních operací	19
-5 Shrnutí teoretické části a přechod k praktické části	19
-PRAKTICKÁ ČÁST	21
-6 Prerekvizity a instalace	21
-6.1 Systémové požadavky	21
-6.2 Instalace a spuštění	21
-6.3 Konfigurace	23
-7 Databáze a její rozvržení	23
-7.1 Schéma databáze	23
-7.2 Triggery a integritní omezení	25
-7.3 Indexy	26
-8 Způsob programování a využití nástrojů	26
-8.1 Struktura projektu a Flask blueprinty	26
-8.2 Připojení k databázi — psycopg a connection pool	27
-8.3 Serverové sessions v PostgreSQL	29
-8.4 Generátor SQL dotazů (Query Builder)	29
-9 Práva přístupu	30
-9.1 Hierarchie rolí	30
-9.2 Vynucování oprávnění	31
-9.3 Vzájemná výlučnost rolí	31
-10 Čtení karet pomocí čteček	32
-10.1 Komunikace přes Web Serial API	32
-10.2 Ošetření chybových stavů	33
-11 ACID operace a práce s databází při finančních operacích	34
-11.1 Průběh platby	34
-11.2 Idempotence a fingerprint	35
-11.3 Refundace	35
-11.4 Zajištění integrity na úrovni databáze	35
-12 Caching	36
-12.1 Serverový caching statických souborů	36
-12.2 Klientský caching dat	37
-12.3 Persistence stavu objednávky	39
-13 Statistiky a historie plateb	39
-13.1 Statistiky akcí	39
-13.2 Historie transakcí	40
-14 Kopírování (paste) a zpět/znovu (undo/redo)	41
-14.1 Kopírování (paste)	41
-14.2 Vrátit zpět a provést znovu (undo/redo)	42
-15 Využití — jak vypadá používání aplikace	43
-15.1 Přihlášení	43
-15.2 Výběr akce a stánku	43
-15.3 Pokladní rozhraní (index)	43
-15.4 Správa akcí (event manager)	44
-15.5 Správa zaměstnanců (admin)	45
-15.6 Typický scénář obsluhy	46
-15.6.1 Scénář pokladního (cashier):	46
-15.6.2 Scénář prodejce (seller):	46
-16 Bezpečnostní implementace	47
-16.1 Hashování hesel	47
-16.2 Rate limiting	47
-16.3 Validace nahrávaných souborů	47
-16.4 Ochrana cookies a sessions	47
-16.5 Threat model — proti čemu se systém brání	48
-16.5.1 Hrozby, proti kterým se systém aktivně brání	48
-16.5.2 Co je mimo scope systému	48
-17 Plánované úlohy na pozadí a logování	49
-17.1 Plánované úlohy	49
-17.2 Logování	49
-17.2.1 Logování transakcí	50
-18 Frontend a uživatelské rozhraní	50
-18.1 Architektura frontendu	50
-18.2 Event delegation	50
-19 Testování	51
-19.1 Unit testy a integrační testy	51
-19.2 Kritické scénáře — platby a refundace	51
-19.3 Testy undo/redo a paste	52
-19.4 Další testované oblasti	52
-ZÁVĚR	53
-SEZNAM POUŽITÉ LITERATURY	55
+ÚVOD	10
+1 Historie a kontext	11
+1.1 Vývoj bezhotovostních platebních systémů	11
+1.2 Webové technologie a jejich role	11
+1.3 RFID a NFC technologie	12
+2 Teoretická východiska	12
+2.1 Architektura webových aplikací	12
+2.2 REST API a komunikace klient-server	13
+2.3 Relační databáze a transakční zpracování	14
+2.4 Soft-delete vzor	14
+2.5 Idempotence v síťové komunikaci	15
+2.6 Zamykání a souběžný přístup	15
+3 Použité technologie a nástroje	16
+3.1 Python	16
+3.2 Flask	16
+3.3 PostgreSQL	17
+3.4 JavaScript a Web Serial API	18
+3.5 Další technologie a knihovny	18
+4 Bezpečnostní aspekty	19
+4.1 Autentizace a správa hesel	19
+4.2 Správa sessions	19
+4.3 Ochrana proti běžným útokům	20
+4.4 Zabezpečení finančních operací	20
+5 Shrnutí teoretické části a přechod k praktické části	21
+PRAKTICKÁ ČÁST	22
+6 Cíle práce a zadání	22
+6.1 Zadání	22
+6.2 Hlavní cíl	22
+6.3 Dílčí cíle	22
+7 Architektura systému	22
+8 Prerekvizity a instalace	23
+8.1 Systémové požadavky	23
+8.2 Instalace a spuštění	24
+8.3 Konfigurace	25
+8.3.1 Přehled konfiguračních položek	26
+9 Databáze a její rozvržení	31
+9.1 Schéma databáze	31
+9.2 Triggery a integritní omezení	33
+9.3 Indexy	34
+10 Způsob programování a využití nástrojů	34
+10.1 Struktura projektu a Flask blueprinty	34
+10.2 Připojení k databázi — psycopg a connection pool	36
+10.3 Serverové sessions v PostgreSQL	38
+10.4 Zpracování chyb — vlastní výjimky	38
+10.5 Generátor SQL dotazů (Query Builder)	39
+10.6 Synchronizace vazebních tabulek	40
+11 Práva přístupu	40
+11.1 Hierarchie rolí	40
+11.2 Vynucování oprávnění	41
+11.3 Vzájemná výlučnost rolí	41
+12 Čtení karet pomocí čteček	42
+12.1 Komunikace přes Web Serial API	42
+12.2 Ošetření chybových stavů	43
+13 ACID operace a práce s databází při finančních operacích	44
+13.1 Průběh platby	44
+13.2 Idempotence a fingerprint	45
+13.3 Refundace	45
+13.4 Zajištění integrity na úrovni databáze	46
+14 Caching	46
+14.1 Serverový caching statických souborů	46
+14.2 Klientský caching dat	47
+14.3 Persistence stavu objednávky	49
+15 Statistiky a historie plateb	49
+15.1 Statistiky akcí	49
+15.2 Historie transakcí	50
+16 Kopírování (paste) a zpět/znovu (undo/redo)	51
+16.1 Kopírování (paste)	51
+16.2 Vrátit zpět a provést znovu (undo/redo)	52
+17 Využití — jak vypadá používání aplikace	54
+17.1 Přihlášení	54
+17.2 Výběr akce a stánku	54
+17.3 Pokladní rozhraní (index)	54
+17.4 Správa akcí (event manager)	56
+17.5 Správa zaměstnanců (admin)	56
+17.6 Správa smazaných záznamů	57
+17.7 Typický scénář obsluhy	57
+17.7.1 Scénář pokladního (cashier):	58
+17.7.2 Scénář prodejce (seller):	58
+18 Bezpečnostní implementace	59
+18.1 Hashování hesel	59
+18.2 Rate limiting	59
+18.3 Validace nahrávaných souborů	59
+18.4 Ochrana cookies a sessions	59
+18.5 Threat model — proti čemu se systém brání	60
+18.5.1 Hrozby, proti kterým se systém aktivně brání	60
+18.6 Validace vstupních dat	60
+18.6.1 Co je mimo scope systému	62
+19 Plánované úlohy na pozadí a logování	63
+19.1 Plánované úlohy	63
+19.1.1 Zálohování databáze	63
+19.2 Logování	64
+19.2.1 Logování transakcí	65
+20 Frontend a uživatelské rozhraní	65
+20.1 Architektura frontendu	65
+20.2 Event delegation	65
+20.3 Vyhledávání a řazení tabulek	65
+20.3.1 Vyhledávání	66
+20.3.2 Řazení	67
+21 Testování	68
+21.1 Unit testy a integrační testy	68
+21.2 Kritické scénáře — platby a refundace	69
+21.3 Testy undo/redo a paste	69
+21.4 Další testované oblasti	70
+ZÁVĚR	71
+SEZNAM POUŽITÉ LITERATURY	74
+Přílohy	75
 
  
 ÚVOD
@@ -129,32 +144,28 @@ Tato práce se zabývá návrhem a realizací webové aplikace sloužící jako 
 1.1 Vývoj bezhotovostních platebních systémů
 Historie bezhotovostního placení sahá až do 50. let 20. století, kdy se začaly používat první platební karty. Skutečný rozmach však přišel s rozvojem elektronických terminálů v 80. a 90. letech. Na přelomu tisíciletí se objevily první bezkontaktní technologie založené na standardech RFID (Radio-Frequency Identification) a později NFC (Near Field Communication), které umožnily platbu pouhým přiložením karty nebo telefonu k terminálu.
 V prostředí festivalů a uzavřených akcí se tyto technologie začaly prosazovat přibližně od roku 2010. Systémy jako Intellipay, Tappit nebo český Albi Pay umožňují organizátorům vytvořit uzavřený platební ekosystém, ve kterém návštěvníci platí pomocí náramků nebo karet s RFID/NFC čipem. Hlavní výhody těchto systémů spočívají ve zrychlení obsluhy, eliminaci hotovosti, snadnějším účtování a možnosti sledovat prodeje v reálném čase.
-
 1.2 Webové technologie a jejich role
 Současný vývoj webových aplikací prošel za posledních dvacet let dramatickou transformací. Od statických HTML stránek se posunul k dynamickým aplikacím schopným soupeřit s desktopovým softwarem. Klíčovou roli v tomto vývoji sehrál jazyk JavaScript na straně klienta a vznik serverových frameworků v jazycích jako Python, Ruby, Java nebo JavaScript (Node.js).
 Python se stal jedním z nejpopulárnějších programovacích jazyků díky své čitelnosti, rozsáhlému ekosystému knihoven a silné komunitě. V oblasti webového vývoje nabízí Python několik frameworků — od minimalistického Flasku přes robustní Django až po moderní FastAPI. Pro projekt bezhotovostního platebního systému byl zvolen Flask, jehož modulární architektura a nízká bariéra vstupu umožňují rychlý vývoj a snadnou údržbu.
 Na straně databázových systémů dominuje PostgreSQL jako jeden z nejvyspělejších open-source relačních databázových systémů. PostgreSQL nabízí pokročilé funkce jako JSONB datový typ, triggery, advisory zámky a robustní transakční mechanismus, které jsou pro finanční systém klíčové.
-
 1.3 RFID a NFC technologie
 RFID (Radio-Frequency Identification) je technologie umožňující bezdrátovou identifikaci objektů pomocí rádiových vln. RFID systém se skládá ze dvou základních komponent: tagu (čipu) umístěného na identifikovaném objektu a čtečky, která vysílá rádiový signál a přijímá odpověď z tagu. Pasivní RFID tagy nemají vlastní zdroj energie — jsou napájeny elektromagnetickým polem čtečky, což umožňuje jejich miniaturizaci a nízkou cenu.
-NFC (Near Field Communication) je podmnožina RFID technologie pracující na frekvenci 13,56 MHz s dosahem do přibližně 10 cm. NFC přináší oproti obecnému RFID výhodu ve standardizovaném komunikačním protokolu a široké podpoře v mobilních zařízeních. Pro platební systémy je NFC vhodná díky krátkému dosahu, který minimalizuje riziko nechtěného načtení karty, a díky rychlosti komunikace.
+NFC (Near Field Communication) je podmnožina RFID. NFC Forum popisuje NFC jako krátkodosahovou technologii na frekvenci 13,56 MHz, s komunikací mezi zařízeními vzdálenými jen několik centimetrů, což ji činí vhodnou pro bezpečné bezkontaktní platby díky minimalizaci rizika nechtěného načtení. NFC přináší oproti obecnému RFID výhodu ve standardizovaném komunikačním protokolu a široké podpoře v mobilních zařízeních.
 V kontextu tohoto projektu slouží RFID/NFC karty jako nosič jednoznačného identifikátoru (tag ID), který je při přiložení ke čtečce přenesen do webové aplikace. Čtečka je připojena k počítači přes USB a komunikuje prostřednictvím sériového portu. Webová aplikace využívá Web Serial API prohlížeče pro přímou komunikaci se čtečkou bez potřeby dalšího softwaru.
-
 2 Teoretická východiska
 2.1 Architektura webových aplikací
 Webové aplikace typicky fungují na principu klient-server architektury. Klient (webový prohlížeč) odesílá HTTP požadavky na server, který je zpracuje a vrátí odpověď — nejčastěji ve formátu HTML, JSON nebo jiných datových formátů. Tato architektura přináší výhodu centralizované správy dat a logiky na serveru, zatímco klient se stará o prezentaci a uživatelskou interakci.
 V moderních webových aplikacích se ustálily dva hlavní přístupy: tradiční serverové vykreslování (SSR — Server-Side Rendering), kde server generuje kompletní HTML stránky, a jednostránkové aplikace (SPA — Single Page Application), kde se počáteční stránka načte jednou a veškerá další komunikace se serverem probíhá pomocí asynchronních požadavků (AJAX/fetch), přičemž se aktualizují pouze části stránky.
 Tento projekt využívá hybridní přístup — server vykresluje základní HTML šablony pomocí šablonovacího systému Jinja2, ale veškerý dynamický obsah je načítán a aktualizován prostřednictvím JavaScriptového kódu, který komunikuje s REST API endpointy serveru. Tento přístup kombinuje výhody obou metod: rychlé počáteční načtení stránky a plynulou interakci bez nutnosti znovunačítání.
-
 2.2 REST API a komunikace klient-server
-REST (Representational State Transfer) je architektonický styl pro návrh síťových aplikací. REST API definuje sadu konvencí pro komunikaci mezi klientem a serverem pomocí standardních HTTP metod:
+Následující definice REST API byla vygenerována pomocí Claude Opus 4.6 (Anthropic, 2026):
+„REST (Representational State Transfer) je architektonický styl pro návrh síťových aplikací. REST API definuje sadu konvencí pro komunikaci mezi klientem a serverem pomocí standardních HTTP metod:
 ●	GET — získání dat (čtení),
 ●	POST — vytvoření nového záznamu nebo provedení akce,
 ●	PUT/PATCH — aktualizace existujícího záznamu,
 ●	DELETE — smazání záznamu.
-Každý endpoint API představuje určitý zdroj (resource) identifikovaný URL adresou. Server vrací data typicky ve formátu JSON, který je nativně podporován JavaScriptem a snadno zpracovatelný na obou stranách komunikace.
+Každý endpoint API představuje určitý zdroj (resource) identifikovaný URL adresou. Server vrací data typicky ve formátu JSON, který je nativně podporován JavaScriptem a snadno zpracovatelný na obou stranách komunikace.“
 V tomto projektu jsou API endpointy organizovány do logických skupin (blueprintů) podle domény — transakce, uživatelé, události, produkty a další. Klient využívá nativní funkci fetch() pro komunikaci se serverem, což eliminuje závislost na externích knihovnách.
-
 2.3 Relační databáze a transakční zpracování
 Relační databáze ukládají data ve formě tabulek propojených vztahy (relacemi). Tento model, poprvé formalizovaný Edgarem F. Coddem v roce 1970, se stal standardem pro strukturovaná data díky své matematické podloženosti, flexibilitě dotazovacího jazyka SQL a silným záručním mechanismům.
 Pro finanční systémy je naprosto zásadní koncept ACID transakcí:
@@ -163,7 +174,6 @@ Pro finanční systémy je naprosto zásadní koncept ACID transakcí:
 ●	Izolace (Isolation) — souběžně probíhající transakce se navzájem neovlivňují. Každá transakce vidí konzistentní stav dat.
 ●	Trvanlivost (Durability) — jakmile je transakce potvrzena (committed), její změny jsou trvale uloženy i v případě výpadku systému.
 V kontextu platebního systému znamená dodržení ACID vlastností například to, že platba je buď kompletně provedena (odečtena z peněženky a zaznamenána jako transakce), nebo k ní vůbec nedojde — nikdy nemůže nastat situace, kdy by se peníze odečetly, ale transakce by nebyla zaznamenána, či naopak.
-
 2.4 Soft-delete vzor
 Soft-delete je návrhový vzor, při kterém se záznamy z databáze fyzicky neodstraňují, ale pouze se označí jako smazané — typicky nastavením časového razítka do sloupce deleted_at. Tento přístup přináší několik výhod:
 ●	Obnovitelnost — smazané záznamy lze kdykoliv obnovit nastavením deleted_at zpět na NULL.
@@ -171,101 +181,86 @@ Soft-delete je návrhový vzor, při kterém se záznamy z databáze fyzicky neo
 ●	Referenční integrita — záznamy, na které odkazují jiné tabulky (například transakce odkazující na smazaného uživatele), zůstávají v databázi a nedojde k porušení cizích klíčů.
 ●	Bezpečnost — eliminuje se riziko nechtěného nevratného smazání dat.
 Nevýhodou soft-delete je nutnost přidávat podmínku WHERE deleted_at IS NULL do většiny dotazů a potenciální nárůst velikosti databáze. Tyto nevýhody jsou však v kontextu finančního systému zanedbatelné ve srovnání s přínosy.
-
 2.5 Idempotence v síťové komunikaci
 Idempotence je vlastnost operace, která zaručuje, že opakované provedení stejné operace má stejný výsledek jako její jednorázové provedení. V kontextu webových API je idempotence kriticky důležitá, protože síťová komunikace je ze své podstaty nespolehlivá — požadavek může být odeslán vícekrát kvůli výpadku spojení, opakovanému kliknutí uživatele nebo chybě na straně klienta.
 U finančních transakcí má nedodržení idempotence potenciálně katastrofální důsledky — dvojité provedení platby znamená dvojité odečtení peněz z účtu. Řešením je zavedení idempotentního klíče (idempotency key), který jednoznačně identifikuje každou zamýšlenou operaci. Server si zapamatuje výsledek operace spojeného s daným klíčem a při opakovaném požadavku se stejným klíčem vrátí uložený výsledek namísto opětovného provedení operace.
-
 2.6 Zamykání a souběžný přístup
 Souběžný přístup více uživatelů k databázi vyžaduje mechanismy, které zabrání vzájemnému narušení dat. Existuje několik úrovní zamykání:
 ●	Řádkové zámky (row-level locks) — zamykají konkrétní řádky v tabulce. Používají se typicky při aktualizaci konkrétního záznamu, například zůstatku peněženky.
 ●	Kooperativní zámky (advisory locks) — jsou zámky na úrovni aplikace, které databáze spravuje, ale nevynucuje automaticky. Aplikace je používá pro koordinaci logických operací, které by se neměly provádět souběžně.
 V platebním systému se řádkové zámky využívají při manipulaci se zůstatkem peněženky — klauzule SELECT ... FOR UPDATE zajistí, že dva souběžné pokusy o platbu ze stejné peněženky nepovedou k nekonzistentnímu stavu. Kooperativní zámky slouží k zamezení souběžného provádění operací undo/redo nebo hromadného kopírování dat jedním zaměstnancem.
-
 3 Použité technologie a nástroje
 3.1 Python
-Python je vysokoúrovňový, interpretovaný programovací jazyk s dynamickým typováním a automatickou správou paměti. Vyznačuje se čitelnou syntaxí, která klade důraz na srozumitelnost kódu, a rozsáhlou standardní knihovnou. Python podporuje více programovacích paradigmat — procedurální, objektově orientované i funkcionální programování.
-Pro vývoj webových aplikací je Python vhodný díky široké nabídce frameworků, aktivní komunitě a velkému množství kvalitních knihoven pro práci s databázemi, zabezpečením, validací dat a dalšími úlohami. Alternativami pro vývoj webových aplikací by mohly být JavaScript/TypeScript s Node.js (výhoda sdílení jazyka mezi klientem a serverem), Java se Spring frameworkem (robustní, ale těžkopádnější), Go (vysoký výkon, ale menší ekosystém pro webový vývoj) nebo PHP s Laravelem (tradiční volba pro webové aplikace). Python s Flaskem byl zvolen pro svou jednoduchost, flexibilitu a silný ekosystém bezpečnostních knihoven.
-
+Následující popis jazyka Python byl vygenerován pomocí Claude Opus 4.6 (Anthropic, 2026):
+„Python je vysokoúrovňový, interpretovaný programovací jazyk s dynamickým typováním a automatickou správou paměti. Vyznačuje se čitelnou syntaxí, která klade důraz na srozumitelnost kódu, a rozsáhlou standardní knihovnou. Python podporuje více programovacích paradigmat — procedurální, objektově orientované i funkcionální programování.
+Pro vývoj webových aplikací je Python vhodný díky široké nabídce frameworků, aktivní komunitě a velkému množství kvalitních knihoven pro práci s databázemi, zabezpečením, validací dat a dalšími úlohami. Alternativami pro vývoj webových aplikací by mohly být JavaScript/TypeScript s Node.js (výhoda sdílení jazyka mezi klientem a serverem), Java se Spring frameworkem (robustní, ale těžkopádnější), Go (vysoký výkon, ale menší ekosystém pro webový vývoj) nebo PHP s Laravelem (tradiční volba pro webové aplikace).“
+Python s Flaskem byl zvolen pro svou jednoduchost, flexibilitu a silný ekosystém bezpečnostních knihoven.
 3.2 Flask
 Flask je mikroframework pro webové aplikace v Pythonu. Označení „mikro" neznamená, že by byl omezený — naopak, Flask poskytuje jádro pro zpracování HTTP požadavků, směrování, šablonování a správu sessions a umožňuje rozšíření pomocí pluginů (extensions) podle potřeb konkrétního projektu.
 Hlavní výhodou Flasku oproti robustnějším frameworkům jako Django je svoboda ve výběru komponent — vývojář není nucen používat konkrétní ORM, šablonovací systém nebo autentizační mechanismus. To je obzvláště výhodné pro projekt, kde je potřeba přímá kontrola nad databázovými dotazy (namísto ORM) a vlastní implementace session mechanismu.
 Flask používá systém blueprintů pro modularizaci aplikace. Blueprint je logická skupina pohledů (views), šablon a statických souborů, která může být registrována do hlavní aplikace. Tento přístup umožňuje rozdělit velkou aplikaci do samostatných, snadno spravovatelných modulů.
-
 3.3 PostgreSQL
 PostgreSQL je pokročilý open-source relační databázový systém s více než 35letou historií vývoje. Oproti jiným databázím (MySQL, SQLite, MariaDB) vyniká pokročilými funkcemi:
-●	JSONB — binární formát pro ukládání JSON dat s podporou indexování a dotazování. Umožňuje kombinovat výhody relačního a dokumentového modelu.
+●	JSONB — dle dokumentace PostgreSQL se jedná o binární formát pro ukládání JSON dat s podporou indexování a dotazování. Umožňuje kombinovat výhody relačního a dokumentového modelu.
 ●	Triggery — procedury automaticky spouštěné při určitých databázových událostech (INSERT, UPDATE, DELETE). Umožňují implementovat business logiku přímo na úrovni databáze.
 ●	Kooperativní zámky (advisory locks) — aplikační zámky spravované databází pro koordinaci souběžných operací.
-●	Pokročilé indexy — parciální indexy (pouze pro podmnožinu řádků), expression indexy (nad výrazem, například LOWER(name)), GIN indexy pro JSONB.
+●	Pokročilé indexy  — parciální indexy (pouze pro podmnožinu řádků), expression indexy (nad výrazem, například LOWER(name)), GIN indexy pro JSONB.
 ●	Silný transakční model — plná podpora ACID s pokročilými úrovněmi izolace.
 SQLite by pro tento projekt nebyl vhodný kvůli omezenému souběžnému přístupu a absenci pokročilých funkcí. MySQL by byl funkčně dostačující, ale PostgreSQL nabízí lepší podporu pro triggery, JSONB a kooperativní zámky, které jsou v projektu intenzivně využívány.
-
 3.4 JavaScript a Web Serial API
 Na straně klienta je použit čistý JavaScript (vanilla JS) bez použití frameworků jako React, Vue nebo Angular. Tento přístup eliminuje závislost na externích nástrojích pro sestavení (build tools) a zjednodušuje nasazení — stačí servírovat statické soubory bez nutnosti kompilace.
 JavaScript je organizován do ES modulů (ECMAScript modules), což umožňuje logické rozdělení kódu do samostatných souborů s jasně definovanými importy a exporty. Moderní prohlížeče nativně podporují ES moduly prostřednictvím atributu type="module" ve skriptových tagech.
-Web Serial API je relativně nové rozhraní prohlížeče umožňující přímou komunikaci se zařízeními připojenými přes sériový port (USB, Bluetooth). Toto API je klíčové pro čtení dat z RFID/NFC čteček bez nutnosti instalace dalšího softwaru nebo ovladačů. Web Serial API je v současnosti podporováno v prohlížečích založených na Chromiu (Google Chrome, Microsoft Edge, Opera).
-
+Web Serial API je relativně nové rozhraní prohlížeče umožňující přímou komunikaci se zařízeními připojenými přes sériový port (USB, Bluetooth). Toto API je klíčové pro čtení dat z RFID/NFC čteček bez nutnosti instalace dalšího softwaru nebo ovladačů. Dle MDN je API v současnosti podporováno v prohlížečích založených na Chromiu. (Google Chrome, Microsoft Edge, Opera).
 3.5 Další technologie a knihovny
 Projekt využívá řadu dalších technologií a knihoven:
 ●	psycopg 3 — moderní PostgreSQL adaptér pro Python s podporou connection poolingu, parametrizovaných dotazů a asynchronního přístupu.
-●	Argon2 — vítěz soutěže Password Hashing Competition (2015), považovaný za nejbezpečnější algoritmus pro hashování hesel. Odolný vůči útokům hrubou silou i specializovanému hardwaru (GPU, ASIC).
+●	Argon2 — Dle doporučení OWASP Password Storage Cheat Sheet (2024) je Argon2id preferovanou volbou pro hashování  hesel. Algoritmus zvítězil v soutěži Password Hashing Competition (2015) a je považovaný za nejbezpečnější algoritmus pro hashování hesel. Je odolný vůči útokům hrubou silou i specializovanému hardwaru (GPU, ASIC).
 ●	Chart.js — JavaScriptová knihovna pro vytváření interaktivních grafů. Použita pro vizualizaci statistik akcí.
 ●	Jinja2 — šablonovací engine pro Python, integrovaný do Flasku. Umožňuje generovat HTML s dynamickým obsahem.
 ●	APScheduler — knihovna pro plánování periodických úloh na pozadí (například čištění expirovaných sessions).
 ●	Flask-Limiter — rozšíření Flasku pro omezení počtu požadavků (rate limiting) jako ochrana proti DoS útokům.
 ●	Pillow — knihovna pro zpracování a validaci obrázků.
-
 4 Bezpečnostní aspekty
 4.1 Autentizace a správa hesel
-Autentizace je proces ověření identity uživatele. V webových aplikacích se nejčastěji provádí pomocí uživatelského jména (nebo e-mailu) a hesla. Kritickým aspektem je způsob ukládání hesel — hesla se nikdy neukládají v čitelné podobě, ale jako hash (jednosměrná transformace). Při ověření se hashuje zadané heslo a porovná se s uloženým hashem.
+Autentizace je proces ověření identity uživatele. V webových aplikacích se nejčastěji provádí pomocí uživatelského jména (nebo e-mailu) a hesla. Kritickým aspektem je způsob ukládání hesel — hesla se nikdy neukládají v čitelné podobě, ale jako hash. Při ověření se hashuje zadané heslo a porovná se s uloženým hashem.
 Moderní hashovací algoritmy pro hesla (Argon2, bcrypt, scrypt) jsou záměrně pomalé a paměťově náročné, aby ztížily útok hrubou silou. Argon2, použitý v tomto projektu, má konfigurovatelné parametry pro časovou náročnost (time cost), paměťovou náročnost (memory cost) a míru paralelismu, což umožňuje přizpůsobit bezpečnostní úroveň dostupnému hardwaru.
-
 4.2 Správa sessions
 Po úspěšné autentizaci je nutné udržovat informaci o přihlášení uživatele napříč požadavky. K tomu slouží sessions — mechanismus pro udržování stavu v jinak bezstavovém protokolu HTTP. Existují dva základní přístupy:
 ●	Klientské sessions — veškerá data jsou uložena v cookie na straně klienta (typicky šifrovaná a podepsaná). Výhodou je jednoduchost, nevýhodou omezená velikost a nemožnost serverové invalidace.
 ●	Serverové sessions — v cookie je uložen pouze identifikátor session (session ID) a vlastní data jsou uložena na serveru (v databázi, Redis, souborovém systému). Výhodou je plná kontrola nad životním cyklem session a možnost invalidace.
 Pro finanční systém je serverové ukládání sessions bezpečnější, protože umožňuje okamžitou invalidaci session (například při odhlášení nebo podezření na kompromitaci) a neumožňuje klientovi manipulovat se session daty.
-
 4.3 Ochrana proti běžným útokům
 Webové aplikace čelí řadě bezpečnostních hrozeb. Mezi nejzávažnější patří:
 ●	SQL injection — útočník vloží škodlivý SQL kód do vstupních polí. Ochranou je důsledné používání parametrizovaných dotazů, kdy jsou uživatelská data oddělena od SQL příkazů.
 ●	Cross-Site Scripting (XSS) — útočník vloží škodlivý JavaScript kód, který se spustí v prohlížeči jiného uživatele. Ochranou je escapování uživatelských dat při vkládání do HTML.
 ●	Cross-Site Request Forgery (CSRF) — útočník přiměje přihlášeného uživatele k nevědomému provedení akce. Ochranou je nastavení cookie atributu SameSite a případně použití CSRF tokenů.
 ●	Brute-force útoky — systematické zkoušení hesel. Ochranou je omezení počtu pokusů o přihlášení (rate limiting).
-
 4.4 Zabezpečení finančních operací
 Finanční operace vyžadují zvláštní pozornost z hlediska bezpečnosti. Klíčové aspekty zahrnují:
 ●	Neměnnost záznamů — transakce jednou zapsané do systému nesmí být měnitelné ani smazatelné, aby byla zajištěna auditovatelnost a integrita finančních dat.
 ●	Kontrola oprávnění — každá finanční operace musí být autorizována na více úrovních (aplikační logika i databázové triggery).
 ●	Atomicita operací — platba musí být provedena kompletně (odečtení z peněženky + zápis transakce), nebo vůbec.
 ●	Ochrana proti duplicitním operacím — mechanismus idempotence zabraňuje dvojitému provedení téže platby.
-
 5 Shrnutí teoretické části a přechod k praktické části
 V teoretické části byly představeny principy a technologie, na kterých je platební systém postaven. Byly popsány koncepty webové architektury klient-server, REST API, relačních databází s ACID transakcemi, bezpečnostního zabezpečení webových aplikací a komunikace s hardwarovými zařízeními prostřednictvím Web Serial API. Dále byly představeny konkrétní technologie — Python s Flaskem, PostgreSQL, JavaScript a další knihovny — společně se zdůvodněním jejich výběru.
 V následující praktické části bude podrobně popsána samotná implementace systému: struktura projektu, databázové schéma, způsob komunikace s kartovými čtečkami, systém oprávnění, finanční operace, caching, statistiky a další funkce. Praktická část obsahuje ukázky kódu, diagramy a konkrétní popisy řešení jednotlivých problémů.
  
 PRAKTICKÁ ČÁST
-
 6 Cíle práce a zadání
 6.1 Zadání
 Zadání maturitní práce zní: „Cashier Systém — Kompletní systém pro bezhotovostní platby na hromadných akcích, součástí bude i pokladna pro nabíjení čipů, databázový systém, jednotlivé terminálové kasy, statistiky, výpisy, přehledy. Různé role a práva přístupu, kontrolní mechanismy, zálohování, offline status."
-
 6.2 Hlavní cíl
 Navrhnout a implementovat funkční, bezpečný a snadno nasaditelný bezhotovostní platební systém pro hromadné akce, který bude použitelný prostřednictvím webového prohlížeče bez nutnosti instalace speciálního softwaru.
-
 6.3 Dílčí cíle
 1.	Správa více souběžných akcí — systém umožní organizátorům vytvářet a spravovat více akcí současně, každou s vlastní sadou stánků, produktů, kategorií a zaměstnanců.
 2.	Integrita a bezpečnost finančních dat — finanční transakce budou atomické a neměnné, systém zajistí konzistenci dat i při souběžném přístupu více uživatelů a ochrání se proti běžným bezpečnostním hrozbám (SQL injection, duplicitní transakce, neoprávněný přístup).
 3.	Statistiky a přehledy — systém poskytne organizátorům detailní statistiky prodejů a historii transakcí na úrovni akce, stánků i jednotlivých produktů.
-
 7 Architektura systému
  Aplikace využívá třívrstvou architekturu klient-server:
 ●	Prezentační vrstva (klient) — webový prohlížeč s JavaScriptovým kódem, který komunikuje se serverem přes REST API a se čtečkou karet přes Web Serial API.
 ●	Aplikační vrstva (server) — Flask aplikace v Pythonu, která zpracovává HTTP požadavky, provádí autentizaci a autorizaci, validuje vstupy a komunikuje s databází.
 ●	Datová vrstva (databáze) — PostgreSQL databáze s 17 tabulkami, rozsáhlou soustavou triggerů a integritních omezení. Významná část business logiky (validace transakcí, ochrana neměnnosti, normalizace dat) je implementována přímo na úrovni databáze.
 Komunikace mezi vrstvami probíhá následovně: uživatel (zaměstnanec) interaguje s webovým rozhraním v prohlížeči. JavaScript odesílá požadavky na Flask server, který je zpracuje a provede odpovídající databázové operace. Výsledky se vrací ve formátu JSON a JavaScript aktualizuje zobrazení. Čtečka RFID/NFC karet je připojena přímo k prohlížeči prostřednictvím Web Serial API — server se o komunikaci se čtečkou nestará, pouze přijímá tag ID karty jako parametr požadavku.
-
 8 Prerekvizity a instalace
 8.1 Systémové požadavky
 Pro spuštění aplikace je potřeba:
@@ -275,62 +270,159 @@ Pro spuštění aplikace je potřeba:
 ●	Git — systém správy verzí pro klonování repozitáře a správu zdrojového kódu (potřebný pouze pro instalaci)
 ●	RFID/NFC čtečka — připojená přes USB, komunikující přes sériový port.
 ●	Node.js 18+ — potřebný pro spuštění testů.
-
 8.2 Instalace a spuštění
-1. Získání projektu:
+1.	Získání projektu:
 git clone https://github.com/mgvsetin/2426-mp-ThomasMuij.git
 cd 2426-mp-ThomasMuij
 Případně stáhněte ZIP archiv projektu a rozbalte ho.
-2. Vytvoření virtuálního prostředí (doporučeno):
+2.	Vytvoření virtuálního prostředí (doporučeno):
 python -m venv .venv
 Aktivace (windows):
 .venv\Scripts\activate
 Aktivace (Linux/macOS):
 source .venv/bin/activate
-3. Instalace Python závislostí:
+3.	Instalace Python závislostí:
 pip install -r requirements.txt
 Hlavní závislosti zahrnují: Flask, psycopg (s poolem), argon2-cffi, Flask-Limiter, APScheduler, Pillow, phonenumbers, email-validator a python-dateutil.
-4. Příprava databáze:
-Vytvořte PostgreSQL databázi a uživatele:
+4.	Příprava databáze:
+Vytvořte PostgreSQL databázi a uživatele (přes psql nebo pgAdmin):
 CREATE DATABASE cashier_app;
+Pro testování:
+CREATE DATABASE cashier_app_test;
 Na systémech Debian/Ubuntu může být nutné doinstalovat balík postgresql-contrib pro rozšíření pgcrypto (rozšíření se aktivuje automaticky při inicializaci schématu).
 Nastavte připojovací údaje buď proměnnou prostředí DATABASE_CONNINFO, nebo v souboru instance/config.py (nezapomeňte změnit heslo):
-DATABASE_CONNINFO = "dbname=cashier_app host=localhost user=postgres password=heslo port=5432 options='-c timezone=UTC'"
-5. Inicializace databázového schématu:
+DATABASE_CONNINFO = "dbname=cashier_app host=localhost user=postgres password=heslo port=5432"
+5.	Inicializace databázového schématu:
 flask --app cashier_app init-db
-Další dostupné CLI příkazy pro správu databáze:
-flask --app cashier_app backup-db
-flask --app cashier_app restore-db [soubor]
-Příkaz backup-db vytvoří zálohu databáze do adresáře BACKUP_DIR. Příkaz restore-db obnoví databázi ze zadaného záložního souboru; pokud soubor není zadán, použije se automaticky nejnovější záloha.
-6. Spuštění vývojového serveru:
+6.	Spuštění vývojového serveru:
 flask --app cashier_app run
 Aplikace bude dostupná na http://localhost:5000.
-7. Produkční nasazení:
+7.	Produkční nasazení:
 Pro produkci se doporučuje použít WSGI server (například Gunicorn) za reverzním proxy serverem (nginx). Nginx by měl obsluhovat statické soubory a složku s nahranými obrázky produktů. V konfiguraci je nutné:
 nastavit SESSION_COOKIE_SECURE = True,
 vygenerovat silný SECRET_KEY (např. python -c "import secrets; print(secrets.token_urlsafe(32))"),
 nakonfigurovat PROXY_FIX podle nastavení reverzního proxy.
-
 8.3 Konfigurace
-Aplikace se konfiguruje prostřednictvím výchozích hodnot v tovární funkci create_app(), které lze přepsat souborem instance/config.py nebo proměnnými prostředí. Mezi klíčové konfigurační položky patří:
-●	SECRET_KEY — tajný klíč pro podepisování sessions (v produkci nutno změnit),
-●	DATABASE_CONNINFO — připojovací řetězec pro PostgreSQL,
-●	READER_INFO — nastavení sériového portu pro čtečku karet (baudRate, dataBits, atd.),
-●	MAX_UNDO_CHANGES — maximální počet kroků zpět (výchozí: 30),
-●	REFUND_TIME_LIMIT_MINUTES — časový limit pro vrácení platby (výchozí: 5 minut),
-●	MAX_CONTENT_LENGTH — maximální velikost nahrávaného souboru (výchozí: 16 MB),
-●	BACKUP_DIR — adresář pro zálohy databáze (výchozí: instance/backups/),
-●	BACKUP_MAX_COUNT — maximální počet uchovávaných záloh (výchozí: 10),
-●	SCHEDULER_BACKUP_MINUTES — interval automatického zálohování v minutách (výchozí: 0 = vypnuto).
+Aplikace se konfiguruje prostřednictvím výchozích hodnot v tovární funkci create_app(), které lze přepsat souborem instance/config.py nebo proměnnými prostředí. Soubor instance/config.py se vytvoří automaticky při prvním spuštění aplikace (pokud neexistuje). Jedná se o běžný Python soubor — hodnoty se zapisují jako přiřazení do proměnných (např. SECRET_KEY = "..."). Hodnoty zapsané v tomto souboru přepíší výchozí nastavení z create_app(). Dvě hodnoty (SECRET_KEY a DATABASE_CONNINFO) lze alternativně nastavit proměnnými prostředí (CASHIER_APP_SECRET a DATABASE_CONNINFO) — proměnná prostředí má přednost před výchozí hodnotou, ale soubor config.py má přednost před oběma.
+8.3.1 Přehled konfiguračních položek
+Bezpečnost a sessions:
+●	SECRET_KEY — tajný klíč pro podepisování sessions. Výchozí hodnota je pouze ukázková (pro development) a nesmí se používat v produkci. Doporučení: vygenerovat příkazem python -c "import secrets; print(secrets.token_urlsafe(32))" a vložit do config.py.
+●	SESSION_COOKIE_SECURE — určuje, zda se session cookie odesílá pouze přes HTTPS. Výchozí: False. Doporučení pro produkci: True (vyžaduje HTTPS).
+●	SESSION_COOKIE_HTTPONLY — zabraňuje přístupu JavaScriptu k session cookie. Výchozí: True. Doporučení: ponechat True.
+●	SESSION_COOKIE_SAMESITE — omezuje odesílání cookie při cross-site požadavcích. Výchozí: 'Lax'. Doporučení: 'Lax' nebo 'Strict'. Při nastavení na None je nutné přidat CSRF ochranu.
+●	SESSION_ENFORCE_UA — vynucuje kontrolu User-Agent při ověřování sessions. Výchozí: False. Doporučení pro produkci: False (User-Agent se často mění a může způsobovat falešné odhlášení).
+●	SESSION_ENFORCE_IP — vynucuje kontrolu IP adresy při ověřování sessions. Výchozí: False. Doporučení pro produkci: False (IP adresa se může měnit kvůli mobilním sítím, VPN nebo proxy).
+●	SESSION_MAX_INACTIVE_DAYS — počet dnů neaktivity, po kterém session vyprší. Výchozí: 7.
+Databáze:
+●	DATABASE_CONNINFO — připojovací řetězec pro PostgreSQL ve formátu libpq. Výchozí: lokální připojení s heslem heslo123. Doporučení: nastavit skutečné přístupové údaje a silné heslo. Příklad: "dbname=cashier_app host=localhost user=postgres password=silne_heslo port=5432 ".
+Reverzní proxy:
+●	PROXY_FIX — slovník pro konfiguraci Werkzeug ProxyFix middleware. Výchozí: všechny hodnoty 0 (proxy není aktivní). Nastavuje se pouze pokud aplikace běží za reverzním proxy serverem (např. nginx). Klíče: x_for (počet důvěryhodných proxy pro X-Forwarded-For), x_proto, x_host, x_port, x_prefix a volitelně trusted_hosts (seznam IP adres proxy). Pro produkci nastavte hodnoty podle nastavení reverzní proxy.
+Čtečka karet:
+●	READER_INFO — slovník s nastavením sériového portu pro NFC/RFID čtečku. Povinný klíč serial_port_options obsahuje parametry: baudRate (výchozí: 9600), dataBits (8), stopBits (1), parity ('none'), flowControl ('none'). Volitelný klíč filters obsahuje seznam slovníků s USB vendor/product ID pro filtrování dostupných zařízení v prohlížeči. Doporučení: výchozí hodnoty jsou vhodné pro běžné čtečky (pokud má čtečka jiné, tak je nutné výchozí hodnoty změnit); filtry nastavit podle konkrétního modelu čtečky.
+Undo a refundace:
+●	MAX_UNDO_CHANGES — maximální počet kroků zpět (undo) pro zaměstnance. Výchozí: 30. Doporučení: ponechat výchozí hodnotu.
+●	UNDO_TIME_LIMIT_MINUTES — časový limit v minutách, po jehož uplynutí již nelze provést undo. Výchozí: 60.
+●	REFUND_TIME_LIMIT_MINUTES — časový limit v minutách pro vrácení platby (refund). Výchozí: 5. Doporučení: nastavit podle provozních požadavků (např. 5–15 minut).
+Nahrávání obrázků:
+●	UPLOAD_FOLDER — cesta k adresáři pro ukládání obrázků produktů. Výchozí: instance/uploads/products/. Doporučení: ponechat výchozí, případně nastavit absolutní cestu při nestandardní struktuře.
+●	UPLOAD_IMAGE_PIXEL_LIMIT — maximální počet pixelů nahrávaného obrázku (ochrana proti dekompresi velkých obrázků). Výchozí: 50 000 000.
+●	ALLOWED_IMAGE_EXTENSIONS — povolené přípony souborů. Výchozí: {'jpeg', 'jpg', 'png', 'webp'}.
+●	ALLOWED_IMAGE_MIME_TYPES — povolené MIME typy. Výchozí: {'image/jpeg', 'image/png', 'image/webp'}.
+●	MAX_CONTENT_LENGTH — maximální velikost nahrávaného souboru v bajtech. Výchozí: 16 MB (16 * 1024 * 1024).
+Hashování hesel:
+●	PASSWORD_HASHER_PARAMETERS — slovník s parametry pro Argon2id. Výchozí: time_cost=3, memory_cost=65536 (64 MB), parallelism=2, hash_len=32, salt_len=16. Doporučení: výchozí parametry jsou bezpečné; při změně se existující hesla automaticky rehashují při příštím přihlášení.
+Plánovač úloh (scheduler):
+●	SCHEDULER_ENABLED — zapne/vypne plánovač automatických úloh. Výchozí: True.
+●	SCHEDULER_SESSION_CLEANUP_MINUTES — interval čištění expirovaných sessions v minutách. Výchozí: 60.
+●	SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES — interval mazání nepoužívaných obrázků. Výchozí: 180.
+●	SCHEDULER_DISK_ORPHANS_CLEANUP_MINUTES — interval mazání osiřelých souborů na disku. Výchozí: 720.
+●	SCHEDULER_BACKUP_MINUTES — interval automatického zálohování databáze v minutách. Výchozí: 30. Hodnota 0 zálohování vypne. Doporučení: 30–1440 (denní záloha) podle potřeby.
+Zálohy:
+●	BACKUP_DIR — adresář pro ukládání záloh databáze. Výchozí: instance/backups/.
+●	BACKUP_MAX_COUNT — maximální počet uchovávaných záložních souborů (nejstarší se automaticky mažou). Výchozí: 48.
+Ukázka doporučeného souboru instance/config.py pro produkční nasazení
+Soubor config.py by měl obsahovat pouze hodnoty, které se liší od výchozích. Vše ostatní se automaticky načte z create_app(). Následující ukázka obsahuje položky, které je nutné nebo vhodné nastavit pro produkci:
+# povinné:
 
+SECRET_KEY = "vygenerujte_prikazem: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+
+DATABASE_CONNINFO = """
+    dbname=cashier_app
+    host=localhost
+    user=postgres
+    password=silne_heslo
+    port=5432"""
+
+# --- Reverzní proxy (nastavte podle vaší proxy, např. nginx) ---
+
+# Například:
+PROXY_FIX = {
+    'x_for': 1,      # propustí 1 hodnotu z X-Forwarded-For -> skutečná klientská IP
+    'x_proto': 1,    # vezme X-Forwarded-Proto -> http/https
+    'x_host': 0,     # pokud potřebujete brát host z X-Forwarded-Host, nastavte 1
+    'x_port': 0,     # většinou 0
+    'x_prefix': 1,   # pokud nginx přidává X-Forwarded-Prefix (opakovaně), jinak 0
+    'trusted_hosts': ['127.0.0.1', '::1']  # IP/hosty vašich proxy
+}
+
+SESSION_COOKIE_SECURE = True
+
+READER_INFO = {
+    'serial_port_options': {
+        'baudRate': 9600, 
+        'dataBits': 8,
+        'stopBits': 1,
+        'parity': 'none',
+        'flowControl': 'none'
+    }
+    # 'filters': [
+    #     {'usbVendorId': 4292, 'usbProductId': 60000}
+    # ]
+}
+
+# můžete přidat a upravit hodnoty pro:
+
+# SESSION_COOKIE_SAMESITE = 'Lax'
+# SESSION_ENFORCE_UA = False
+# SESSION_ENFORCE_IP = False
+
+# PASSWORD_HASHER_PARAMETERS = {
+#     'time_cost': 3,
+#     'memory_cost': 65536,
+#     'parallelism':2,
+#     'hash_len': 32,
+#     'salt_len':16
+# }
+
+# MAX_UNDO_CHANGES = 30
+# UNDO_TIME_LIMIT_MINUTES = 60
+
+# REFUND_TIME_LIMIT_MINUTES = 5
+
+# UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'products')
+# UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000
+# ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'jpg', 'png', 'webp'}
+# ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+# MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+
+# SESSION_COOKIE_HTTPONLY = True
+
+# SESSION_MAX_INACTIVE_DAYS = 7
+
+# SCHEDULER_ENABLED = True
+# SCHEDULER_SESSION_CLEANUP_MINUTES = 60
+# SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES = 180
+# SCHEDULER_DISK_ORPHANS_CLEANUP_MINUTES = 720
+# SCHEDULER_BACKUP_MINUTES = 30
+# BACKUP_DIR = os.path.join(app.instance_path, 'backups')
+# BACKUP_MAX_COUNT = 48
 9 Databáze a její rozvržení
 9.1 Schéma databáze
-Databáze obsahuje 17 tabulek, které lze rozdělit do několika logických skupin:
+Obrázek 1 zobrazuje navržení databáze. Databáze obsahuje 17 tabulek, které lze rozdělit do několika logických skupin:
 Identita a přístup:
 ●	employees — zaměstnanci systému (administrátoři, manažeři, pokladní, prodejci),
 ●	users — uživatelé/návštěvníci akcí,
 ●	sessions — serverové sessions pro přihlášené zaměstnance,
-●	employee_event_booth_roles — přiřazení zaměstnanců k akcím a stánkům s definovanou rolí.
 Struktura akcí:
 ●	events — akce/události,
 ●	booths — stánky v rámci akce (typ cashier nebo seller),
@@ -339,6 +431,7 @@ Struktura akcí:
 ●	product_images — metadata o obrázcích produktů.
 ●	product_images_failed_to_delete — záznamy o obrázcích, které se nepodařilo smazat z úložiště.
 Vazební tabulky:
+●	employee_event_booth_roles — přiřazení zaměstnanců k akcím a stánkům s definovanou rolí.
 ●	product_booth_link — přiřazení produktů ke stánkům,
 ●	category_booth_link — přiřazení kategorií ke stánkům,
 ●	category_product_link — přiřazení produktů do kategorií.
@@ -349,23 +442,24 @@ Historie změn:
 ●	change_history — záznam změn pro funkci undo,
 ●	undo_change_history — záznamy o provedených undo operacích (pro funkci redo).
  
-
+Obrázek 1 – ER diagram databáze
+Zdroj: vlastní zpracování
 9.2 Triggery a integritní omezení
 Databáze využívá rozsáhlou soustavu triggerů, které zajišťují integritu dat přímo na úrovni databáze. Každá hlavní tabulka má BEFORE trigger, který:
 ●	Blokuje fyzické smazání — příkaz DELETE je zachycen a převeden na soft-delete (nastavení deleted_at = now()). Tím je zaručeno, že žádný záznam nemůže být fyzicky odstraněn z databáze.
 ●	Chrání neměnné sloupce — sloupce jako created_at, created_by, event_id nebo booth_type nelze po vytvoření záznamu měnit.
 ●	Normalizuje vstupní data — automaticky odstraňuje mezery na začátku a konci textu, převádí e-maily na malá písmena a jména na formát s velkým prvním písmenem.
 Trigger na tabulce transactions je nejkomplexnější — při vkládání nové transakce provádí více než deset kontrol (aktivita akce, existence stánku, oprávnění zaměstnance, dostatečný zůstatek, shoda event_id mezi peněženkou a stánkem atd.), zamyká řádek peněženky a aktualizuje zůstatek. U refundů navíc ověřuje, že transakce odkazuje na existující platbu prostřednictvím refunded_transaction_id, že odkazovaná transakce je typu payment a že dosud nebyla refundována. Trigger také kontroluje shodu typu transakce s typem stánku — cashier stánky smí provádět pouze balance-change, zatímco seller stánky pouze payment a refund. Zároveň kompletně blokuje UPDATE i DELETE operace na této tabulce, čímž zaručuje neměnnost finančních záznamů.
-
 9.3 Indexy
 Pro zajištění výkonu dotazů jsou v databázi definovány cílené indexy:
 ●	Transakce — indexy na wallet_id, (event_id, occurred_at DESC) a booth_id pokrývají nejčastější dotazy pro historii a statistiky.
 ●	Peněženky — unikátní parciální index na (event_id, tag_id) kde deleted_at IS NULL zajišťuje, že v rámci jedné akce existuje nejvýše jedna aktivní peněženka pro danou kartu.
 ●	Unikátní indexy — parciální unikátní indexy (s podmínkou WHERE deleted_at IS NULL) zajišťují, že unikátní omezení platí pouze pro aktivní (nesmazané) záznamy. Například dva zaměstnanci mohou mít stejné uživatelské jméno, pokud je jeden z nich smazán.
-
 10 Způsob programování a využití nástrojů
 10.1 Struktura projektu a Flask blueprinty
-Aplikace je organizována jako Flask package s modulární strukturou. Vstupním bodem je tovární funkce create_app() v souboru __init__.py, která vytváří a konfiguruje Flask instanci. Funkční logika je rozdělena do samostatných modulů, z nichž každý registruje jeden nebo více blueprintů:
+Aplikace je organizována jako Flask package s modulární strukturou. Vstupním bodem je tovární funkce create_app() v souboru __init__.py, která vytváří a konfiguruje Flask instanci.
+Tento přístup se nazývá Application Factory pattern — místo vytvoření globální instance aplikace na úrovni modulu se Flask objekt vytváří uvnitř funkce. To přináší výhody jako snadnější testování (každý test může vytvořit vlastní instanci s odlišnou konfigurací), možnost spouštět více instancí vedle sebe a čistější oddělení konfigurace od kódu. Tento vzor byl zvolen podle doporučení oficiální dokumentace Flasku pro větší projekty.
+Funkční logika je rozdělena do samostatných modulů, z nichž každý registruje jeden nebo více blueprintů:
 cashier_app/
 ├── __init__.py	# Tovární funkce, konfigurace
 ├── auth.py	# Autentizace (login/logout) 
@@ -387,7 +481,7 @@ cashier_app/
 │	└── ...
 ├── static/	# JS, CSS, ikony
 └── templates/	# Jinja2 HTML šablony
-Každý modul typicky definuje dva blueprinty — jeden pro HTML stránky (s URL prefixem jako /events) a jeden pro API endpointy (s prefixem /api/events). Toto oddělení usnadňuje orientaci v kódu a umožňuje nezávislý vývoj frontend a backend částí.
+Každý modul typicky definuje dva blueprinty — jeden pro HTML stránky (s URL prefixem jako /events) a jeden pro API endpointy (s prefixem /api/events). Toto oddělení usnadňuje orientaci v kódu a umožňuje nezávislý vývoj frontend  a backend  částí.
 
 10.2 Připojení k databázi — psycopg a connection pool
 Pro komunikaci s PostgreSQL je použita knihovna psycopg 3 s connection poolem. Connection pool udržuje předem vytvořená připojení k databázi a přiděluje je jednotlivým požadavkům, čímž eliminuje režii opakovaného navazování spojení:
@@ -481,7 +575,9 @@ Díky kroku 4 se do change_history nezapisují vazby, které zůstaly beze změn
 
 11 Práva přístupu
 11.1 Hierarchie rolí
-Systém implementuje čtyřúrovňovou hierarchii oprávnění:
+Systém implementuje čtyřúrovňovou hierarchii oprávnění, kterou znázorňuje Tabulka 1.
+Tabulka 1 – Přehled rolí a jejich oprávnění
+Zdroj: vlastní zpracování
 Role	Rozsah	Oprávnění
 Admin	Globální	Vytváření zaměstnanců, akcí, správa smazaných záznamů, kopírování, přístup ke všem akcím a stánkům
 Event manager	V rámci akce	Správa stánků, produktů, kategorií, zaměstnanců akce, zobrazení statistik a historie, přístup ke všem stánkům akce
@@ -566,7 +662,7 @@ fingerprint_source = json.dumps(
         separators=(',', ':'), sort_keys=True)
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
          
-Při opakovaném požadavku se stejným klíčem server rozpozná, že transakce již byla provedena. Pokud se fingerprint shoduje, jde o legitimní opakování (například kvůli výpadku sítě). Pokud se fingerprint liší, jde o pokus o zneužití klíče pro jinou transakci — server vrátí chybu.
+Při opakovaném požadavku se stejným klíčem server rozpozná, že transakce již byla provedena. Pokud se fingerprint  shoduje, jde o legitimní opakování (například kvůli výpadku sítě). Pokud se fingerprint liší, jde o pokus o zneužití klíče pro jinou transakci — server vrátí chybu.
 
 13.3 Refundace
 Refundace (vrácení platby) je speciální typ transakce, který vytvoří nový záznam s kladnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém umožňuje refundovat pouze posledně provedenou platbu na dané peněžence, a to pouze v konfigurovatelném časovém limitu (výchozí: 5 minut). Podmínka pro nalezení refundovatelné transakce ověřuje, že transakce dosud nebyla refundována.
@@ -649,35 +745,39 @@ Třída Order na straně klienta ukládá aktuální stav objednávky (košíku)
 
 15 Statistiky a historie plateb
 15.1 Statistiky akcí
-Endpoint /api/events/<event_id>/statistics vrací komplexní statistický přehled akce. Data jsou rozdělena do několika kategorií:
-●	Celkové statistiky — počet transakcí, unikátních peněženek a uživatelů, celkové tržby, celkové vklady a výběry.
-●	Statistiky stánků — rozložení tržeb, transakcí, vkladů a výběrů po jednotlivých stáncích.
-●	Statistiky produktů — prodané množství, celkové tržby a průměrná cena pro každý produkt. Data se extrahují z JSONB sloupce products_info v tabulce transactions pomocí funkce jsonb_array_elements.
-●	Top 10 produktů — žebříček nejprodávanějších produktů podle tržeb.
-●	Hodinové a denní statistiky — časový průběh transakcí, tržeb a vkladů agregovaný pomocí DATE_TRUNC.
-●	Statistiky peněženek — počet peněženek, celkový, průměrný, maximální a minimální zůstatek.
-●	Statistiky stánků × produktů — detailní rozpad prodejů produktů po stáncích.
-Všechny statistické dotazy vylučují refundované transakce pomocí podmínky NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id), čímž zajišťují, že refundované platby nezkreslují statistiky.
+Obrázek 2 zobrazuje statistický přehled akce v rozhraní event managera. Data poskytuje endpoint GET /api/events/<event_id>/statistics a frontend je vykresluje do čtyř vizuálních sekcí:
+●	Přehled — šest informačních karet zobrazujících celkové tržby, počet transakcí, vklady celkem, výběry celkem, počet zákazníků (unikátních uživatelů) a celkový zůstatek v peněženkách.
+●	Graf vývoje tržeb — čárový graf (Chart.js) zobrazující hodinový průběh tržeb. Data se agregují pomocí DATE_TRUNC('hour', occurred_at).
+●	Detail stánků — stánky jsou rozděleny podle typu. U prodejních stánků se zobrazují tržby, počet plateb a transakcí; kliknutím na stánek se rozbalí tabulka s prodanými produkty (název, prodané kusy, tržby, průměrná cena). U pokladen se zobrazují vklady, výběry a počet transakcí.
+●	Produkty — tabulka 20 nejprodávanějších produktů seřazených podle tržeb, s údaji o prodaném množství, tržbách a průměrné ceně. Data o produktech se extrahují z JSONB sloupce products_info v tabulce transactions pomocí funkce jsonb_array_elements.
+Na backendu se kromě zobrazených dat počítají i další statistiky (denní statistiky, statistiky peněženek, top 10 produktů), které jsou dostupné přes API pro případné budoucí rozšíření frontendu. Všechny statistické dotazy vylučují refundované transakce dvojí podmínkou — transaction_type != 'refund' AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id) — čímž se odfiltrují jak samotné refundace, tak původní transakce, které byly refundovány.
  
+Obrázek 2 – Přehled statistik akce
+Zdroj: vlastní zpracování
 
 15.2 Historie transakcí
 Aplikace poskytuje dva typy historie transakcí:
-●	Historie transakcí uživatele — zobrazuje všechny transakce konkrétního uživatele v rámci akce, včetně názvu stánku, jména zaměstnance, částek, zůstatků a informací o produktech. Přístupná z pohledu pokladního (cashier) i manažera akce.
+●	Historie transakcí uživatele — zobrazuje všechny transakce konkrétního uživatele v rámci akce, včetně názvu stánku, jména zaměstnance, částek, zůstatků a informací o produktech. Přístupná z pohledu pokladního (cashier) i manažera akce (viz Obrázek 3).
 ●	Historie transakcí akce — zobrazuje kompletní výpis všech transakcí celé akce. Přístupná pouze pro event managery a adminy.
 Obě historie jsou zobrazeny na dedikovaných HTML stránkách s tabulkovým zobrazením.
  
+Obrázek 3  – Stránka historie transakcí uživatele
+Zdroj: vlastní zpracování
+
 16 Kopírování (paste) a zpět/znovu (undo/redo)
 16.1 Kopírování (paste)
-Endpoint POST /api/paste umožňuje klonování entit v rámci systému. Jedná se o operaci dostupnou pouze administrátorům (pro vytváření nových zaměstnanců a akcí) a event manažerům (pro klonování v rámci akce). Podporované operace:
+Endpoint POST /api/paste umožňuje klonování entit v rámci systému. Jedná se o operaci dostupnou pouze administrátorům (pro klonování zaměstnanců, akcí a čehokoliv v rámci akce) a event manažerům, kteří však můžou klonovat pouze věci, ke kterým mají přístup. Podporované operace:
 ●	Klonování zaměstnanců — zkopíruje zaměstnance včetně přiřazení rolí. Generuje unikátní uživatelské jméno a e-mail přidáním suffixu _copy, _copy2 atd.
 ●	Klonování akcí — vytvoří novou akci se všemi stánky, produkty, kategoriemi a vazebnými tabulkami.
-●	Klonování stánků — zkopíruje obsah stánku (produkty, kategorie, přiřazení zaměstnanců) do cílových stánků nebo nových akcí.
+●	Klonování stánků — zkopíruje stánek a obsah stánku (produkty, kategorie, přiřazení zaměstnanců) do cílových stánků nebo nových akcí. Pokud se kopíruje stánek do jeho akce, tak se nevytvoří nové produkty, ale pouze se přiřadí.
 ●	Klonování produktů a kategorií — jednotlivé nebo hromadné kopírování.
+●	Klonování přiřazení zaměstnanců 
+Pro výběr věcí ke kopírování můžete používat myš nebo šipky spolu s ctrl nebo shift klávesami. Po vybrání lze zkopírovat pomocí ctrl + c a vložit pomocí ctrl + v. Jestli kopírujete akci, novou akci vytvoříte vložením v manažeru akcí. Jinak můžete kopírovat do akcí nebo stánků jejich vybráním (stejně jako u kopírování) nebo otevřením manažeru akce.
 Všechny vazební tabulky se vkládají s klauzulí ON CONFLICT DO NOTHING, aby nedošlo k chybě při duplicitních vazbách. Celá operace probíhá v rámci jedné databázové transakce a je chráněna advisory lockem (pg_try_advisory_xact_lock) proti souběžnému provádění.
 Každá operace paste ukládá změny do change_history, takže ji lze vrátit zpět pomocí undo.
 
 16.2 Vrátit zpět a provést znovu (undo/redo)
-Systém implementuje generický mechanismus undo/redo pro všechny CRUD operace nad správou akcí, stánků, produktů, kategorií a zaměstnanců. Finanční transakce undo nepodléhají — pro vrácení platby slouží refundace.
+Systém implementuje generický mechanismus undo/redo (ctrl + z/y) pro všechny CRUD operace nad správou akcí, stánků, produktů, kategorií a zaměstnanců. Finanční transakce undo nepodléhají — pro vrácení platby slouží refundace.
 Princip fungování:
 Každá operace, která mění data (vytvoření, editace, smazání), volá funkci save_change(), která zapíše do tabulky change_history JSON popis změny:
 save_change(cur, [{
@@ -695,7 +795,7 @@ Redo — nalezne nejnověji zrušenou změnu (záznam v undo_change_history) a z
 Bezpečnostní opatření:
 ●	Advisory lock zabraňuje souběžnému undo/redo stejným zaměstnancem.
 ●	Konfigurovatelný časový limit (výchozí: 60 minut) a maximální počet kroků (výchozí: 30).
-●	Detekce konfliktů — pokud byla entita mezitím smazána jiným uživatelem, operace vrátí informaci o konfliktu místo chyby.
+●	Detekce konfliktů — pokud byla provedena změna jiným administrátorem nebo manažerem, která brání operaci (např. obnovení produktu, když byl vytvořen nový produkt se stejným jménem), operace nelze provést a ukáže se informace o konfliktu.
 ●	Po každé operaci se provedou vazební kontroly — před obnovením vazebního záznamu se ověří, že odkazované entity stále existují.
 
 17 Využití — jak vypadá používání aplikace
@@ -711,23 +811,32 @@ Po přihlášení si zaměstnanec vybere akci, ke které má přiřazenou roli. 
 17.3 Pokladní rozhraní (index)
 Hlavní pracovní stránka slouží pro obsluhu zákazníků:
 ●	Načtení karty — přiložením karty ke čtečce se automaticky identifikuje peněženka a zobrazí se jméno uživatele a aktuální zůstatek.
-●	Cashier stánek — zaměstnanec může vytvářet uživatele, vytvářet a vracet peněženky, dobíjet a vybírat prostředky. Zobrazuje se seznam uživatelů s možností vyhledávání.
+●	Cashier (pokladní) stánek — zaměstnanec může vytvářet, upravovat a mazat uživatele, vytvářet a vracet peněženky, dobíjet a vybírat prostředky. Zobrazuje se seznam uživatelů s možností vyhledávání (viz Obrázek 4).
  
-●	Seller stánek — zaměstnanec vidí seznam produktů (s obrázky a cenami), vybírá produkty do košíku, potvrzuje platbu. Může také provést refundaci poslední platby.
+Obrázek 4 – Stránka cashier stánku
+Zdroj: vlastní zpracování
+●	Seller (prodávající) stánek — zaměstnanec vidí seznam produktů (s obrázky a cenami), vybírá produkty do košíku, potvrzuje platbu. Může také provést refundaci poslední platby (viz Obrázek 5).
  
+Obrázek 5 – Stránka seller stánku
+Zdroj: vlastní zpracování
 
 17.4 Správa akcí (event manager)
-Rozhraní pro správce akce umožňuje:
+Obrázek 6 zobrazuje rozhraní pro správu akce, které umožňuje:
+●	Upravovat a smazat akci.
 ●	Vytvářet, editovat a mazat stánky (cashier/seller).
 ●	Spravovat produkty — přidávat, editovat, mazat, nahrávat obrázky, přiřazovat ke stánkům a kategoriím.
 ●	Spravovat kategorie produktů a jejich přiřazení ke stánkům.
 ●	Přiřazovat zaměstnance k rolím v rámci akce.
 ●	Zobrazovat statistiky a historii transakcí.
  
+Obrázek 6 – Stránka správy akcí
+Zdroj: vlastní zpracování
 
 17.5 Správa zaměstnanců (admin)
-Administrátor může vytvářet nové zaměstnance, editovat jejich údaje (uživatelské jméno, heslo), mazat je a zobrazovat smazané zaměstnance s možností obnovení.
+Obrázek 7 zobrazuje stránku, na které může administrátor vytvářet nové zaměstnance, editovat jejich údaje (uživatelské jméno, email, heslo, stav admina) a mazat je. Aplikace zajistí, že musí být minimálně jeden administrátor.
  
+Obrázek 7 – Stránka správy zaměstnanců
+Zdroj: vlastní zpracování
 17.6 Správa smazaných záznamů
 Jako praktický důsledek soft-delete vzoru obsahuje systém dedikované stránky pro zobrazení a obnovu smazaných záznamů. Administrátor a event manažer mohou zobrazit smazané uživatele a smazané akce seřazené podle data smazání. U každého záznamu je možné jedním kliknutím provést obnovení (nastavení deleted_at zpět na NULL). Při obnově uživatele se automaticky obnoví i jeho peněženky, které byly smazány ve stejný okamžik. Při obnově akce se obnoví entity, které obsahovala při smazání, nikoli však vazby mezi nimi.
 Obnovení může narazit na konflikty unikátnosti — například pokud byl po smazání vytvořen jiný uživatel se stejným e-mailem. V takovém případě systém nabídne možnost „force" obnovení, které automaticky vygeneruje unikátní alternativu (přidáním suffixu _1, _2 atd. k e-mailu, identifikátoru, tagu peněženky), aby obnovení bylo vždy možné.
@@ -745,7 +854,7 @@ Prodejce si po přihlášení vybere svůj prodejní stánek. Na obrazovce vidí
 Hesla jsou hashována algoritmem Argon2id s parametry time_cost=3, memory_cost=65536 (64 MB), parallelism=2. Při každém přihlášení se kontroluje, zda parametry hashe odpovídají aktuální konfiguraci — pokud ne, provede se automatický rehash. Tento mechanismus umožňuje transparentní zvýšení bezpečnostních parametrů v budoucnu bez nutnosti resetovat hesla.
 
 18.2 Rate limiting
-Omezení počtu požadavků chrání proti brute-force útokům a nadměrnému zatížení serveru. Globální limit je 300 požadavků za minutu. Endpoint pro přihlášení má přísnější limit 10 pokusů za 15 minut.
+Omezení počtu požadavků chrání proti brute-force útokům a nadměrnému zatížení serveru. Globální limit je 200 požadavků za minutu. Endpoint pro přihlášení má přísnější limit 10 pokusů za 15 minut.
 
 18.3 Validace nahrávaných souborů
 Nahrávání obrázků produktů podléhá několika vrstvám validace:
@@ -781,11 +890,11 @@ Validace uživatelského jména:
 ●	Žádné po sobě jdoucí speciální znaky (například „.." nebo „._").
 ●	Volitelně lze zakázat čistě číselná jména a rezervované podřetězce.
 Validace e-mailu:
-●	Využívá knihovnu email-validator, která ověřuje syntaxi podle RFC 5321/5322.
+●	Využívá knihovnu email-validator, která ověřuje syntaxi podle RFC 5321/5322 .
 Validace telefonního čísla:
-●	Využívá knihovnu phonenumbers (port Google libphonenumber).
+●	Využívá knihovnu phonenumbers (port Google libphonenumber ).
 ●	Číslo je parsováno včetně kódu země, ověřeno pomocí is_possible_number() i is_valid_number().
-●	Platné číslo je uloženo ve formátu E.164 (například +420123456789) pro jednoznačnost.
+●	Platné číslo je uloženo ve formátu E.164  (například +420123456789) pro jednoznačnost.
 ●	Na frontendu je pro zadávání telefonního čísla implementována vlastní komponenta s výběrem předvolby země.
 Validace hesla:
 ●	Minimální délka 8 znaků.
@@ -817,8 +926,17 @@ Aplikace využívá APScheduler pro periodické úlohy na pozadí:
 ●	Čištění sessions — každých 60 minut se smažou sessions, které jsou neaktivní déle než nakonfigurovaný limit (výchozí: 7 dní).
 ●	Čištění nepoužívaných obrázků — každé 3 hodiny se identifikují obrázky, na které neodkazuje žádný produkt, a odstraní se z databáze i disku.
 ●	Čištění sirotčích obrázků na disku — každých 12 hodin se zkontroluje, zda na disku nejsou soubory, které nemají odpovídající záznam v databázi.
-●	Zálohování databáze — volitelná periodická úloha, která vytváří zálohu databáze pomocí pg_dump v komprimovaném custom formátu (-Fc). Interval se nastavuje konfigurační hodnotou SCHEDULER_BACKUP_MINUTES (výchozí: 0 = vypnuto). Zálohy se ukládají do adresáře BACKUP_DIR (výchozí: instance/backups/) a automatická rotace odstraňuje nejstarší zálohy nad limit BACKUP_MAX_COUNT (výchozí: 10). Obnova se provádí pomocí pg_restore s přepínači --clean --if-exists --single-transaction --exit-on-error, což zajišťuje, že obnova proběhne atomicky — pokud jakýkoliv krok selže, celá transakce se vrátí zpět (rollback) a databáze zůstane v původním stavu.
-Pro prostředí s více WSGI workery (například Gunicorn) zajišťuje filelock, že scheduler běží pouze v jednom z workerů, čímž se zabraňuje duplicitnímu provádění úloh.
+Pro prostředí s více WSGI workery (například Gunicorn) zajišťuje filelock , že scheduler běží pouze v jednom z workerů, čímž se zabraňuje duplicitnímu provádění úloh.
+
+19.1.1 Zálohování databáze
+Volitelná periodická úloha, která vytváří zálohu databáze pomocí pg_dump v komprimovaném custom formátu (-Fc). Interval se nastavuje konfigurační hodnotou SCHEDULER_BACKUP_MINUTES (0 = vypnuto). Zálohy se ukládají do adresáře BACKUP_DIR (výchozí: instance/backups/) s názvem ve formátu backup_YYYY-MM-DD_HHMMSS.dump a automatická rotace odstraňuje nejstarší zálohy nad limit BACKUP_MAX_COUNT.
+Kromě automatického zálohování na pozadí je možné zálohu vytvořit i ručně pomocí CLI příkazu:
+flask --app cashier_app backup-db
+Příkaz vytvoří zálohu stejným způsobem jako plánovaná úloha a vypíše cestu k vytvořenému souboru.
+Pro obnovu databáze ze zálohy slouží CLI příkaz:
+flask --app cashier_app restore-db [cesta_k_souboru]
+Pokud není cesta k souboru zadána, automaticky se použije nejnovější záloha z adresáře BACKUP_DIR. Obnova se provádí pomocí pg_restore s přepínači --clean --if-exists --single-transaction --exit-on-error, což zajišťuje, že obnova proběhne atomicky — pokud jakýkoliv krok selže, celá transakce se vrátí zpět (rollback) a databáze zůstane v původním stavu.
+
 19.2 Logování
 Pro finanční systém je logování důležitou součástí provozu — umožňuje zpětně dohledat příčinu problémů, sledovat neočekávané chování a ověřovat správný běh systému. Aplikace využívá standardní Python logging modul integrovaný do Flasku (current_app.logger):
 ●	Chyby (exception) — neočekávané výjimky při operacích se zaměstnanci, peněženkami, událostmi, produkty a dalšími entitami jsou logovány s kompletním tracebackem pomocí current_app.logger.exception().
@@ -835,6 +953,57 @@ Komunikace se serverem probíhá výhradně přes fetch() API. Dynamický HTML o
 
 20.2 Event delegation
 Pro efektivní zpracování událostí na dynamicky generovaném obsahu se používá vzor event delegation — posluchače událostí jsou registrovány na elementu document a pomocí kontroly event.target se identifikuje konkrétní element, na kterém událost nastala. Tento přístup eliminuje nutnost přiřazovat posluchače jednotlivým elementům po každém překreslení obsahu.
+
+20.3 Vyhledávání a řazení tabulek
+Všechny tabulky v aplikaci disponují klientským vyhledáváním a řazením. Veškerá logika filtrování i řazení probíhá na straně frontendu v JavaScriptu — backend poskytuje data bez parametrů pro vyhledávání či řazení.
+Tento přístup byl zvolen záměrně z několika důvodů. Filtrování a řazení na klientovi je pro uživatele výrazně rychlejší, protože operace probíhají okamžitě nad již načtenými daty bez nutnosti odesílat nový HTTP požadavek na server a čekat na odpověď. Zároveň se tím snižuje zátěž na server a databázi — při každém stisku klávesy ve vyhledávacěím poli by server musel opakovaně zpracovávat SQL dotazy, zatímco na klientovi jde pouze o filtrování pole objektů v paměti. Předpokladem tohoto řešení je, že se při načtení stránky stáhnou všechna data dané tabulky najednou. To je pro tento systém přijatelné, protože očekávané objemy dat (desítky až stovky zaměstnanců, akcí,…) nepředstavují problém pro přenos ani pro paměť prohlížeče.
+
+20.3.1 Vyhledávání
+Každá stránka s tabulkou obsahuje vyhledávací pole (HTML input s třídou .search-bar), které při každém stisku klávesy v tomto poli (událost input) okamžitě přefiltruje zobrazené záznamy. Filtrování probíhá voláním funkce typu isSearchedFor(), která přijímá objekt, o kterém rozhoduje zda je vyhledávaný, a aktuální text z vyhledávacího pole.
+Vyhledávání podporuje dva režimy:
+●	Volný text — zadaný řetězec se hledá napříč všemi zobrazenými sloupci záznamu. Například zadáním „jan" se zobrazí záznamy obsahující „jan" v jakémkoli poli (jméno, e-mail, identifikátor apod.).
+●	Vyhledávání podle konkrétního pole — syntaxe klíč=hodnota umožňuje omezit hledání na jeden sloupec. Například username=admin vyhledá pouze v poli uživatelského jména. Klíče podporují české i anglické varianty (např. jméno=, email=, vytvořen=, telefon= a další).
+
+Více hledaných výrazů oddělených mezerou funguje jako konjunkce — záznam musí odpovídat všem zadaným výrazům současně. Vyhledávání je case-insensitive.
+
+Příklad funkce pro filtrování zaměstnanců (employees_manager.js):
+function isSearchedFor(employee, searchQuery) {
+  if (!searchQuery) return true;
+  const searchQueries = searchQuery.toLowerCase().trim().split(/\s+/);
+  // ...pro každý výraz kontrola, zda záznam odpovídá
+  for (const query of searchQueries) {
+    if (!query.includes('=')) {
+      if (!employeeInfo.includes(query)) return false;
+    } else {
+      const searchKeyWord = query.split('=')[0];
+      const search = query.split('=')[1];
+      // porovnání s konkrétním polem dle klíče
+    }
+  }
+  return true;
+}
+
+20.3.2 Řazení
+Záhlaví tabulek (elementy <th>) slouží zároveň jako tlačítka pro řazení — kliknutím na název sloupce se aktivuje třífázové přepínání:
+1. První kliknutí — vzestupné řazení (ascending), zobrazí se šipka dolů (↓).
+2. Druhé kliknutí — sestupné řazení (descending), zobrazí se šipka nahoru (↑).
+3. Třetí kliknutí — řazení se deaktivuje, šipka zmizí a data se zobrazí v původním pořadí.
+Aktuální stav řazení je uložen v objektu orderBy s vlastnostmi key (název sloupce) a ascending (boolean). Funkce toggleOrder() přepíná mezi těmito třemi stavy:
+const orderBy = { key: '', ascending: true };
+
+function toggleOrder(key) {
+  if (orderBy.key !== key) {
+    orderBy.key = key;
+    orderBy.ascending = true;
+  } else if (orderBy.ascending) {
+    orderBy.ascending = false;
+  } else {
+    orderBy.key = '';
+    orderBy.ascending = true;
+  }
+}
+Řazení je typově citlivé — textové sloupce (jméno, e-mail) se řadí pomocí localeCompare() s převedením na malá písmena, datumové sloupce (vytvořen, začátek, konec) se řadí porovnáním objektů Date. Vizuální indikátor řazení (šipka) se dynamicky přidává do záhlaví aktivního sloupce jako element <span class="order-by-arrow">.
+Po každé změně filtru nebo řazení se volá loadPage({table: true}), která překreslí tabulku s aktuálně platnými parametry vyhledávání i řazení.
 
 21 Testování
 Projekt obsahuje rozsáhlou sadu automatizovaných testů implementovaných pomocí frameworku pytest. Testy pokrývají jak izolovanou logiku jednotlivých komponent, tak integrační scénáře zahrnující skutečnou databázi.
@@ -880,14 +1049,23 @@ Silné stránky
 Slabé stránky a omezení
 ●	Závislost na Chromium prohlížečích — Web Serial API není podporováno ve Firefoxu ani Safari, což omezuje výběr prohlížeče pro čtení karet. Pro správu akcí a statistiky je však možné použít libovolný prohlížeč.
 ●	Absence offline režimu — při výpadku připojení k databázi není možné provádět žádné transakce. V prostředí lokální sítě na akci je toto riziko nízké, ale pro vzdálené nasazení by to bylo omezující.
+●	Načítání všech dat najednou — frontend při načtení stránky stahuje kompletní obsah tabulky (zaměstnanci, akce, smazané záznamy) a filtrování i řazení provádí lokálně v prohlížeči. Při očekávaných objemech dat (desítky až stovky záznamů) to nepředstavuje problém, ale při výrazně větším množství záznamů (tisíce a více) by bylo vhodné přejít na stránkování a serverové filtrování.
 ●	Chybějící export dat — statistiky a historie transakcí jsou dostupné pouze v rámci webového rozhraní. Chybí možnost exportu do formátů CSV nebo PDF pro další zpracování.
 Možnosti budoucího rozšíření
 ●	Export statistik — implementace exportu do CSV a PDF by organizátorům umožnila zpracovávat data v externích nástrojích. Díky modulární struktuře API by stačilo přidat nové endpointy, které vrátí data v požadovaném formátu.
 ●	Podpora mobilních zařízení s NFC — moderní telefony s Android podporují čtení NFC tagů prostřednictvím Web NFC API, což by umožnilo použít telefon jako čtečku karet místo dedikovaného USB zařízení.
-●	Online dobíjení — integrace platební brány (například Stripe) by umožnila návštěvníkům dobíjet kredit předem z vlastního zařízení, čímž by se zkrátily fronty u pokladních stánků.
+●	Online dobíjení — integrace platební brány (například Stripe ) by umožnila návštěvníkům dobíjet kredit předem z vlastního zařízení, čímž by se zkrátily fronty u pokladních stánků.
 ●	Vícejazyčná podpora — rozhraní je v současnosti česko-anglické. Přidání plné vícejazyčné podpory by rozšířilo použitelnost systému pro mezinárodní akce.
  
 SEZNAM POUŽITÉ LITERATURY
+1.	ANTHROPIC. Claude Opus 4.6 [velký jazykový model]. 2026. Dostupné z: https://claude.ai/
+2.	CODD, Edgar F. A Relational Model of Data for Large Shared Data Banks. *Communications of the ACM* [online]. 1970, roč. 13, č. 6, s. 377–387 [cit. 2026-03-28]. Dostupné z: https://dl.acm.org/doi/10.1145/362384.362685
+3.	MOZILLA. Web Serial API – Web APIs. *MDN Web Docs* [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API
+4.	NFC FORUM. What is NFC? *NFC Forum* [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://nfc-forum.org/learn/what-is-nfc/
+5.	OWASP FOUNDATION. Password Storage Cheat Sheet. *OWASP Cheat Sheet Series* [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+6.	PALLETS PROJECTS. Flask Documentation [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://flask.palletsprojects.com/en/stable/
+7.	PASSWORD HASHING COMPETITION [online]. [cit. 2026-03-28]. Dostupné z: https://www.password-hashing.net/
+8.	POSTGRESQL GLOBAL DEVELOPMENT GROUP. PostgreSQL 17 Documentation [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://www.postgresql.org/docs/current/
  
 Přílohy
  

@@ -28,7 +28,7 @@ from cashier_app.utils.general import client_ip_from_request
 limiter = Limiter(
     key_func=client_ip_from_request,
     storage_uri="memory://",
-    default_limits=["300 per minute"],
+    default_limits=["200 per minute"],
 )
 
 
@@ -84,8 +84,7 @@ def create_app(test_config=None):
             host=localhost
             user=postgres
             password=heslo123
-            port=5432
-            options='-c timezone=UTC'""",
+            port=5432""",
         PASSWORD_HASHER_PARAMETERS = {
             'time_cost': 3,
             'memory_cost': 65536,
