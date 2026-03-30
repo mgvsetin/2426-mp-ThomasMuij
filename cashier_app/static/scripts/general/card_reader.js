@@ -207,7 +207,7 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
         onCardRead(cardId);
         cardId = '';
       } else {
-        // nebo dost dlouho od posdledního přečtení (100ms)
+        // nebo dost dlouho od posledního přečtení (100ms)
         timeoutId = setTimeout(() => {
           onCardRead(cardId);
           cardId = '';
