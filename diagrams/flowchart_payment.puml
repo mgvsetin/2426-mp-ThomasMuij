@@ -1,4 +1,4 @@
-@startuml flowchart_payment_detailed
+@startuml flowchart_payment
 skinparam shadowing false
 skinparam defaultFontName Arial
 skinparam activityFontSize 12

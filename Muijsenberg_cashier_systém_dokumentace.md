@@ -8,14 +8,14 @@ Vedoucí práce: Mgr. Vladislav Válek
 2026 
 
 Prohlašuji, že jsem maturitní práci vypracoval samostatně s využitím uvedených pramenů a literatury.
-Ve Vsetíně dne 1. dubna.
+Ve Vsetíně dne 1. dubna 2026
 ……………………………………………..
 (podpis autora práce)
  
 
 Souhlas se zveřejněním
 Souhlasím se zveřejněním své maturitní práce pro potřeby školy.
-Ve Vsetíně dne 1. dubna
+Ve Vsetíně dne 1. dubna 2026
 ……………………………………………..
 (podpis autora práce)
 Poděkování
@@ -63,74 +63,74 @@ PRAKTICKÁ ČÁST	21
 9 Databáze a její rozvržení	31
 9.1 Schéma databáze	31
 9.2 Triggery a integritní omezení	33
-9.3 Indexy	33
-10 Způsob programování a využití nástrojů	34
-10.1 Struktura projektu a Flask blueprinty	34
-10.2 Připojení k databázi — psycopg a connection pool	36
-10.3 Serverové sessions v PostgreSQL	38
-10.4 Zpracování chyb — vlastní výjimky	38
-10.5 Generátor SQL dotazů (Query Builder)	39
-10.6 Synchronizace vazebních tabulek	40
-11 Práva přístupu	40
-11.1 Hierarchie rolí	40
-11.2 Vynucování oprávnění	41
-11.3 Vzájemná výlučnost rolí	41
-12 Čtení karet pomocí čteček	42
-12.1 Komunikace přes Web Serial API	42
-13 ACID operace a práce s databází při finančních operacích	44
-13.1 Průběh platby	44
-13.2 Idempotence a fingerprint	44
-13.3 Refundace	45
-13.4 Zajištění integrity na úrovni databáze	45
-14 Caching	46
-14.1 Serverový caching statických souborů	46
-14.2 Klientský caching dat	47
-14.3 Persistence stavu objednávky	49
-15 Statistiky a historie plateb	49
-15.1 Statistiky akcí	49
-15.2 Historie transakcí	50
-16 Kopírování (paste) a zpět/znovu (undo/redo)	51
-16.1 Kopírování (paste)	51
-16.2 Vrátit zpět a provést znovu (undo/redo)	52
-17 Využití — jak vypadá používání aplikace	54
-17.1 Přihlášení	54
-17.2 Výběr akce a stánku	54
-17.3 Pokladní rozhraní (index)	54
-17.4 Správa akcí (event manager)	56
-17.5 Správa zaměstnanců (admin)	57
-17.6 Správa smazaných záznamů	58
-17.7 Typický scénář obsluhy	58
-17.7.1 Scénář pokladního (cashier):	58
-17.7.2 Scénář prodejce (seller):	59
-18 Bezpečnostní implementace	60
-18.1 Hashování hesel	60
-18.2 Rate limiting	61
-18.3 Validace nahrávaných souborů	61
-18.4 Ochrana cookies a sessions	61
-18.5 Threat model — proti čemu se systém brání	62
-18.6 Validace vstupních dat	62
-18.6.1 Co je mimo scope systému	64
-19 Plánované úlohy na pozadí a logování	65
-19.1 Plánované úlohy	65
-19.1.1 Zálohování databáze	65
-19.2 Logování	66
-19.2.1 Logování transakcí	67
-20 Frontend a uživatelské rozhraní	67
-20.1 Architektura frontendu	67
-20.2 Event delegation	67
-20.3 Vyhledávání a řazení tabulek	68
-20.3.1 Vyhledávání	68
-20.3.2 Řazení	69
-21 Testování	70
-21.1 Unit testy a integrační testy	71
-21.2 Kritické scénáře — platby a refundace	71
-21.3 Testy undo/redo a paste	72
-21.4 Další testované oblasti	72
-ZÁVĚR	73
-SEZNAM POUŽITÉ LITERATURY	76
-SEZNAM PŘÍLOH	77
-Příloha 1 – Seznam pro vybírání předčíslí	78
-Příloha 2 – Platební operace – flowchart	79
+9.3 Indexy	34
+10 Způsob programování a využití nástrojů	35
+10.1 Struktura projektu a Flask blueprinty	35
+10.2 Připojení k databázi — psycopg a connection pool	37
+10.3 Serverové sessions v PostgreSQL	39
+10.4 Zpracování chyb — vlastní výjimky	39
+10.5 Generátor SQL dotazů (Query Builder)	40
+10.6 Synchronizace vazebních tabulek	41
+11 Práva přístupu	41
+11.1 Hierarchie rolí	41
+11.2 Vynucování oprávnění	42
+11.3 Vzájemná výlučnost rolí	43
+12 Čtení karet pomocí čteček	43
+12.1 Komunikace přes Web Serial API	43
+13 ACID operace a práce s databází při finančních operacích	45
+13.1 Průběh platby	45
+13.2 Idempotence a fingerprint	46
+13.3 Refundace	46
+13.4 Zajištění integrity na úrovni databáze	46
+14 Caching	47
+14.1 Serverový caching statických souborů	47
+14.2 Klientský caching dat	48
+14.3 Persistence stavu objednávky	50
+15 Statistiky a historie plateb	50
+15.1 Statistiky akcí	50
+15.2 Historie transakcí	51
+16 Kopírování (paste) a zpět/znovu (undo/redo)	52
+16.1 Kopírování (paste)	52
+16.2 Vrátit zpět a provést znovu (undo/redo)	53
+17 Využití — jak vypadá používání aplikace	55
+17.1 Přihlášení	55
+17.2 Výběr akce a stánku	55
+17.3 Pokladní rozhraní (index)	56
+17.4 Správa akcí (event manager)	57
+17.5 Správa zaměstnanců (admin)	58
+17.6 Správa smazaných záznamů	59
+17.7 Typický scénář obsluhy	59
+17.7.1 Scénář pokladního (cashier):	59
+17.7.2 Scénář prodejce (seller):	60
+18 Bezpečnostní implementace	61
+18.1 Hashování hesel	61
+18.2 Rate limiting	62
+18.3 Validace nahrávaných souborů	62
+18.4 Ochrana cookies a sessions	62
+18.5 Threat model — proti čemu se systém brání	63
+18.6 Validace vstupních dat	63
+18.6.1 Co je mimo scope systému	65
+19 Plánované úlohy na pozadí a logování	66
+19.1 Plánované úlohy	66
+19.1.1 Zálohování databáze	66
+19.2 Logování	67
+19.2.1 Logování transakcí	68
+20 Frontend a uživatelské rozhraní	68
+20.1 Architektura frontendu	68
+20.2 Event delegation	68
+20.3 Vyhledávání a řazení tabulek	69
+20.3.1 Vyhledávání	69
+20.3.2 Řazení	70
+21 Testování	71
+21.1 Unit testy a integrační testy	72
+21.2 Kritické scénáře — platby a refundace	72
+21.3 Testy undo/redo a paste	73
+21.4 Další testované oblasti	73
+ZÁVĚR	74
+SEZNAM POUŽITÉ LITERATURY	77
+SEZNAM PŘÍLOH	78
+Příloha 1 – Seznam pro vybírání předčíslí	79
+Příloha 2 – Platební operace – flowchart	80
 
  
 ÚVOD
@@ -263,8 +263,8 @@ Pro spuštění aplikace je potřeba:
 ●	Python 3.10+ — aplikace využívá moderní syntaxi (match/case, type hints s |).
 ●	PostgreSQL 14+ — databázový server s podporou rozšíření pgcrypto.
 ●	Webový prohlížeč s podporou Web Serial API — Google Chrome, Microsoft Edge nebo Opera (pro čtení karet).
-●	Git — systém správy verzí pro klonování repozitáře a správu zdrojového kódu (potřebný pouze pro instalaci)
-●	RFID/NFC čtečka — připojená přes USB, komunikující přes sériový port. (jestli čtečka zároveň kominuje jinými způsoby, bude je nejspíš nutné vypnout)
+●	Git — systém správy verzí pro klonování repozitáře a správu zdrojového kódu (potřebný pouze pro instalaci).
+●	RFID/NFC čtečka — připojená přes USB, komunikující přes sériový port (pokud čtečka zároveň komunikuje jinými způsoby, bude je nejspíš nutné vypnout).
 ●	Node.js 18+ — potřebný pro spuštění testů.
 8.2 Instalace a spuštění
 1. Získání projektu:
@@ -572,13 +572,13 @@ Kromě výjimek na úrovni aplikační logiky registruje Flask dva globální er
 Pro opakující se CRUD operace slouží modul query_builder.py, který na základě názvu tabulky a slovníku parametrů generuje parametrizované SQL příkazy. Tento přístup snižuje množství opakujícího se kódu a zároveň zachovává bezpečnost parametrizovaných dotazů:
 sql, params = build_insert_statement(    
     'events',    
-    {'name': events, 'created_by': 1},    
+    {'name': 'název', 'created_by': 1},    
     returning='*'    
 )
 # Výsledek (jako string): INSERT INTO events (name, created_by)    
 #           VALUES (%s, %s) RETURNING * 
 # Doopravdy vypadá: Composed([SQL('\n    INSERT INTO '), Identifier…
-# params: ['events', 1]
+# params: ['název', 1]
 Query builder podporuje i pokročilé operace jako ON CONFLICT DO NOTHING (pro idempotentní vkládání) a soft-delete (generuje UPDATE ... SET deleted_at = now() místo DELETE).
 10.6 Synchronizace vazebních tabulek
 Systém obsahuje řadu vazebních tabulek typu many-to-many (product_booth_link, category_booth_link, category_product_link, employee_event_booth_roles), které propojují produkty se stánky, kategorie se stánky a produkty, a zaměstnance s rolemi v akcích. Při editaci přiřazení (například „tento produkt patří ke stánkům A, B a C") je potřeba synchronizovat vazební tabulku s novým požadovaným stavem.
@@ -613,7 +613,6 @@ Databázový trigger na tabulce employee_event_booth_roles zajišťuje, že poku
 3.	Čtení dat — binární proud dat ze čtečky je převeden na textový proud pomocí TextDecoderStream. Data se čtou znak po znaku a akumulují do řetězce, dokud není detekován konec ID karty znakem (\n nebo \r) nebo 100ms od posledního přečtení:
 async function readStringStreamReader(reader, readableStreamClosed, onCardRead) {
   let timeoutId;
-
   try {
     let cardId = '';
     while (true) {
@@ -622,15 +621,13 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
       if (done) {
         break;
       }
-
       cardId += value;
-
       // konec id karty, nejspíš \n nebo \r
       if (cardId.includes('\n') || cardId.includes('\r')) {
         onCardRead(cardId);
         cardId = '';
       } else {
-        // nebo dost dlouho od posdledního přečtení (100ms)
+        // nebo dost dlouho od posledního přečtení (100ms)
         timeoutId = setTimeout(() => {
           onCardRead(cardId);
           cardId = '';
@@ -644,8 +641,7 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
     reader.releaseLock();
     await readableStreamClosed.catch(() => { });
   }
-}
-         
+} 
 4. Zpracování ID — po načtení kompletního ID karty (například 00A713A700000000) je vyvolán callback, který vyhledá peněženku s odpovídajícím tag_id a zobrazí informace o uživateli.
 13 ACID operace a práce s databází při finančních operacích
 13.1 Průběh platby
@@ -708,7 +704,7 @@ export function cacheFunctionFactory(func, cacheTimeMs = 1000 * 60 * 2 /*2 minut
     // aktuálně se získávají data
     if (promiseHolder) return promiseHolder;
 
-    // získání dat vloženou funcí
+    // získání dat vloženou funkcí
     promiseHolder = (async () => {
       try {
         cache.data = await func(...args);
@@ -747,17 +743,17 @@ Obrázek 2 zobrazuje statistický přehled akce v rozhraní správy akce. Data p
 ●	Graf vývoje tržeb — čárový graf (Chart.js) zobrazující hodinový průběh tržeb. Data se agregují pomocí DATE_TRUNC('hour', occurred_at).
 ●	Detail stánků — stánky jsou rozděleny podle typu. U prodejních stánků se zobrazují tržby, počet plateb a transakcí; kliknutím na stánek se rozbalí tabulka s prodanými produkty (název, prodané kusy, tržby, průměrná cena). U pokladen se zobrazují vklady, výběry a počet transakcí.
 ●	Produkty — tabulka produktů seřazených podle tržeb, s údaji o prodaném množství, tržbách a průměrné ceně. Data o produktech se extrahují z JSONB sloupce products_info v tabulce transactions pomocí funkce jsonb_array_elements.
-Všechny statistické dotazy vylučují refundované transakce dvojí podmínkou — transaction_type != 'refund' AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id) — čímž se odfiltrují jak samotné refundace, tak původní transakce, které byly refundovány. 
+Všechny statistické dotazy vylučují refundované transakce dvojí podmínkou — transaction_type != 'refund' AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id) — čímž se odfiltrují jak samotné refundace, tak původní transakce, které byly refundovány.
+ 
 Obrázek 2 – Přehled statistik akce
 Zdroj: vlastní zpracování
-
 15.2 Historie transakcí
 Aplikace poskytuje dva typy historie transakcí:
 ●	Historie transakcí uživatele — zobrazuje všechny transakce konkrétního uživatele v rámci akce, včetně názvu stánku, jména zaměstnance, částek, zůstatků a informací o produktech. Přístupná z pohledu pokladního (cashier) i manažera akce (viz Obrázek 3).
 ●	Historie transakcí akce — zobrazuje kompletní výpis všech transakcí celé akce. Přístupná pouze pro event managery a adminy.
 Obě historie jsou zobrazeny na dedikovaných HTML stránkách s tabulkovým zobrazením.
  
-Obrázek 3  – Stránka historie transakcí uživatele
+Obrázek 3 – Stránka historie transakcí uživatele
 Zdroj: vlastní zpracování
 16 Kopírování (paste) a zpět/znovu (undo/redo)
 16.1 Kopírování (paste)
@@ -767,7 +763,7 @@ Endpoint POST /api/paste umožňuje klonování entit v rámci systému. Jedná 
 ●	Klonování stánků — zkopíruje stánek a obsah stánku (produkty, kategorie, přiřazení zaměstnanců) do cílových stánků nebo nových akcí. Pokud se kopíruje stánek do jeho akce, tak se nevytvoří nové produkty, ale pouze se přiřadí.
 ●	Klonování produktů a kategorií — jednotlivé nebo hromadné kopírování.
 ●	Klonování přiřazení zaměstnanců 
-Pro výběr věcí ke kopírování můžete používat myš nebo šipky spolu s ctrl nebo shift klávesami. Po vybrání lze zkopírovat pomocí ctrl + c a vložit pomocí ctrl + v. Jestli kopírujete akci, novou akci vytvoříte vložením v manažeru akcí. Jinak můžete kopírovat do akcí nebo stánků jejich vybráním (stejně jako u kopírování) nebo otevřením manažeru akce.
+Pro výběr věcí ke kopírování lze používat myš nebo šipky spolu s ctrl nebo shift klávesami. Po vybrání lze zkopírovat pomocí ctrl + c a vložit pomocí ctrl + v. Pokud je kopírována akce, nová akce se vytvoří vložením v manažeru akcí. Jinak se může kopírovat do akcí nebo stánků jejich vybráním (stejně jako u kopírování) nebo otevřením manažeru akce.
 Všechny vazební tabulky se vkládají s klauzulí ON CONFLICT DO NOTHING, aby nedošlo k chybě při duplicitních vazbách. Celá operace probíhá v rámci jedné databázové transakce a je chráněna advisory lockem (pg_try_advisory_xact_lock) proti souběžnému provádění.
 Každá operace paste ukládá změny do change_history, takže ji lze vrátit zpět pomocí undo.
 16.2 Vrátit zpět a provést znovu (undo/redo)
@@ -853,13 +849,12 @@ Nahrávání obrázků produktů podléhá několika vrstvám validace:
 ●	Maximální rozlišení: 50 milionů pixelů.
 ●	Obrázky jsou uloženy mimo adresář aplikace v konfigurovaném UPLOAD_FOLDER.
 ●	Všechny kontroly jsou ověřeny i přes knihovnu Pillow, aby se zabránilo spoofingu .
-●	Velikost obrázku je navíc ověřena při samotném ukládání, které se děje po částech a vždy se zkontroluje jestli nebyla překročena hranice.
+●	Velikost obrázku je navíc ověřena při samotném ukládání, které se děje po částech a vždy se zkontroluje zda nebyla překročena hranice.
 18.4 Ochrana cookies a sessions
 Session cookie je zabezpečena nastavením:
 ●	HttpOnly = True — cookie není přístupná z JavaScriptu, čímž se eliminuje riziko krádeže session ID prostřednictvím XSS útoku.
 ●	SameSite = Lax — cookie se neodesílá při cross-site požadavcích (ochrana proti CSRF).
 ●	Secure = True (v produkci) — cookie se odesílá pouze přes HTTPS.
-
 18.5 Threat model — proti čemu se systém brání
 Systém je navržen s ohledem na hrozby typické pro platební systémy provozované na akcích s fyzickým přístupem obsluhy k zařízením:
 Hrozby, proti kterým se systém aktivně brání:
@@ -1000,7 +995,7 @@ Testy finančních operací patří k nejdůležitějším, protože chyba v pla
 21.4 Další testované oblasti
 ●	Autentizace — přihlášení, odhlášení, ověřování hesel s rehashováním, rate limiting.
 ●	CRUD operace — vytváření, editace, mazání a obnovování záznamů, validace vstupů, kontrola oprávnění.
-●	Databázové trigger — testy ověřují, že triggery správně blokují fyzické smazání, chrání neměnné sloupce a normalizují data.
+●	Databázové triggery — testy ověřují, že triggery správně blokují fyzické smazání, chrání neměnné sloupce a normalizují data.
 ●	Validace vstupů — testy pokrývají chybné formáty (neplatné UUID, záporné ceny, příliš dlouhé řetězce) a ověřují, že server vrací odpovídající HTTP kódy (400, 401, 403, 409).
 ●	Zálohování a obnova databáze — unit testy ověřují správné volání pg_dump/pg_restore s očekávanými argumenty, rotaci starých záloh, vyhledání nejnovější zálohy a chování CLI příkazů. Integrační testy proti skutečné databázi ověřují, že záloha a následná obnova zachová data do původního stavu a že obnova z poškozeného souboru selže bez narušení databáze (transakční rollback).
 Testy se spouštějí příkazem pytest a pro jejich běh je vyžadována běžící instance PostgreSQL s testovací databází. 
