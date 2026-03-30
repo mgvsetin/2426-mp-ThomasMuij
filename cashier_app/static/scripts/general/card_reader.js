@@ -6,6 +6,35 @@ import { UnexpectedError } from "../general/errors.js";
 let readerInfo;
 let cardReaderIsBeingRead = false;
 
+let web_serial_banner_displayed = false;
+
+
+/**
+ * Zobrazí uzavíratelný banner informující, že prohlížeč nepodporuje Web Serial API.
+ * Pokud banner již existuje, nic nedělá.
+ */
+function showWebSerialNotSupportedBanner() {
+  if (document.getElementById('web-serial-banner')) return;
+  if (web_serial_banner_displayed) return;
+  web_serial_banner_displayed = true;
+  const banner = document.createElement('div');
+  banner.id = 'web-serial-banner';
+  banner.className = 'web-serial-banner';
+  banner.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Váš prohlížeč nepodporuje Web Serial API – čtečky karet nejsou k dispozici. Použijte Chrome nebo Edge.</span>
+    <button class="web-serial-banner-close" aria-label="Zavřít">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>`;
+  banner.querySelector('.web-serial-banner-close').addEventListener('click', () => banner.remove());
+  document.body.appendChild(banner);
+}
+
 
 
 /**
@@ -44,7 +73,10 @@ async function getReaderInfo() {
  * @returns {Promise<SerialPort|null|undefined>} Vybraný SerialPort, nebo null/undefined pokud není dostupný.
  */
 export async function requestPortFromUser(calledFromInteraction = false) {
-  if (!('serial' in navigator)) return;
+  if (!('serial' in navigator)) {
+    showWebSerialNotSupportedBanner();
+    return;
+  }
 
   if (calledFromInteraction) {
     const readerInfo = await getReaderInfo().catch(() => { });
@@ -228,6 +260,7 @@ export async function setUpCardReading(onCardRead, calledFromInteraction = false
   if (!('serial' in navigator)) {
     // prohlížeč nepodporuje Web Serial API
     console.warn('Prohlížeč nepodporuje Web Serial API.');
+    showWebSerialNotSupportedBanner();
     return;
   }
   if (cardReaderIsBeingRead) return;

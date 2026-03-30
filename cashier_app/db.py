@@ -10,6 +10,7 @@ from flask.cli import with_appcontext
 import click
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
+from psycopg import IntegrityError
 import logging
 import atexit
 import subprocess
@@ -74,6 +75,67 @@ def insert_development_values_command():
     """
     insert_development_values()
     click.echo('Inserted development values.')
+
+
+@click.command('create-admin')  # flask --app cashier_app create-admin
+@with_appcontext
+def create_admin_command():
+    """CLI příkaz pro vytvoření administrátorského zaměstnance.
+
+    Interaktivně vyžádá uživatelské jméno, e-mail a heslo a vytvoří
+    nového zaměstnance s is_admin=TRUE.
+    Registruje se jako ``flask --app cashier_app create-admin``.
+    """
+    from argon2 import PasswordHasher
+    from cashier_app.utils.employees_users import validate_username, validate_email, validate_new_password
+
+    
+
+    ok = False
+    while not ok:
+        username = click.prompt('Username')
+        ok, errors = validate_username(username)
+        if not ok:
+            click.echo(f'Invalid username: {"; ".join(errors)}', err=True)
+    
+    ok = False
+    while not ok:
+        email = click.prompt('Email')
+        ok, errors = validate_email(email)
+        if not ok:
+            click.echo(f'Invalid email: {"; ".join(errors)}', err=True)
+    
+    ok = False
+    while not ok:
+        password_raw = click.prompt('Password', hide_input=True, confirmation_prompt=True)
+        ok, errors = validate_new_password(password_raw)
+        if not ok:
+            click.echo(f'Invalid password: {"; ".join(errors)}', err=True)
+
+    password_hasher = PasswordHasher(**current_app.config['PASSWORD_HASHER_PARAMETERS'])
+    password_hash = password_hasher.hash(password_raw)
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    '''
+                    INSERT INTO employees (username, email, password_hash, is_admin)
+                    VALUES (%s, %s, %s, TRUE)
+                    ''',
+                    (username.strip(), email.strip().lower(), password_hash),
+                )
+    except IntegrityError as e:
+        msg = str(e)
+        if 'unique_index_employees_username_active' in msg:
+            click.echo('Error: username already taken.', err=True)
+        elif 'unique_index_employees_email_active' in msg:
+            click.echo('Error: email already taken.', err=True)
+        else:
+            click.echo(f'Database error: {e}', err=True)
+        raise SystemExit(1)
+
+    click.echo(f'Admin employee "{username}" created successfully.')
 
 
 def backup_db():
@@ -299,5 +361,6 @@ def init_app(app: Flask):
 
     app.cli.add_command(init_db_command)
     app.cli.add_command(insert_development_values_command)
+    app.cli.add_command(create_admin_command)
     app.cli.add_command(backup_db_command)
     app.cli.add_command(restore_db_command)

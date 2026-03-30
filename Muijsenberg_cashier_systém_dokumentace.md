@@ -25,112 +25,112 @@ Tato maturitní práce se zabývá návrhem a implementací bezhotovostního pla
 ANNOTATION
 This graduation thesis deals with the design and implementation of a cashless payment system intended for events such as festivals, school fairs, or markets. The system allows event attendees to load prepaid credit onto an RFID/NFC card at a cashier booth and then pay contactlessly at various seller booths without the need to handle cash. The application is implemented as a web application with a backend built on the Flask framework (Python) and a PostgreSQL database; the frontend uses vanilla JavaScript with communication to USB card readers via the Web Serial API. The system implements management of events, booths, products, categories, and employees with roles (administrator, manager, cashier, seller). Emphasis is placed on the security and integrity of financial data – transactions are atomic and immutable, the application utilizes row-level locking, an idempotent API, Argon2 password hashing, and parameterized SQL queries. The system also includes transaction history, sales statistics, undo/redo functionality, and the ability to clone events. 
 Obsah
-ÚVOD	13
-1 Historie a kontext	14
-1.1 Vývoj bezhotovostních platebních systémů	14
-1.2 Webové technologie a jejich role	14
-1.3 RFID a NFC technologie	15
-2 Teoretická východiska	15
-2.1 Architektura webových aplikací	15
-2.2 REST API a komunikace klient-server	16
-2.3 Relační databáze a transakční zpracování	17
-2.4 Soft-delete vzor	17
-2.5 Idempotence v síťové komunikaci	18
-2.6 Zamykání a souběžný přístup	18
-3 Použité technologie a nástroje	19
-3.1 Python	19
-3.2 Flask	19
-3.3 PostgreSQL	20
-3.4 JavaScript a Web Serial API	21
-3.5 Další technologie a knihovny	21
-4 Bezpečnostní aspekty	22
-4.1 Autentizace a správa hesel	22
-4.2 Správa sessions	23
-4.3 Ochrana proti běžným útokům	23
-4.4 Zabezpečení finančních operací	24
-5 Shrnutí teoretické části a přechod k praktické části	24
-PRAKTICKÁ ČÁST	25
-6 Cíle práce a zadání	25
-6.1 Zadání	25
-6.2 Hlavní cíl	25
-6.3 Dílčí cíle	25
-7 Architektura systému	25
-8 Prerekvizity a instalace	26
-8.1 Systémové požadavky	26
-8.2 Instalace a spuštění	27
-8.3 Konfigurace	28
-8.3.1 Přehled konfiguračních položek	29
-9 Databáze a její rozvržení	35
-9.1 Schéma databáze	35
-9.2 Triggery a integritní omezení	36
-9.3 Indexy	37
-10 Způsob programování a využití nástrojů	38
-10.1 Struktura projektu a Flask blueprinty	38
-10.2 Připojení k databázi — psycopg a connection pool	40
-10.3 Serverové sessions v PostgreSQL	42
-10.4 Zpracování chyb — vlastní výjimky	42
-10.5 Generátor SQL dotazů (Query Builder)	43
-10.6 Synchronizace vazebních tabulek	44
-11 Práva přístupu	44
-11.1 Hierarchie rolí	44
-11.2 Vynucování oprávnění	45
-11.3 Vzájemná výlučnost rolí	45
-12 Čtení karet pomocí čteček	46
-12.1 Komunikace přes Web Serial API	46
-13 ACID operace a práce s databází při finančních operacích	47
-13.1 Průběh platby	47
-13.2 Idempotence a fingerprint	48
-13.3 Refundace	49
-13.4 Zajištění integrity na úrovni databáze	49
-14 Caching	50
-14.1 Serverový caching statických souborů	50
-14.2 Klientský caching dat	50
-14.3 Persistence stavu objednávky	52
-15 Statistiky a historie plateb	52
-15.1 Statistiky akcí	52
-15.2 Historie transakcí	54
-16 Kopírování (paste) a zpět/znovu (undo/redo)	55
-16.1 Kopírování (paste)	55
-16.2 Vrátit zpět a provést znovu (undo/redo)	56
-17 Využití — jak vypadá používání aplikace	58
-17.1 Přihlášení	58
-17.2 Výběr akce a stánku	58
-17.3 Pokladní rozhraní (index)	58
-17.4 Správa akcí (event manager)	60
-17.5 Správa zaměstnanců (admin)	61
-17.6 Správa smazaných záznamů	62
-17.7 Typický scénář obsluhy	62
-17.7.1 Scénář pokladního (cashier):	62
-17.7.2 Scénář prodejce (seller):	63
-18 Bezpečnostní implementace	63
-18.1 Hashování hesel	63
-18.2 Rate limiting	63
-18.3 Validace nahrávaných souborů	64
-18.4 Ochrana cookies a sessions	64
-18.5 Threat model — proti čemu se systém brání	65
-18.5.1 Hrozby, proti kterým se systém aktivně brání	65
-18.6 Validace vstupních dat	65
-18.6.1 Co je mimo scope systému	67
-19 Plánované úlohy na pozadí a logování	68
-19.1 Plánované úlohy	68
-19.1.1 Zálohování databáze	68
-19.2 Logování	69
-19.2.1 Logování transakcí	69
-20 Frontend a uživatelské rozhraní	70
-20.1 Architektura frontendu	70
-20.2 Event delegation	70
-20.3 Vyhledávání a řazení tabulek	70
-20.3.1 Vyhledávání	71
-20.3.2 Řazení	72
-21 Testování	73
-21.1 Unit testy a integrační testy	73
-21.2 Kritické scénáře — platby a refundace	74
-21.3 Testy undo/redo a paste	74
-21.4 Další testované oblasti	74
-ZÁVĚR	76
-SEZNAM POUŽITÉ LITERATURY	79
-SEZNAM PŘÍLOH	80
-PŘÍLOHA 1 – Seznam pro vybírání předčíslí	81
+ÚVOD	9
+1 Historie a kontext	10
+1.1 Vývoj bezhotovostních platebních systémů	10
+1.2 Webové technologie a jejich role	10
+1.3 RFID a NFC technologie	11
+2 Teoretická východiska	11
+2.1 Architektura webových aplikací	11
+2.2 REST API a komunikace klient-server	12
+2.3 Relační databáze a transakční zpracování	13
+2.4 Soft-delete vzor	13
+2.5 Idempotence v síťové komunikaci	14
+2.6 Zamykání a souběžný přístup	14
+3 Použité technologie a nástroje	15
+3.1 Python	15
+3.2 Flask	16
+3.3 PostgreSQL	16
+3.4 JavaScript a Web Serial API	17
+3.5 Další technologie a knihovny	17
+4 Bezpečnostní aspekty	18
+4.1 Autentizace a správa hesel	18
+4.2 Správa sessions	19
+4.3 Ochrana proti běžným útokům	19
+4.4 Zabezpečení finančních operací	20
+5 Shrnutí teoretické části a přechod k praktické části	20
+PRAKTICKÁ ČÁST	21
+6 Cíle práce a zadání	21
+6.1 Zadání	21
+6.2 Hlavní cíl	21
+6.3 Dílčí cíle	21
+7 Architektura systému	22
+8 Prerekvizity a instalace	22
+8.1 Systémové požadavky	22
+8.2 Instalace a spuštění	23
+8.3 Konfigurace	25
+8.3.1 Přehled konfiguračních položek	25
+9 Databáze a její rozvržení	31
+9.1 Schéma databáze	31
+9.2 Triggery a integritní omezení	33
+9.3 Indexy	33
+10 Způsob programování a využití nástrojů	34
+10.1 Struktura projektu a Flask blueprinty	34
+10.2 Připojení k databázi — psycopg a connection pool	36
+10.3 Serverové sessions v PostgreSQL	38
+10.4 Zpracování chyb — vlastní výjimky	38
+10.5 Generátor SQL dotazů (Query Builder)	39
+10.6 Synchronizace vazebních tabulek	40
+11 Práva přístupu	40
+11.1 Hierarchie rolí	40
+11.2 Vynucování oprávnění	41
+11.3 Vzájemná výlučnost rolí	41
+12 Čtení karet pomocí čteček	42
+12.1 Komunikace přes Web Serial API	42
+13 ACID operace a práce s databází při finančních operacích	44
+13.1 Průběh platby	44
+13.2 Idempotence a fingerprint	44
+13.3 Refundace	45
+13.4 Zajištění integrity na úrovni databáze	45
+14 Caching	46
+14.1 Serverový caching statických souborů	46
+14.2 Klientský caching dat	47
+14.3 Persistence stavu objednávky	49
+15 Statistiky a historie plateb	49
+15.1 Statistiky akcí	49
+15.2 Historie transakcí	50
+16 Kopírování (paste) a zpět/znovu (undo/redo)	51
+16.1 Kopírování (paste)	51
+16.2 Vrátit zpět a provést znovu (undo/redo)	52
+17 Využití — jak vypadá používání aplikace	54
+17.1 Přihlášení	54
+17.2 Výběr akce a stánku	54
+17.3 Pokladní rozhraní (index)	54
+17.4 Správa akcí (event manager)	56
+17.5 Správa zaměstnanců (admin)	57
+17.6 Správa smazaných záznamů	58
+17.7 Typický scénář obsluhy	58
+17.7.1 Scénář pokladního (cashier):	58
+17.7.2 Scénář prodejce (seller):	59
+18 Bezpečnostní implementace	60
+18.1 Hashování hesel	60
+18.2 Rate limiting	61
+18.3 Validace nahrávaných souborů	61
+18.4 Ochrana cookies a sessions	61
+18.5 Threat model — proti čemu se systém brání	62
+18.6 Validace vstupních dat	62
+18.6.1 Co je mimo scope systému	64
+19 Plánované úlohy na pozadí a logování	65
+19.1 Plánované úlohy	65
+19.1.1 Zálohování databáze	65
+19.2 Logování	66
+19.2.1 Logování transakcí	67
+20 Frontend a uživatelské rozhraní	67
+20.1 Architektura frontendu	67
+20.2 Event delegation	67
+20.3 Vyhledávání a řazení tabulek	68
+20.3.1 Vyhledávání	68
+20.3.2 Řazení	69
+21 Testování	70
+21.1 Unit testy a integrační testy	71
+21.2 Kritické scénáře — platby a refundace	71
+21.3 Testy undo/redo a paste	72
+21.4 Další testované oblasti	72
+ZÁVĚR	73
+SEZNAM POUŽITÉ LITERATURY	76
+SEZNAM PŘÍLOH	77
+Příloha 1 – Seznam pro vybírání předčíslí	78
+Příloha 2 – Platební operace – flowchart	79
 
  
 ÚVOD
@@ -267,20 +267,20 @@ Pro spuštění aplikace je potřeba:
 ●	RFID/NFC čtečka — připojená přes USB, komunikující přes sériový port. (jestli čtečka zároveň kominuje jinými způsoby, bude je nejspíš nutné vypnout)
 ●	Node.js 18+ — potřebný pro spuštění testů.
 8.2 Instalace a spuštění
-1.	Získání projektu:
+1. Získání projektu:
 git clone https://github.com/mgvsetin/2426-mp-ThomasMuij.git
 cd 2426-mp-ThomasMuij
 Případně stáhněte ZIP archiv projektu a rozbalte ho.
-2.	Vytvoření virtuálního prostředí (doporučeno):
+2. Vytvoření virtuálního prostředí (doporučeno):
 python -m venv .venv
 Aktivace (windows):
 .venv\Scripts\activate
 Aktivace (Linux/macOS):
 source .venv/bin/activate
-3.	Instalace Python závislostí:
+3. Instalace Python závislostí:
 pip install -r requirements.txt
 Hlavní závislosti zahrnují: Flask, psycopg (s poolem), argon2-cffi, Flask-Limiter, APScheduler, Pillow, phonenumbers, email-validator a python-dateutil.
-4.	Příprava databáze:
+4. Příprava databáze:
 Vytvořte PostgreSQL databázi a uživatele (přes psql nebo pgAdmin):
 CREATE DATABASE cashier_app;
 Pro testování:
@@ -288,19 +288,17 @@ CREATE DATABASE cashier_app_test;
 Na systémech Debian/Ubuntu může být nutné doinstalovat balík postgresql-contrib pro rozšíření pgcrypto (rozšíření se aktivuje automaticky při inicializaci schématu).
 Nastavte připojovací údaje buď proměnnou prostředí DATABASE_CONNINFO, nebo v souboru instance/config.py (nezapomeňte změnit heslo):
 DATABASE_CONNINFO = "dbname=cashier_app host=localhost user=postgres password=heslo port=5432"
-5.	Inicializace databázového schématu:
+5. Inicializace databázového schématu:
 flask --app cashier_app init-db
-6.	Pro testování lze vložit testovací data:
+6. Vytvoření prvního administrátora:
+flask --app cashier_app create-admin
+Příkaz interaktivně vyžádá uživatelské jméno, e-mail a heslo (s potvrzením). Vstup je opakovaně vyžádán, dokud není zadána platná hodnota. Heslo je okamžitě zahashováno algoritmem Argon2. Vytvořený zaměstnanec má is_admin=TRUE a slouží jako první správce systému. Příkaz lze také použít při zapomenutí hesla všech administrátorů.
+7. Pro testování lze vložit testovací data:
 flask --app cashier_app insert-development-values
-Testovací data obsahují i produkty s obrázky. Aby se obrázky správně zobrazovaly, je třeba zkopírovat ukázkové obrázky do složky uploads:
-Windows:
-xcopy "cashier_app\static\images\products copy\*" "instance\uploads\products\" /E /I
-Linux/macOS:
-cp -r "cashier_app/static/images/products copy/"* instance/uploads/products/
-7.	Spuštění vývojového serveru:
+8. Spuštění vývojového serveru:
 flask --app cashier_app run
 Aplikace bude dostupná na http://localhost:5000.
-8.	Produkční nasazení:
+9. Produkční nasazení:
 Pro produkci se doporučuje použít WSGI server (například Gunicorn) za reverzním proxy serverem (nginx). Nginx by měl obsluhovat statické soubory a složku s nahranými obrázky produktů. V konfiguraci je nutné:
 nastavit SESSION_COOKIE_SECURE = True,
 vygenerovat silný SECRET_KEY (např. python -c "import secrets; print(secrets.token_urlsafe(32))"),
@@ -651,7 +649,7 @@ async function readStringStreamReader(reader, readableStreamClosed, onCardRead) 
 4. Zpracování ID — po načtení kompletního ID karty (například 00A713A700000000) je vyvolán callback, který vyhledá peněženku s odpovídajícím tag_id a zobrazí informace o uživateli.
 13 ACID operace a práce s databází při finančních operacích
 13.1 Průběh platby
-Platba u prodejního stánku probíhá v těchto krocích:
+Platba u prodejního stánku, kterou zobrazuje Příloha 2, probíhá v těchto krocích:
 1. Klient — zaměstnanec přiloží kartu návštěvníka ke čtečce, vybere produkty a potvrdí platbu. Klient vygeneruje unikátní idempotentní klíč (crypto.randomUUID()) a odešle požadavek na API.
 2. Server — validace — server ověří přihlášení zaměstnance, existenci a aktivitu akce, oprávnění pro daný stánek, formát vstupních dat a vyhledá peněženku podle tag_id.
 3. Server — vložení transakce — v rámci jedné databázové transakce se provede:
@@ -669,7 +667,7 @@ fingerprint_source = json.dumps(
          
 Při opakovaném požadavku se stejným klíčem server rozpozná, že transakce již byla provedena. Pokud se fingerprint  shoduje, jde o legitimní opakování (například kvůli výpadku sítě). Pokud se fingerprint liší, jde o pokus o zneužití klíče pro jinou transakci — server vrátí chybu.
 13.3 Refundace
-Refundace (vrácení platby) je speciální typ transakce, který vytvoří nový záznam s opačnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém umožňuje refundovat pouze posledně provedenou platbu na dané peněžence, a to pouze v konfigurovatelném časovém limitu (výchozí: 5 minut). Podmínka pro nalezení refundovatelné transakce ověřuje, že transakce dosud nebyla refundována.
+Refundace (vrácení platby), která je také zobrazena v Příloze 2, je speciální typ transakce, který vytvoří nový záznam s opačnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém umožňuje refundovat pouze posledně provedenou platbu na dané peněžence, a to pouze v konfigurovatelném časovém limitu (výchozí: 5 minut). Podmínka pro nalezení refundovatelné transakce ověřuje, že transakce dosud nebyla refundována.
 13.4 Zajištění integrity na úrovni databáze
 Kromě aplikační logiky zajišťuje integritu finančních dat řada databázových mechanismů:
 ●	CHECK constraint balance_after = balance_before + amount_czk — matematická kontrola, že nový zůstatek odpovídá starému plus částce transakce.
@@ -831,14 +829,17 @@ Obrázek 7 – Stránka správy zaměstnanců
 Zdroj: vlastní zpracování
 17.6 Správa smazaných záznamů
 Jako praktický důsledek soft-delete vzoru obsahuje systém dedikované stránky pro zobrazení a obnovu smazaných záznamů. Administrátor může zobrazit smazané akce a administrátor, event manažer a zaměstnanci na cashier stánku mohou zobrazit smazané uživatele seřazené podle data smazání. U každého záznamu je možné jedním kliknutím provést obnovení (nastavení deleted_at zpět na NULL). Při obnově uživatele se automaticky obnoví i jeho peněženky, které byly smazány ve stejný okamžik. Při obnově akce se obnoví entity, které obsahovala při smazání, nikoli však vazby mezi nimi.
-Obnovení může narazit na konflikty unikátnosti — například pokud byl po smazání vytvořen jiný uživatel se stejným e-mailem nebo kartu, kterou měl při smazání, teď používá někdo jiný. V takovém případě systém nabídne možnost „force" obnovení, které automaticky vygeneruje unikátní alternativu (přidáním suffixu _1, _2 atd. k e-mailu, identifikátoru, tagu peněženky), aby obnovení bylo vždy možné.
+Obnovení může narazit na konflikty unikátnosti — například pokud byl po smazání vytvořen jiný uživatel se stejným e-mailem nebo kartu, kterou měl při smazání, teď používá někdo jiný. V takovém případě systém nabídne možnost „force" obnovení, které automaticky vygeneruje unikátní alternativu (přidáním suffixu _1, _2 atd. k identifikátoru, e-mailu, tagu peněženky), aby obnovení bylo vždy možné.
 Obnovení bylo vytvořeno hlavně kvůli potřebě možnosti podívat se na historii plateb nebo vrácení zbývajících peněz zákazníkovi, proto je možné obnovit pouze uživatele a akce, u kterých se ani neobnoví vazby.
 17.7 Typický scénář obsluhy
-Pro lepší představu o každodenním používání systému jsou zde popsány dva typické scénáře:
+Pro lepší představu o každodenním používání systému jsou zde popsány dva typické scénáře (viz Obrázek 8):
 17.7.1 Scénář pokladního (cashier):
 Pokladní se ráno přihlásí do systému, vybere dnešní akci (například „Školní jarmark 2026") a svůj pokladní stánek. Přijde první návštěvník, který si chce nabít kartu. Pokladní zadá jméno, příjmení a volitelně email, telefonní číslo nebo jiný identifikátor návštěvníka. Pokud už existuje, tak ho pouze vybere, jinak vytvoří nového uživatele. Vytvoří mu peněženku přiložením návštěvníkovy RFID karty ke čtečce — systém automaticky načte tag ID karty a přiřadí ho k peněžence. Poté pokladní zadá částku (například 500 Kč), potvrdí dobití a návštěvník může odejít a platit u prodejních stánků. Když se návštěvník vrátí a chce dobít další prostředky, stačí přiložit kartu — systém ho ihned identifikuje a pokladní pouze zadá novou částku. Na konci akce může návštěvník přijít pro výběr zbývajících prostředků a vrácení karty. Pokladní přiloží kartu ke čtečce a zvolí „vrátit peněženku". Systém v rámci jedné databázové transakce vytvoří transakci typu balance-change se zápornou částkou odpovídající aktuálnímu zůstatku (čímž se zůstatek vynuluje) a poté peněženku soft-deletne. Pokladní vrátí návštěvníkovi hotovost odpovídající vybranému zůstatku a kartu přijme zpět.
 17.7.2 Scénář prodejce (seller):
-Prodejce si po přihlášení vybere svůj prodejní stánek. Na obrazovce vidí vlevo seznam produktů rozdělený do kategorií (například „Jídlo", „Nápoje"), vpravo košík s aktuální objednávkou. Když přijde zákazník a objedná si hamburger a limonádu, prodejce klikne na příslušné produkty — ty se přidají do košíku s celkovou cenou. Zákazník přiloží kartu ke čtečce a prodejce potvrdí platbu jedním kliknutím. Systém okamžitě odečte částku z peněženky a potvrdí platbu. Pokud zákazník zjistí, že dostal špatnou objednávku, nebo prodejce udělá jakoukoli chybu, prodejce může do 5 minut provést refundaci poslední platby. Celý proces jedné transakce tak trvá jen několik sekund.
+Prodejce si po přihlášení vybere akci a svůj prodejní stánek. Na obrazovce vidí vlevo seznam produktů rozdělený do kategorií (například „Jídlo", „Nápoje"), vpravo košík s aktuální objednávkou. Když přijde zákazník a objedná si hamburger a limonádu, prodejce klikne na příslušné produkty — ty se přidají do košíku s celkovou cenou. Zákazník přiloží kartu ke čtečce a prodejce potvrdí platbu jedním kliknutím. Systém okamžitě odečte částku z peněženky a potvrdí platbu. Pokud zákazník zjistí, že dostal špatnou objednávku, nebo prodejce udělá jakoukoli chybu, prodejce může do 5 minut provést refundaci poslední platby. Celý proces jedné transakce tak trvá jen několik sekund.
+ 
+Obrázek 8 – Use case diagram cashier nebo seller zaměstnance
+Zdroj: vlastní zpracování, planttext.com
 18 Bezpečnostní implementace
 18.1 Hashování hesel
 Hesla jsou hashována algoritmem Argon2id s parametry time_cost=3, memory_cost=65536 (64 MB), parallelism=2. Při každém přihlášení se kontroluje, zda parametry hashe odpovídají aktuální konfiguraci — pokud ne, provede se automatický rehash. Tento mechanismus umožňuje transparentní zvýšení bezpečnostních parametrů v budoucnu bez nutnosti resetovat hesla.
@@ -861,7 +862,7 @@ Session cookie je zabezpečena nastavením:
 
 18.5 Threat model — proti čemu se systém brání
 Systém je navržen s ohledem na hrozby typické pro platební systémy provozované na akcích s fyzickým přístupem obsluhy k zařízením:
-18.5.1 Hrozby, proti kterým se systém aktivně brání
+Hrozby, proti kterým se systém aktivně brání:
 ●	Neoprávněný přístup k systému — řešeno autentizací (Argon2 hesla), hierarchií rolí a rate limitingem přihlašování.
 ●	Manipulace s finančními záznamy — transakce jsou na úrovni databáze neměnné (triggery blokují UPDATE/DELETE). Soft-delete vzor zajišťuje, že žádná data nejsou fyzicky smazána. Finanční záznamy nemůže měnit ani administrátor.
 ●	Duplicitní provedení platby — mechanismus idempotence s SHA-256 fingerprintem zabraňuje dvojitému stržení prostředků.
@@ -982,7 +983,7 @@ function toggleOrder(key) {
 Řazení je typově citlivé — textové sloupce (jméno, e-mail) se řadí pomocí localeCompare() s převedením na malá písmena, datumové sloupce (vytvořen, začátek, konec) se řadí porovnáním objektů Date. Vizuální indikátor řazení (šipka) se dynamicky přidává do záhlaví aktivního sloupce jako element <span class="order-by-arrow">.
 Po každé změně filtru nebo řazení se volá loadPage({table: true}), která překreslí tabulku s aktuálně platnými parametry vyhledávání i řazení.
 21 Testování
-Projekt obsahuje rozsáhlou sadu automatizovaných testů implementovaných pomocí frameworku pytest. Testy pokrývají jak izolovanou logiku jednotlivých komponent, tak integrační scénáře zahrnující skutečnou databázi.
+Projekt obsahuje rozsáhlou sadu automatizovaných testů implementovaných pomocí frameworku pytest. Testy pokrývají jak izolovanou logiku jednotlivých komponent, tak integrační scénáře zahrnující skutečnou databázi. Coverage  testů je 86 %.
 21.1 Unit testy a integrační testy
 Testy v projektu lze rozdělit do dvou kategorií:
 ●	Unit testy — testují izolovanou logiku bez závislosti na databázi. Například testy v test_undo_redo.py ověřují správné řazení změn pro operace undo a redo (rodičovské záznamy se obnovují před dětskými, aby nedošlo k porušení referenční integrity), detekci typu změny (insert/update/delete) a filtrování neúčinných změn.
@@ -1002,8 +1003,7 @@ Testy finančních operací patří k nejdůležitějším, protože chyba v pla
 ●	Databázové trigger — testy ověřují, že triggery správně blokují fyzické smazání, chrání neměnné sloupce a normalizují data.
 ●	Validace vstupů — testy pokrývají chybné formáty (neplatné UUID, záporné ceny, příliš dlouhé řetězce) a ověřují, že server vrací odpovídající HTTP kódy (400, 401, 403, 409).
 ●	Zálohování a obnova databáze — unit testy ověřují správné volání pg_dump/pg_restore s očekávanými argumenty, rotaci starých záloh, vyhledání nejnovější zálohy a chování CLI příkazů. Integrační testy proti skutečné databázi ověřují, že záloha a následná obnova zachová data do původního stavu a že obnova z poškozeného souboru selže bez narušení databáze (transakční rollback).
-Testy se spouštějí příkazem pytest a pro jejich běh je vyžadována běžící instance PostgreSQL s testovací databází.
- 
+Testy se spouštějí příkazem pytest a pro jejich běh je vyžadována běžící instance PostgreSQL s testovací databází. 
 
 ZÁVĚR
 Hlavním cílem této práce bylo navrhnout a implementovat funkční, bezpečný a snadno nasaditelný bezhotovostní platební systém pro hromadné akce. Tento cíl byl splněn — výsledkem je webová aplikace, která umožňuje kompletní správu bezhotovostních plateb prostřednictvím RFID/NFC karet, od nabití kreditu přes platby u prodejních stánků až po statistiky a historii transakcí.
@@ -1026,8 +1026,7 @@ Možnosti budoucího rozšíření
 ●	Export statistik — implementace exportu do CSV a PDF by organizátorům umožnila zpracovávat data v externích nástrojích. Díky modulární struktuře API by stačilo přidat nové endpointy, které vrátí data v požadovaném formátu.
 ●	Podpora mobilních zařízení s NFC — moderní telefony s Android podporují čtení NFC tagů prostřednictvím Web NFC API, což by umožnilo použít telefon jako čtečku karet místo dedikovaného USB zařízení.
 ●	Online dobíjení — integrace platební brány (například Stripe ) by umožnila návštěvníkům dobíjet kredit předem z vlastního zařízení, čímž by se zkrátily fronty u pokladních stánků.
-●	Vícejazyčná podpora — rozhraní je v současnosti česko-anglické. Přidání plné vícejazyčné podpory by rozšířilo použitelnost systému pro mezinárodní akce.
- 
+●	Vícejazyčná podpora — rozhraní je v současnosti česko-anglické. Přidání plné vícejazyčné podpory by rozšířilo použitelnost systému pro mezinárodní akce. 
 SEZNAM POUŽITÉ LITERATURY
 1.	ANTHROPIC. Claude Opus 4.6 [velký jazykový model]. 2026. Dostupné z: https://claude.ai/
 2.	CODD, Edgar F. A Relational Model of Data for Large Shared Data Banks. *Communications of the ACM* [online]. 1970, roč. 13, č. 6, s. 377–387 [cit. 2026-03-28]. Dostupné z: https://dl.acm.org/doi/10.1145/362384.362685
@@ -1036,12 +1035,16 @@ SEZNAM POUŽITÉ LITERATURY
 5.	OWASP FOUNDATION. Password Storage Cheat Sheet. *OWASP Cheat Sheet Series* [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 6.	PALLETS PROJECTS. Flask Documentation [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://flask.palletsprojects.com/en/stable/
 7.	PASSWORD HASHING COMPETITION [online]. [cit. 2026-03-28]. Dostupné z: https://www.password-hashing.net/
-8.	POSTGRESQL GLOBAL DEVELOPMENT GROUP. PostgreSQL 17 Documentation [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://www.postgresql.org/docs/current/
- 
-SEZNAM PŘÍLOH 
-PŘÍLOHA 1 – Seznam pro vybírání předčíslí	76
+8.	POSTGRESQL GLOBAL DEVELOPMENT GROUP. PostgreSQL 17 Documentation [online]. ©2024 [cit. 2026-03-28]. Dostupné z: https://www.postgresql.org/docs/current/ 
+SEZNAM PŘÍLOH
+ 
+Příloha 1 – Seznam pro vybírání předčíslí	77
+Příloha 2 – Platební operace – flowchart	78
  
  
 Příloha 1 – Seznam pro vybírání předčíslí
  
-Zdroj: vlastní zpracování
+Zdroj: vlastní zpracování 
+Příloha 2 – Platební operace – flowchart
+ 
+Zdroj: vlastní zpracování, planttext.com

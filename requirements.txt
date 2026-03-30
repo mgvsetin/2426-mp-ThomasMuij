@@ -11,3 +11,4 @@ psycopg-binary==3.2.12
 psycopg-pool==3.2.7
 pytest==9.0.2
 python-dateutil==2.9.0.post0
+pytest-cov==7.1.0

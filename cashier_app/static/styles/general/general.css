@@ -257,6 +257,49 @@ input[type=submit] {
 }
 
 
+/* Web Serial API unsupported banner */
+.web-serial-banner {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  z-index: 900;
+  background: #fef3c7;
+  border-bottom: 1px solid #f59e0b;
+  padding: 10px 48px 10px 16px;
+  font-size: 0.9rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.web-serial-banner svg {
+  flex-shrink: 0;
+}
+
+.web-serial-banner-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.web-serial-banner-close:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
 /* Password eye toggle */
 .pw-eye {
   position: absolute;

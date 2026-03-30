@@ -1,0 +1,119 @@
+@startuml flowchart_payment_detailed
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam activityFontSize 12
+skinparam activityDiamondFontSize 12
+skinparam ArrowFontSize 11
+
+title Platební operace
+
+start
+
+:Zaměstnanec přihlášen\nvybraná akce + seller stánek;
+
+split
+
+  -> Platba;
+
+  partition "Platba" {
+
+    :Vybere produkty, naskenuje kartu;
+
+    :POST /api/transactions/make-payment\n[Idempotency-Key] { tag_id, amount_czk, products_info };
+
+    if (Validace OK?\n– tag_id, idempotency_key povinné\n– amount_czk celé číslo v rozsahu\n– součet produktů == amount_czk) then (ne)
+      :400 missing_fields / invalid_data;
+      kill
+    else (ano)
+    endif
+
+    :SELECT wallet FOR UPDATE\nWHERE tag_id=?, event_id=?, deleted_at IS NULL;
+
+    if (Peněženka nalezena\na dostatek prostředků?) then (ne)
+      :400 wallet_not_found\n/ wallet_balance_czk_is_not_enough;
+      kill
+    else (ano)
+    endif
+
+    :make_transaction() – SHA-256 fingerprint\nINSERT INTO transactions (type='payment')\nON CONFLICT (idempotency_key) DO NOTHING;
+
+    if (Idempotency key konflikt\ns jinými daty?) then (ano)
+      :409 idempotency_key_data_conflict;
+      kill
+    else (ne)
+    endif
+
+    note right
+      DB Trigger ověří:
+      • akce je aktivní
+      • typ stánku = seller
+      • roli zaměstnance
+      Atomicky odečte zůstatek.
+    end note
+
+    :200 OK { balance_changed_by };
+    :Platba proběhla ✓;
+
+  }
+
+split again
+
+  -> Refundace;
+
+  partition "Refundace (do 5 minut)" {
+
+    :Naskenuje kartu (tag_id);
+
+    :GET /api/transactions/last-refundable?tag-id=…;
+
+    :SELECT wallet + hledá poslední platbu:\ntype='payment', occurred_at > now()–5min\nještě nerefundovaná;
+
+    if (Peněženka nalezena\na platba existuje?) then (ne)
+      :400 wallet_not_found\n/ no_refundable_transaction;
+      kill
+    else (ano)
+    endif
+
+    :200 OK { refund_amount, products_info }\nZobrazí detail – zaměstnanec potvrdí;
+
+    :POST /api/transactions/make-refund\n[Idempotency-Key] { tag_id };
+
+    if (tag_id + idempotency_key\npovinné?) then (ne)
+      :400 missing fields;
+      kill
+    else (ano)
+    endif
+
+    :SELECT wallet FOR UPDATE (zamkne řádek)\nZnovu ověří refundovatelnou platbu;
+
+    if (Peněženka nalezena, platba stále\nrefundovatelná a balance v rozsahu?) then (ne)
+      :400 wallet_not_found\n/ no_refundable_transaction\n/ resulting_balance_too_high;
+      kill
+    else (ano)
+    endif
+
+    :make_transaction() – SHA-256 fingerprint\nINSERT INTO transactions (type='refund')\nON CONFLICT (idempotency_key) DO NOTHING;
+
+    if (Idempotency key konflikt\ns jinými daty?) then (ano)
+      :409 idempotency_key_data_conflict;
+      kill
+    else (ne)
+    endif
+
+    note right
+      DB Trigger doplní z původní transakce:
+      amount_czk, products_info,
+      tag_id, wallet_id, user_id.
+      Atomicky přičte zůstatek zpět.
+    end note
+
+    :200 OK { balance_changed_by, refunded_amount };
+    :Refundace proběhla ✓;
+
+  }
+
+end split
+
+stop
+
+@enduml

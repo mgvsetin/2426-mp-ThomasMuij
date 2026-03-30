@@ -73,3 +73,5 @@ coverage/
 
 .idea/
 *.iml
+
+~$*.docx
