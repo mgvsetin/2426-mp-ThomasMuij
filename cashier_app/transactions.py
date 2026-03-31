@@ -8,6 +8,7 @@ from cashier_app.db import get_pool
 from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.employee_events_booths import require_seller_booth_selected, require_cashier_booth_selected, require_event_selected
 from cashier_app.utils.transactions import make_transaction
+from cashier_app.utils.employees_users import is_manager
 from cashier_app.errors import UnexpectedError, InsufficientBalanceError, IdempotencyKeyDataConflict
 
 
@@ -305,6 +306,7 @@ def get_last_refundable():
     refund_amount = -payment['amount_czk']
 
     return jsonify(
+        transaction_id=payment['id'],
         refund_amount=refund_amount,
         products_info=payment['products_info'],
         occurred_at=payment['occurred_at'].isoformat()
@@ -328,12 +330,16 @@ def make_refund():
     """
     tag_id = request.form.get('tag-id', '').strip()
     idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
+    expected_transaction_id = request.form.get('transaction-id', '').strip()
 
     if not idemp_key:
         return jsonify(error='missing_idempotency_key'), 400
 
     if not tag_id:
         return jsonify(error='missing_tag_id'), 400
+
+    if not expected_transaction_id:
+        return jsonify(error='missing_transaction_id'), 400
 
     try:
         with get_pool().connection() as conn:
@@ -357,6 +363,9 @@ def make_refund():
                 if not payment:
                     return jsonify(error='no_refundable_transaction'), 400
 
+                if str(payment['id']) != expected_transaction_id:
+                    return jsonify(error='transaction_id_mismatch'), 409
+
                 refund_amount = -payment['amount_czk']
 
                 if wallet['balance_czk'] + refund_amount > 1_000_000:
@@ -367,6 +376,99 @@ def make_refund():
                 params = {
                     'event_id': g.event['id'],
                     'booth_id': g.booth['id'],
+                    'transaction_type': 'refund',
+                    'performed_by': g.employee['id'],
+                    'idempotency_key': idemp_key,
+                    'refunded_transaction_id': payment['id']
+                }
+
+                make_transaction(params, cursor=cur)
+    except InsufficientBalanceError:
+        return jsonify(error='wallet_balance_czk_is_not_enough'), 400
+    except IdempotencyKeyDataConflict:
+        return jsonify(error='idempotency_key_data_conflict'), 409
+    except UnexpectedError:
+        return jsonify(error='unexpected_error'), 500
+
+    return jsonify(
+        balance_changed_by=refund_amount,
+        refunded_products=payment['products_info'],
+        refunded_amount=refund_amount
+    ), 200
+
+
+@api_bp.route('/admin-refund', methods=('POST',))
+@require_login
+def admin_refund():
+    """Provede refundaci libovolné platby administrátorem nebo event managerem.
+
+    Umožňuje administrátorovi nebo event managerovi příslušné akce refundovat jakoukoli
+    dosud nerefundovanou platbu bez časového limitu a bez nutnosti mít vybraný stánek.
+
+    Returns:
+        JSON odpověď s částkou změny zůstatku, refundovanými produkty a refundovanou částkou,
+        nebo chybovou zprávou.
+    """
+    transaction_id = request.form.get('transaction-id', '').strip()
+    idemp_key = request.headers.get('Idempotency-Key') or request.form.get('idempotency-key')
+
+    if not idemp_key:
+        return jsonify(error='missing_idempotency_key'), 400
+
+    if not transaction_id:
+        return jsonify(error='missing_transaction_id'), 400
+
+    try:
+        transaction_id = UUID(transaction_id)
+    except (ValueError, TypeError):
+        return jsonify(error='invalid_transaction_id'), 400
+
+    try:
+        with get_pool().connection() as conn:
+            with conn.cursor() as cur:
+                payment = cur.execute(
+                    '''
+                    SELECT id, amount_czk, products_info, wallet_id, event_id, booth_id
+                    FROM transactions
+                    WHERE id = %s
+                    AND transaction_type = 'payment'
+                    FOR UPDATE''',
+                    (transaction_id,)).fetchone()
+
+                if not payment:
+                    return jsonify(error='payment_transaction_not_found'), 400
+
+                if not g.employee['is_admin']:
+                    if not is_manager(g.employee['id'], payment['event_id'], cur):
+                        return jsonify(error='insufficient_privileges'), 403
+
+                already_refunded = cur.execute(
+                    '''
+                    SELECT 1 FROM transactions
+                    WHERE refunded_transaction_id = %s''',
+                    (transaction_id,)).fetchone()
+
+                if already_refunded:
+                    return jsonify(error='transaction_already_refunded'), 400
+
+                refund_amount = -payment['amount_czk']
+
+                wallet = cur.execute(
+                    '''
+                    SELECT balance_czk FROM wallets
+                    WHERE id = %s AND deleted_at IS NULL
+                    FOR UPDATE''',
+                    (payment['wallet_id'],)).fetchone()
+
+                if not wallet:
+                    return jsonify(error='wallet_not_found'), 400
+
+                if wallet['balance_czk'] + refund_amount > 1_000_000:
+                    return jsonify(error='resulting_wallet_balance_czk_is_too_high'), 400
+
+                params = {
+                    'event_id': payment['event_id'],
+                    'booth_id': payment['booth_id'],
                     'transaction_type': 'refund',
                     'performed_by': g.employee['id'],
                     'idempotency_key': idemp_key,

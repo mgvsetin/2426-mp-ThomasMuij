@@ -44,7 +44,9 @@ def get_user_transaction_history_for_event(event_id, user_id):
     except (TypeError, ValueError):
         return jsonify(error='invalid_user_id'), 400
 
-    if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
+    can_admin_refund = g.employee['is_admin'] or bool(is_manager(g.employee['id'], event_id))
+
+    if not can_admin_refund:
         selected_event = load_selected_event()
         if not selected_event or selected_event['id'] != event_id:
             return jsonify(error='insufficient_privileges'), 403
@@ -58,7 +60,9 @@ def get_user_transaction_history_for_event(event_id, user_id):
         with conn.cursor() as cur:
             user_transaction_history = cur.execute(
                 '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info, e.username AS performed_by_username, b.name AS booth_name
+                SELECT t.id, t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
+                       e.username AS performed_by_username, b.name AS booth_name,
+                       EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id) AS is_refunded
                 FROM transactions t
                 JOIN users u ON u.id = t.user_id
                 JOIN employees e ON e.id = t.performed_by
@@ -69,7 +73,7 @@ def get_user_transaction_history_for_event(event_id, user_id):
                 ''',
                 (user_id, event_id)).fetchall()
 
-    return jsonify(user_transaction_history=user_transaction_history), 200
+    return jsonify(user_transaction_history=user_transaction_history, can_admin_refund=can_admin_refund), 200
 
 
 @api_transaction_history_bp.route('/<uuid:event_id>/transaction-history')
@@ -90,10 +94,11 @@ def get_event_transaction_history(event_id):
         with conn.cursor() as cur:
             event_transaction_history = cur.execute(
                 '''
-                SELECT t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
+                SELECT t.id, t.tag_id, t.transaction_type, t.amount_czk, t.balance_before, t.balance_after, t.occurred_at, t.products_info,
                        e.username AS performed_by_username,
                        u.first_name AS user_first_name, u.last_name AS user_last_name,
-                       b.name AS booth_name
+                       b.name AS booth_name,
+                       EXISTS (SELECT 1 FROM transactions r WHERE r.refunded_transaction_id = t.id) AS is_refunded
                 FROM transactions t
                 JOIN employees e ON e.id = t.performed_by
                 JOIN booths b ON b.id = t.booth_id
@@ -103,4 +108,4 @@ def get_event_transaction_history(event_id):
                 ''',
                 (event_id,)).fetchall()
 
-    return jsonify(event_transaction_history=event_transaction_history), 200
+    return jsonify(event_transaction_history=event_transaction_history, can_admin_refund=True), 200

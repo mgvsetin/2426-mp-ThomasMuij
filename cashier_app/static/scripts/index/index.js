@@ -344,6 +344,7 @@ document.addEventListener('click', async (event) => {
       const formData = new FormData();
       formData.set('tag-id', lastReadCardId);
       formData.set('idempotency-key', idempotencyKey);
+      formData.set('transaction-id', confirmRefundButton.dataset.transactionId);
 
       const headers = new Headers();
       headers.set('Idempotency-Key', idempotencyKey);
@@ -1134,6 +1135,7 @@ async function openRefundModal() {
   }
 
   const refundAmount = lookupData.refund_amount;
+  const transactionId = lookupData.transaction_id;
   const products = lookupData.products_info;
 
   let productsHTML = '';
@@ -1156,7 +1158,7 @@ async function openRefundModal() {
     <div id="refund-general-error" class="form-error"></div>
     <div class="modal-actions">
       <button id="cancel-refund-button" class="btn btn-ghost close-modal">Zrušit</button>
-      <button id="confirm-refund-button" class="btn btn-delete">Vrátit</button>
+      <button id="confirm-refund-button" class="btn btn-delete" data-transaction-id="${transactionId}">Vrátit</button>
     </div>
   `;
 
@@ -1335,6 +1337,12 @@ function showRefundError(error) {
       return;
     case 'no_refundable_transaction':
       setErr('Nebyla nalezena platba k vrácení.');
+      return;
+    case 'transaction_id_mismatch':
+      setErr('Platba byla mezitím změněna nebo vrácena. Zkuste to znovu.');
+      return;
+    case 'missing_transaction_id':
+      setErr('Něco se nepovedlo.');
       return;
     default:
       break;

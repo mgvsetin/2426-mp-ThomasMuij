@@ -1,6 +1,7 @@
 import { escapeHTML } from "../general/html_display_utils.js";
 import { formatDateTimeISOToDisplay } from "../general/date_utils.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
+import { openModal, closeModal } from "../general/modals_forms.js";
 
 const transactionsTableBody = document.querySelector('#transactions-table-body');
 const cardsTableBody = document.querySelector('#cards-table-body');
@@ -76,7 +77,8 @@ async function loadPage() {
     await loadUserAndEventInfo(userId, eventId);
 
     const transactions = data.user_transaction_history || [];
-    renderTransactions(transactions);
+    const canAdminRefund = data.can_admin_refund || false;
+    renderTransactions(transactions, canAdminRefund);
     renderCards(transactions);
 
   } catch (err) {
@@ -223,10 +225,23 @@ function renderCards(transactions) {
 /**
  * Vykreslí tabulku transakcí a souhrnné statistiky.
  * @param {Array<Object>} transactions - Pole transakcí
+ * @param {boolean} canAdminRefund - Zda má přihlášený zaměstnanec právo refundovat platby
  */
-function renderTransactions(transactions) {
+function renderTransactions(transactions, canAdminRefund = false) {
+  if (canAdminRefund) {
+    const theadRow = document.querySelector('#transactions-table thead tr');
+    if (!theadRow.querySelector('.actions-header')) {
+      const th = document.createElement('th');
+      th.className = 'actions-header';
+      th.textContent = 'Akce';
+      theadRow.appendChild(th);
+    }
+  }
+
+  const colspan = 10 + (canAdminRefund ? 1 : 0);
+
   if (!transactions || transactions.length === 0) {
-    transactionsTableBody.innerHTML = '<tr><td colspan="10" class="empty-message">Žádné transakce.</td></tr>';
+    transactionsTableBody.innerHTML = `<tr><td colspan="${colspan}" class="empty-message">Žádné transakce.</td></tr>`;
     return;
   }
 
@@ -308,6 +323,14 @@ function renderTransactions(transactions) {
       productsHtml = `<div class="products-info">${productItems}</div>`;
     }
 
+    let actionCell = '';
+    if (canAdminRefund) {
+      const btnHtml = (transactionType === 'payment' && !transaction.is_refunded)
+        ? `<button class="refund-btn" data-transaction-id="${escapeHTML(String(transaction.id))}" data-amount="${amountCzk}">Refundovat</button>`
+        : '';
+      actionCell = `<td class="action-cell">${btnHtml}</td>`;
+    }
+
     rows += `
       <tr>
         <td>${index + 1}</td>
@@ -320,11 +343,16 @@ function renderTransactions(transactions) {
         <td>${escapeHTML(boothName)}</td>
         <td>${escapeHTML(performedByUsername)}</td>
         <td>${productsHtml}</td>
+        ${actionCell}
       </tr>
     `;
   });
 
   transactionsTableBody.innerHTML = rows;
+
+  if (canAdminRefund) {
+    transactionsTableBody.addEventListener('click', handleRefundClick);
+  }
 
   totalTransactionsEl.textContent = transactions.length;
   totalDepositsEl.textContent = `${totalDeposits} Kč`;
@@ -344,10 +372,98 @@ function renderTransactions(transactions) {
 }
 
 /**
+ * Zpracuje kliknutí na tlačítko refundace — otevře potvrzovací modál.
+ * @param {MouseEvent} e
+ */
+function handleRefundClick(e) {
+  const btn = e.target.closest('.refund-btn');
+  if (!btn) return;
+
+  const transactionId = btn.dataset.transactionId;
+  const amount = parseInt(btn.dataset.amount, 10);
+  const refundAmount = -amount;
+
+  const overlay = openModal(`
+    <header>
+      <h2>Vrácení platby</h2>
+    </header>
+    <p>Opravdu chcete vrátit platbu <strong>${refundAmount} Kč</strong>?</p>
+    <div class="form-error" id="admin-refund-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost close-modal">Zrušit</button>
+      <button class="btn btn-delete" id="confirm-admin-refund"
+        data-transaction-id="${escapeHTML(transactionId)}"
+        data-refund-amount="${refundAmount}">Vrátit</button>
+    </div>
+  `, false);
+
+  overlay.addEventListener('click', async (e2) => {
+    if (e2.target.closest('.close-modal')) {
+      closeModal();
+      return;
+    }
+
+    const confirmBtn = e2.target.closest('#confirm-admin-refund');
+    if (!confirmBtn) return;
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Refunduji...';
+
+    const errorEl = overlay.querySelector('#admin-refund-error');
+    errorEl.textContent = '';
+    errorEl.classList.remove('show-form-error');
+
+    try {
+      const formData = new FormData();
+      formData.append('transaction-id', confirmBtn.dataset.transactionId);
+      formData.append('idempotency-key', crypto.randomUUID());
+
+      const response = await fetch('/api/transactions/admin-refund', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        closeModal();
+        window.location.reload();
+        return;
+      }
+
+      const data = await response.json();
+      errorEl.textContent = getAdminRefundErrorMessage(data.error);
+      errorEl.classList.add('show-form-error');
+    } catch {
+      errorEl.textContent = 'Něco se nepovedlo. Zkuste to prosím později.';
+      errorEl.classList.add('show-form-error');
+    }
+
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Vrátit';
+  });
+}
+
+/**
+ * Vrátí čitelnou chybovou zprávu pro chybu admin refundace.
+ * @param {string} error
+ * @returns {string}
+ */
+function getAdminRefundErrorMessage(error) {
+  switch (error) {
+    case 'payment_transaction_not_found': return 'Platba nebyla nalezena.';
+    case 'transaction_already_refunded': return 'Tato platba již byla vrácena.';
+    case 'wallet_not_found': return 'Peněženka nebyla nalezena.';
+    case 'resulting_wallet_balance_czk_is_too_high': return 'Výsledný zůstatek na kartě by byl příliš vysoký.';
+    case 'insufficient_privileges': return 'Nemáte oprávnění k vrácení platby.';
+    case 'idempotency_key_data_conflict': return 'Něco se nepovedlo. Zkuste to prosím znovu.';
+    default: return 'Něco se nepovedlo. Zkuste to prosím později.';
+  }
+}
+
+/**
  * Zobrazí chybovou zprávu v tabulkách transakcí a karet.
  * @param {string} message - Chybová zpráva
  */
 function showError(message) {
-  transactionsTableBody.innerHTML = `<tr><td colspan="9" class="error-message">${escapeHTML(message)}</td></tr>`;
-  cardsTableBody.innerHTML = `<tr><td colspan="8" class="error-message">${escapeHTML(message)}</td></tr>`;
+  transactionsTableBody.innerHTML = `<tr><td colspan="99" class="error-message">${escapeHTML(message)}</td></tr>`;
+  cardsTableBody.innerHTML = `<tr><td colspan="99" class="error-message">${escapeHTML(message)}</td></tr>`;
 }

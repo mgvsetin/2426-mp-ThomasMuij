@@ -25,8 +25,6 @@ export let newCardReadPromise = new Promise(resolve => {
   newCardReadResolve = resolve;
 });
 
-handleCardRead('00B824B800000000'); ///////// 
-
 
 /**
  * Zpracuje načtení karty podle zadaného ID.

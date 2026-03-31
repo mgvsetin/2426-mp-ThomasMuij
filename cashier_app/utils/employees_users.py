@@ -7,31 +7,36 @@ import string
 from typing import List, Tuple, Dict, Any
 from email_validator import validate_email as _validate_email, EmailNotValidError
 import phonenumbers
+from psycopg import Cursor
 from phonenumbers.phonenumberutil import NumberParseException
 from phonenumbers import PhoneNumberFormat, national_significant_number
 
-def is_manager(employee_id, event_id):
+def is_manager(employee_id, event_id, cursor: Cursor | None = None):
     """Zjistí, zda je zaměstnanec manažerem dané akce.
 
     Args:
         employee_id: ID zaměstnance.
         event_id: ID akce.
+        cursor: Volitelný kurzor pro databázové dotazy. Pokud není poskytnut, vytvoří se nový kurzor.
 
     Returns:
         True, pokud je zaměstnanec manažerem akce, jinak False.
     """
-    is_manager = False
+    sql = '''
+        SELECT 1
+        FROM employee_event_booth_roles
+        WHERE employee_id = %s
+        AND event_id = %s
+        AND booth_id IS NULL'''
+    
+    params = (employee_id, event_id)
+
+    if cursor:
+        return bool(cursor.execute(sql, params).fetchone())
+
     with get_pool().connection() as conn:
         with conn.cursor() as cur:
-            is_manager = bool(cur.execute('''
-                SELECT 1
-                FROM employee_event_booth_roles
-                WHERE employee_id = %s
-                AND event_id = %s
-                AND booth_id IS NULL''',
-                (employee_id, event_id)).fetchone())
-
-    return is_manager
+            return bool(cur.execute(sql, params).fetchone())
 
 
 def validate_username(

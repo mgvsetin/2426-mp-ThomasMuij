@@ -257,7 +257,7 @@ def create_app(test_config=None):
         """
         return jsonify(error="too_many_requests"), 429
 
-    ### ujistěte se, že toto obsluhuje nginx
+    ## měl by obsluhovat nginx
     @app.route('/uploads/products/<path:filename>')
     def uploaded_product_image(filename):
         """Obslouží požadavek na nahraný obrázek produktu.

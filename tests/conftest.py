@@ -380,6 +380,17 @@ def db_employee_seller_role(db_cursor: Cursor, db_employee_admin: dict[str, Any]
 
 
 @pytest.fixture()
+def db_employee_manager_role(db_cursor: Cursor, db_employee_regular: dict[str, Any], db_event: dict[str, Any]) -> dict[str, Any]:
+    """Přiřadí běžného zaměstnance jako event managera (booth_id IS NULL) a vrátí roli."""
+    db_cursor.execute("""
+        INSERT INTO employee_event_booth_roles (employee_id, event_id, booth_id)
+        VALUES (%s, %s, NULL)
+        RETURNING *
+    """, (db_employee_regular['id'], db_event['id']))
+    return db_cursor.fetchone()
+
+
+@pytest.fixture()
 def db_product(db_cursor: Cursor, db_event: dict[str, Any]) -> dict[str, Any]:
     """Vloží testovací produkt a vrátí jeho data."""
     db_cursor.execute("""

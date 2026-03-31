@@ -81,7 +81,7 @@ PRAKTICKÁ ČÁST	21
 13.1 Průběh platby	45
 13.2 Idempotence a fingerprint	46
 13.3 Refundace	46
-13.4 Zajištění integrity na úrovni databáze	46
+13.4 Zajištění integrity na úrovni databáze	47
 14 Caching	47
 14.1 Serverový caching statických souborů	47
 14.2 Klientský caching dat	48
@@ -89,9 +89,9 @@ PRAKTICKÁ ČÁST	21
 15 Statistiky a historie plateb	50
 15.1 Statistiky akcí	50
 15.2 Historie transakcí	51
-16 Kopírování (paste) a zpět/znovu (undo/redo)	52
-16.1 Kopírování (paste)	52
-16.2 Vrátit zpět a provést znovu (undo/redo)	53
+16 Kopírování (paste) a zpět/znovu (undo/redo)	53
+16.1 Kopírování (paste)	53
+16.2 Vrátit zpět a provést znovu (undo/redo)	54
 17 Využití — jak vypadá používání aplikace	55
 17.1 Přihlášení	55
 17.2 Výběr akce a stánku	55
@@ -663,7 +663,9 @@ fingerprint_source = json.dumps(
          
 Při opakovaném požadavku se stejným klíčem server rozpozná, že transakce již byla provedena. Pokud se fingerprint  shoduje, jde o legitimní opakování (například kvůli výpadku sítě). Pokud se fingerprint liší, jde o pokus o zneužití klíče pro jinou transakci — server vrátí chybu.
 13.3 Refundace
-Refundace (vrácení platby), která je také zobrazena v Příloze 2, je speciální typ transakce, který vytvoří nový záznam s opačnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém umožňuje refundovat pouze posledně provedenou platbu na dané peněžence, a to pouze v konfigurovatelném časovém limitu (výchozí: 5 minut). Podmínka pro nalezení refundovatelné transakce ověřuje, že transakce dosud nebyla refundována.
+Refundace (vrácení platby), která je také zobrazena v Příloze 2, je speciální typ transakce, který vytvoří nový záznam s opačnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém rozlišuje dva typy refundace:
+●	Refundace seller stánku — dostupná přímo z rozhraní prodejního stánku. Umožňuje refundovat pouze posledně provedenou platbu na dané peněžence, a to pouze v konfigurovatelném časovém limitu (výchozí: 5 minut). Podmínka pro nalezení refundovatelné transakce ověřuje, že transakce dosud nebyla refundována.
+●	Administrátorská refundace — dostupná z historie transakcí uživatele i z celkové historie transakcí akce. Umožňuje administrátorovi nebo správci akce příslušné akce refundovat libovolnou dosud nerefundovanou platbu bez časového limitu. Endpoint POST /api/transactions/admin-refund nejprve ověří oprávnění (admin nebo event manager s booth_id IS NULL v tabulce employee_event_booth_roles), poté zkontroluje, že platba existuje a ještě nebyla refundována, a provede refundaci pomocí stejného mechanismu make_transaction.
 13.4 Zajištění integrity na úrovni databáze
 Kromě aplikační logiky zajišťuje integritu finančních dat řada databázových mechanismů:
 ●	CHECK constraint balance_after = balance_before + amount_czk — matematická kontrola, že nový zůstatek odpovídá starému plus částce transakce.
@@ -751,7 +753,7 @@ Zdroj: vlastní zpracování
 Aplikace poskytuje dva typy historie transakcí:
 ●	Historie transakcí uživatele — zobrazuje všechny transakce konkrétního uživatele v rámci akce, včetně názvu stánku, jména zaměstnance, částek, zůstatků a informací o produktech. Přístupná z pohledu pokladního (cashier) i manažera akce (viz Obrázek 3).
 ●	Historie transakcí akce — zobrazuje kompletní výpis všech transakcí celé akce. Přístupná pouze pro event managery a adminy.
-Obě historie jsou zobrazeny na dedikovaných HTML stránkách s tabulkovým zobrazením.
+Obě historie jsou zobrazeny na dedikovaných HTML stránkách s tabulkovým zobrazením. Pokud má přihlášený zaměstnanec oprávnění provádět administrátorskou refundaci (admin nebo event manager dané akce), zobrazí se v tabulce transakcí sloupec Akce s tlačítkem Refundovat u každé dosud nerefundované platby. Při tisku jsou tlačítka a sloupec skryta pomocí CSS (@media print).
  
 Obrázek 3 – Stránka historie transakcí uživatele
 Zdroj: vlastní zpracování
@@ -1010,7 +1012,7 @@ Odchylky od zadání
 Offline status — systém vyžaduje připojení k databázovému serveru. Plně offline režim by vyžadoval lokální databázi s pozdější synchronizací, což by výrazně zvýšilo složitost projektu bez přiměřeného přínosu pro typické nasazení, kde je k dispozici lokální síť.
 Silné stránky
 ●	Robustní zabezpečení finančních dat — přesunutí klíčové business logiky do databázových triggerů zajišťuje integritu dat nezávisle na aplikační vrstvě. Transakce jsou na úrovni databáze neměnné — ani administrátor je nemůže modifikovat nebo smazat.
-●	Rozsáhlé automatizované testování — 600 testů ve 28 souborech pokrývá validaci vstupů, finanční operace, souběžný přístup, databázové triggery, autorizaci, zálohování a další oblasti. Testy pracují s reálnou PostgreSQL databází, nikoliv s mocky.
+●	Rozsáhlé automatizované testování — 613 testů ve 28 souborech pokrývá validaci vstupů, finanční operace, souběžný přístup, databázové triggery, autorizaci, zálohování a další oblasti. Testy pracují s reálnou PostgreSQL databází, nikoliv s mocky.
 ●	Nezávislost na externích službách — aplikace nevyžaduje žádné třetí strany pro svůj provoz. Stačí Python, PostgreSQL a webový prohlížeč. Pro čtení karet není potřeba instalovat žádný software ani ovladače díky Web Serial API.
 Slabé stránky a omezení
 ●	Závislost na Chromium prohlížečích — Web Serial API není podporováno ve Firefoxu ani Safari, což omezuje výběr prohlížeče pro čtení karet. Pro správu akcí a statistiky je však možné použít libovolný prohlížeč.

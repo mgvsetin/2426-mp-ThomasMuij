@@ -31,7 +31,7 @@ body {
 
 #event-info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
   gap: 15px;
   margin-top: 20px;
 }
@@ -85,7 +85,7 @@ tbody td {
 
 #users-table thead th {
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 8px;
   font-weight: 700;
   border-bottom: 2px solid #e6eef6;
   background: #fbfdff;
@@ -93,7 +93,7 @@ tbody td {
 }
 
 #users-table tbody td {
-  padding: 10px 14px;
+  padding: 10px 8px;
   vertical-align: middle;
   border-bottom: 1px solid #f2f6fb;
 }
@@ -130,7 +130,7 @@ tbody td {
 
 #cards-table thead th {
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 8px;
   font-weight: 700;
   border-bottom: 2px solid #e6eef6;
   background: #fbfdff;
@@ -138,7 +138,7 @@ tbody td {
 }
 
 #cards-table tbody td {
-  padding: 10px 14px;
+  padding: 10px 8px;
   vertical-align: middle;
   border-bottom: 1px solid #f2f6fb;
 }
@@ -174,7 +174,7 @@ tbody td {
 
 #transactions-table thead th {
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 8px;
   font-weight: 700;
   color: #1f3b4d;
   border-bottom: 2px solid #e6eef6;
@@ -183,7 +183,7 @@ tbody td {
 }
 
 #transactions-table tbody td {
-  padding: 10px 14px;
+  padding: 10px 8px;
   vertical-align: middle;
   border-bottom: 1px solid #f2f6fb;
 }
@@ -303,6 +303,32 @@ tbody td {
   font-weight: 600;
 }
 
+.refund-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9d174d;
+  background: #fce7f3;
+  border: 1px solid #f9a8d4;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refund-btn:hover:not(:disabled) {
+  background: #fbcfe8;
+}
+
+.refund-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actions-header {
+  white-space: nowrap;
+  width: 1%;
+}
+
 #summary {
   margin-top: 30px;
   padding: 20px;
@@ -384,6 +410,12 @@ tbody td {
     background: #f0f0f0;
     border: 1px solid #000;
   }
+
+  .refund-btn,
+  .actions-header,
+  .action-cell {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -407,6 +439,6 @@ tbody td {
   #cards-table tbody td,
   #users-table thead th,
   #users-table tbody td {
-    padding: 8px 10px;
+    padding: 8px 6px;
   }
 }

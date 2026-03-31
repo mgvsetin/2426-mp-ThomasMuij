@@ -252,6 +252,15 @@ class TestMakeRefund:
             assert resp.status_code == 400
             assert resp.get_json()['error'] == 'missing_tag_id'
 
+    def test_missing_transaction_id(self, client):
+        with mock_auth(ADMIN_EMPLOYEE), mock_event(SAMPLE_EVENT), mock_booth(SAMPLE_BOOTH_SELLER):
+            resp = client.post('/api/transactions/make-refund', data={
+                'tag-id': 'CARD123',
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'missing_transaction_id'
+
 
 # ---------------------------------------------------------------------------
 # last-refundable
@@ -404,6 +413,15 @@ class TestMakeRefundDB:
             })
             assert resp.status_code == 200
 
+        # Zjisti transaction_id přes last-refundable
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            lr_resp = client.get(
+                f'/api/transactions/last-refundable?tag-id={db_wallet["tag_id"]}')
+            assert lr_resp.status_code == 200
+            transaction_id = lr_resp.get_json()['transaction_id']
+
         # Refund
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
@@ -411,6 +429,7 @@ class TestMakeRefundDB:
             resp = client.post('/api/transactions/make-refund', data={
                 'tag-id': db_wallet['tag_id'],
                 'idempotency-key': str(uuid4()),
+                'transaction-id': transaction_id,
             })
             assert resp.status_code == 200
             data = resp.get_json()
@@ -419,6 +438,285 @@ class TestMakeRefundDB:
 
         db_cursor.execute("SELECT balance_czk FROM wallets WHERE id = %s", (db_wallet['id'],))
         assert db_cursor.fetchone()['balance_czk'] == 500
+
+    def test_transaction_id_mismatch(self, client, db_pool, db_cursor,
+                                     db_wallet, db_event, db_employee_admin,
+                                     db_booth_cashier, db_booth_seller,
+                                     db_employee_role, db_employee_seller_role):
+        """Refund se špatným transaction_id vrátí chybu transaction_id_mismatch."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Hamburger', 'price': 89, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-89',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-refund', data={
+                'tag-id': db_wallet['tag_id'],
+                'idempotency-key': str(uuid4()),
+                'transaction-id': str(uuid4()),  # špatné ID
+            })
+            assert resp.status_code == 409
+            assert resp.get_json()['error'] == 'transaction_id_mismatch'
+
+
+# ---------------------------------------------------------------------------
+# admin-refund
+# ---------------------------------------------------------------------------
+
+class TestAdminRefund:
+
+    def test_unauthenticated(self, client):
+        with mock_auth(None):
+            resp = client.post('/api/transactions/admin-refund')
+            assert resp.status_code == 401
+
+    def test_missing_idempotency_key(self, client):
+        with mock_auth(ADMIN_EMPLOYEE):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'missing_idempotency_key'
+
+    def test_missing_transaction_id(self, client):
+        with mock_auth(ADMIN_EMPLOYEE):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'missing_transaction_id'
+
+    def test_invalid_transaction_id(self, client):
+        with mock_auth(ADMIN_EMPLOYEE):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': 'not-a-uuid',
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'invalid_transaction_id'
+
+    @patch('cashier_app.transactions.get_pool')
+    def test_payment_not_found(self, mock_pool, client):
+        mock_cur = MagicMock()
+        mock_cur.execute.return_value.fetchone.return_value = None
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        mock_pool.return_value.connection.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
+
+        with mock_auth(ADMIN_EMPLOYEE):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(uuid4()),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'payment_transaction_not_found'
+
+    @patch('cashier_app.transactions.get_pool')
+    def test_non_admin_non_manager_gets_403(self, mock_pool, client):
+        payment = {
+            'id': str(uuid4()),
+            'amount_czk': -100,
+            'products_info': [],
+            'wallet_id': str(uuid4()),
+            'event_id': str(uuid4()),
+            'booth_id': str(uuid4()),
+        }
+        mock_cur = MagicMock()
+        mock_cur.execute.return_value.fetchone.side_effect = [payment, None]
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        mock_pool.return_value.connection.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
+
+        with mock_auth(REGULAR_EMPLOYEE):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(uuid4()),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 403
+            assert resp.get_json()['error'] == 'insufficient_privileges'
+
+
+@pytest.mark.db
+class TestAdminRefundDB:
+    """Integrační testy admin-refund s reálnou databází."""
+
+    def test_successful_refund_as_admin(self, client, db_pool, db_cursor,
+                                        db_wallet, db_event, db_employee_admin,
+                                        db_booth_cashier, db_booth_seller,
+                                        db_employee_role, db_employee_seller_role):
+        """Admin refunduje platbu bez nutnosti mít vybraný stánek."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-100',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute(
+            "SELECT id FROM transactions WHERE transaction_type = 'payment' AND wallet_id = %s",
+            (db_wallet['id'],))
+        payment_id = db_cursor.fetchone()['id']
+
+        with mock_auth_db(db_employee_admin), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(payment_id),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data['refunded_amount'] == 100
+            assert data['balance_changed_by'] == 100
+
+        db_cursor.execute("SELECT balance_czk FROM wallets WHERE id = %s", (db_wallet['id'],))
+        assert db_cursor.fetchone()['balance_czk'] == 500
+
+    def test_successful_refund_as_event_manager(self, client, db_pool, db_cursor,
+                                                db_wallet, db_event, db_employee_admin,
+                                                db_employee_regular, db_booth_cashier,
+                                                db_booth_seller, db_employee_role,
+                                                db_employee_seller_role,
+                                                db_employee_manager_role):
+        """Event manager refunduje platbu ve své akci."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-100',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute(
+            "SELECT id FROM transactions WHERE transaction_type = 'payment' AND wallet_id = %s",
+            (db_wallet['id'],))
+        payment_id = db_cursor.fetchone()['id']
+
+        with mock_auth_db(db_employee_regular), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(payment_id),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data['refunded_amount'] == 100
+            assert data['balance_changed_by'] == 100
+
+    def test_non_manager_gets_403(self, client, db_pool, db_cursor,
+                                  db_wallet, db_event, db_employee_admin,
+                                  db_employee_regular, db_booth_cashier,
+                                  db_booth_seller, db_employee_role,
+                                  db_employee_seller_role):
+        """Zaměstnanec bez správcovské role nemůže refundovat."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-100',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute(
+            "SELECT id FROM transactions WHERE transaction_type = 'payment' AND wallet_id = %s",
+            (db_wallet['id'],))
+        payment_id = db_cursor.fetchone()['id']
+
+        with mock_auth_db(db_employee_regular), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(payment_id),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 403
+            assert resp.get_json()['error'] == 'insufficient_privileges'
+
+    def test_already_refunded(self, client, db_pool, db_cursor,
+                              db_wallet, db_event, db_employee_admin,
+                              db_booth_cashier, db_booth_seller,
+                              db_employee_role, db_employee_seller_role):
+        """Pokus o dvojité vrácení platby vrátí chybu."""
+        _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
+
+        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
+             mock_booth_db(db_booth_seller), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/make-payment', data={
+                'tag-id': db_wallet['tag_id'],
+                'amount-czk': '-100',
+                'idempotency-key': str(uuid4()),
+                'products-info': json.dumps(products),
+            })
+            assert resp.status_code == 200
+
+        db_cursor.execute(
+            "SELECT id FROM transactions WHERE transaction_type = 'payment' AND wallet_id = %s",
+            (db_wallet['id'],))
+        payment_id = db_cursor.fetchone()['id']
+
+        with mock_auth_db(db_employee_admin), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(payment_id),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 200
+
+        with mock_auth_db(db_employee_admin), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(payment_id),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'transaction_already_refunded'
+
+    def test_payment_not_found(self, client, db_pool, db_cursor,
+                               db_wallet, db_event, db_employee_admin,
+                               db_booth_cashier, db_employee_role):
+        """Vrácení neexistující platby vrátí chybu."""
+        with mock_auth_db(db_employee_admin), \
+             patch('cashier_app.transactions.get_pool', return_value=db_pool):
+            resp = client.post('/api/transactions/admin-refund', data={
+                'transaction-id': str(uuid4()),
+                'idempotency-key': str(uuid4()),
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'payment_transaction_not_found'
 
 
 @pytest.mark.db
@@ -454,3 +752,4 @@ class TestGetLastRefundableDB:
             assert data['refund_amount'] == 89
             assert data['products_info'] == products
             assert 'occurred_at' in data
+            assert 'transaction_id' in data
