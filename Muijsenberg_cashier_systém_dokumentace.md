@@ -386,7 +386,6 @@ READER_INFO = {
 # SESSION_COOKIE_SAMESITE = 'Lax'
 # SESSION_ENFORCE_UA = False
 # SESSION_ENFORCE_IP = False
-
 # PASSWORD_HASHER_PARAMETERS = {
 #     'time_cost': 3,
 #     'memory_cost': 65536,
@@ -394,22 +393,16 @@ READER_INFO = {
 #     'hash_len': 32,
 #     'salt_len':16
 # }
-
 # MAX_UNDO_CHANGES = 30
 # UNDO_TIME_LIMIT_MINUTES = 60
-
 # REFUND_TIME_LIMIT_MINUTES = 5
-
 # UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'products')
 # UPLOAD_IMAGE_PIXEL_LIMIT = 50_000_000
 # ALLOWED_IMAGE_EXTENSIONS = {'jpeg', 'jpg', 'png', 'webp'}
 # ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 # MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-
 # SESSION_COOKIE_HTTPONLY = True
-
 # SESSION_MAX_INACTIVE_DAYS = 7
-
 # SCHEDULER_ENABLED = True
 # SCHEDULER_SESSION_CLEANUP_MINUTES = 60
 # SCHEDULER_UNUSED_IMAGES_CLEANUP_MINUTES = 180
@@ -525,26 +518,21 @@ def get_pool() -> ConnectionPool:
 
 Připojení se získává voláním get_pool().connection() jako context manager (příkaz with). Po opuštění bloku with se připojení automaticky vrátí zpět do poolu pro další požadavky — není tedy nutné ho ručně zavírat:
 sql, query_params = build_insert_statement('events', params, returning='*')
-
-    try:
-        with get_pool().connection() as conn:
-            with conn.cursor() as cur:
-                new_event = cur.execute(sql, query_params).fetchone()
-
-                save_change(cur, [{
-                    'table': 'events',
-                    'old_values': None,
-                    'new_values': convert_dict_to_serializable(dict(new_event))
-                }], g.employee['id'])
-    except IntegrityError as e:
-        constraint = get_constraint_name(e)
-
-        if constraint == 'unique_index_events_name_active':
-            return jsonify(error='event_name_taken'), 409
-
-        return jsonify(error='db_integrity_error'), 400
-
-    return jsonify(), 200
+try:
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            new_event = cur.execute(sql, query_params).fetchone()
+            save_change(cur, [{
+                'table': 'events',
+                'old_values': None,
+                'new_values': convert_dict_to_serializable(dict(new_event))
+            }], g.employee['id'])
+except IntegrityError as e:
+    constraint = get_constraint_name(e)
+    if constraint == 'unique_index_events_name_active':
+        return jsonify(error='event_name_taken'), 409
+    return jsonify(error='db_integrity_error'), 400
+return jsonify(), 200
 Psycopg 3 používá ve výchozím nastavení transakční model — každé připojení získané z poolu automaticky zahájí transakci. Pokud blok with skončí úspěšně, transakce se potvrdí (COMMIT). Pokud dojde k výjimce, transakce se automaticky odvolá (ROLLBACK). Díky tomu je zaručena atomicita operací bez nutnosti explicitního řízení transakcí.
 Veškeré SQL dotazy používají parametrizované zápisy (%s placeholdery), nikdy se nepoužívá formátování řetězců. Pro dynamické sestavování dotazů slouží modul query_builder.py, který generuje INSERT, UPDATE a DELETE příkazy s parametry.
 10.3 Serverové sessions v PostgreSQL
@@ -660,7 +648,6 @@ fingerprint_source = json.dumps(
         {key: convert_uuids_to_str(value) for key, value in fingerprint_cols.items()},
         separators=(',', ':'), sort_keys=True)
     request_fingerprint = hashlib.sha256(fingerprint_source.encode('utf-8')).hexdigest()
-         
 Při opakovaném požadavku se stejným klíčem server rozpozná, že transakce již byla provedena. Pokud se fingerprint  shoduje, jde o legitimní opakování (například kvůli výpadku sítě). Pokud se fingerprint liší, jde o pokus o zneužití klíče pro jinou transakci — server vrátí chybu.
 13.3 Refundace
 Refundace (vrácení platby), která je také zobrazena v Příloze 2, je speciální typ transakce, který vytvoří nový záznam s opačnou částkou a odkazem na původní transakci (refunded_transaction_id). Systém rozlišuje dva typy refundace:
@@ -676,15 +663,14 @@ Kromě aplikační logiky zajišťuje integritu finančních dat řada databázo
 14.1 Serverový caching statických souborů
 Aplikace implementuje verzování statických souborů (CSS, JS) pomocí MD5 hashů. Funkce versioned_static() vypočítá hash obsahu souboru a připojí ho jako query parametr k URL:
 def versioned_static(filename):
-        if filename not in _static_hash_cache:
-            filepath = os.path.join(app.static_folder, filename)
-            try:
-                with open(filepath, 'rb') as f:
-                    _static_hash_cache[filename] = hashlib.md5(f.read()).hexdigest()[:10]
-            except FileNotFoundError:
-                _static_hash_cache[filename] = '0'
-        return f'/static/{filename}?v={_static_hash_cache[filename]}'
-         
+    if filename not in _static_hash_cache:
+        filepath = os.path.join(app.static_folder, filename)
+        try:
+            with open(filepath, 'rb') as f:
+                _static_hash_cache[filename] = hashlib.md5(f.read()).hexdigest()[:10]
+        except FileNotFoundError:
+            _static_hash_cache[filename] = '0'
+    return f'/static/{filename}?v={_static_hash_cache[filename]}'
 Soubory s verzovacím parametrem dostávají hlavičku Cache-Control: max-age=31536000 (1 rok), protože při změně obsahu se změní hash a tím i URL — prohlížeč automaticky stáhne novou verzi. Neverzované soubory (JS moduly importované jinými moduly) dostávají Cache-Control: no-cache, aby se vždy revalidovaly.
 14.2 Klientský caching dat
 Na straně klienta implementuje modul cache_factory.js generickou cache pro asynchronní funkce. Tovární funkce cacheFunctionFactory obalí libovolnou async funkci a vrátí cachovanou verzi s automatickým obnovováním na pozadí:
