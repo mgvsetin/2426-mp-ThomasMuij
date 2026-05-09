@@ -127,8 +127,12 @@ class TestMakePayment:
     @patch('cashier_app.transactions.make_transaction')
     @patch('cashier_app.transactions.get_pool')
     def test_successful_payment(self, mock_pool, mock_make_tx, client):
+        product_id = str(uuid4())
         wallet = {'id': str(uuid4()), 'owner_id': str(uuid4()), 'balance_czk': 500}
         mock_cur = MagicMock()
+        mock_cur.execute.return_value.fetchall.return_value = [
+            {'id': product_id, 'name': 'Beer', 'price': 50}
+        ]
         mock_cur.execute.return_value.fetchone.return_value = wallet
         mock_conn = MagicMock()
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
@@ -136,7 +140,7 @@ class TestMakePayment:
         mock_pool.return_value.connection.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 50, 'quantity': 2}]
+        products = [{'id': product_id, 'name': 'Beer', 'price': 50, 'quantity': 2}]
         with mock_auth(ADMIN_EMPLOYEE), mock_event(SAMPLE_EVENT), mock_booth(SAMPLE_BOOTH_SELLER):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': 'CARD123',
@@ -149,7 +153,11 @@ class TestMakePayment:
 
     @patch('cashier_app.transactions.get_pool')
     def test_wallet_not_found(self, mock_pool, client):
+        product_id = str(uuid4())
         mock_cur = MagicMock()
+        mock_cur.execute.return_value.fetchall.return_value = [
+            {'id': product_id, 'name': 'Beer', 'price': 50}
+        ]
         mock_cur.execute.return_value.fetchone.return_value = None
         mock_conn = MagicMock()
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
@@ -157,7 +165,7 @@ class TestMakePayment:
         mock_pool.return_value.connection.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_pool.return_value.connection.return_value.__exit__ = MagicMock(return_value=False)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 50, 'quantity': 1}]
+        products = [{'id': product_id, 'name': 'Beer', 'price': 50, 'quantity': 1}]
         with mock_auth(ADMIN_EMPLOYEE), mock_event(SAMPLE_EVENT), mock_booth(SAMPLE_BOOTH_SELLER):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': 'CARD123',
@@ -309,12 +317,13 @@ class TestMakePaymentDB:
 
     def test_successful_payment(self, client, db_pool, db_cursor,
                                 db_wallet, db_event, db_employee_admin,
-                                db_booth_cashier, db_booth_seller,
+                                db_booth_cashier, db_booth_seller, db_product,
                                 db_employee_role, db_employee_seller_role):
         """Vklad + platba přes API s reálnou DB."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 50, 'quantity': 2}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -332,10 +341,11 @@ class TestMakePaymentDB:
 
     def test_insufficient_balance(self, client, db_pool, db_cursor,
                                   db_wallet, db_event, db_employee_admin,
-                                  db_booth_cashier, db_booth_seller,
+                                  db_booth_cashier, db_booth_seller, db_product,
                                   db_employee_role, db_employee_seller_role):
         """Platba přesahující zůstatek vrátí chybu."""
-        products = [{'id': str(uuid4()), 'name': 'Expensive', 'price': 100, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -394,20 +404,21 @@ class TestMakeRefundDB:
 
     def test_successful_refund(self, client, db_pool, db_cursor,
                                db_wallet, db_event, db_employee_admin,
-                               db_booth_cashier, db_booth_seller,
+                               db_booth_cashier, db_booth_seller, db_product,
                                db_employee_role, db_employee_seller_role):
         """Vklad + platba + refund přes API."""
         # Vklad 500
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        # Platba 89
-        products = [{'id': str(uuid4()), 'name': 'Hamburger', 'price': 89, 'quantity': 1}]
+        # Platba 50
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 1}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': db_wallet['tag_id'],
-                'amount-czk': '-89',
+                'amount-czk': '-50',
                 'idempotency-key': str(uuid4()),
                 'products-info': json.dumps(products),
             })
@@ -433,26 +444,27 @@ class TestMakeRefundDB:
             })
             assert resp.status_code == 200
             data = resp.get_json()
-            assert data['refunded_amount'] == 89
-            assert data['balance_changed_by'] == 89
+            assert data['refunded_amount'] == 50
+            assert data['balance_changed_by'] == 50
 
         db_cursor.execute("SELECT balance_czk FROM wallets WHERE id = %s", (db_wallet['id'],))
         assert db_cursor.fetchone()['balance_czk'] == 500
 
     def test_transaction_id_mismatch(self, client, db_pool, db_cursor,
                                      db_wallet, db_event, db_employee_admin,
-                                     db_booth_cashier, db_booth_seller,
+                                     db_booth_cashier, db_booth_seller, db_product,
                                      db_employee_role, db_employee_seller_role):
         """Refund se špatným transaction_id vrátí chybu transaction_id_mismatch."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Hamburger', 'price': 89, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 1}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': db_wallet['tag_id'],
-                'amount-czk': '-89',
+                'amount-czk': '-50',
                 'idempotency-key': str(uuid4()),
                 'products-info': json.dumps(products),
             })
@@ -557,12 +569,13 @@ class TestAdminRefundDB:
 
     def test_successful_refund_as_admin(self, client, db_pool, db_cursor,
                                         db_wallet, db_event, db_employee_admin,
-                                        db_booth_cashier, db_booth_seller,
+                                        db_booth_cashier, db_booth_seller, db_product,
                                         db_employee_role, db_employee_seller_role):
         """Admin refunduje platbu bez nutnosti mít vybraný stánek."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -596,13 +609,15 @@ class TestAdminRefundDB:
     def test_successful_refund_as_event_manager(self, client, db_pool, db_cursor,
                                                 db_wallet, db_event, db_employee_admin,
                                                 db_employee_regular, db_booth_cashier,
-                                                db_booth_seller, db_employee_role,
+                                                db_booth_seller, db_product,
+                                                db_employee_role,
                                                 db_employee_seller_role,
                                                 db_employee_manager_role):
         """Event manager refunduje platbu ve své akci."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -633,12 +648,13 @@ class TestAdminRefundDB:
     def test_non_manager_gets_403(self, client, db_pool, db_cursor,
                                   db_wallet, db_event, db_employee_admin,
                                   db_employee_regular, db_booth_cashier,
-                                  db_booth_seller, db_employee_role,
+                                  db_booth_seller, db_product, db_employee_role,
                                   db_employee_seller_role):
         """Zaměstnanec bez správcovské role nemůže refundovat."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -666,12 +682,13 @@ class TestAdminRefundDB:
 
     def test_already_refunded(self, client, db_pool, db_cursor,
                               db_wallet, db_event, db_employee_admin,
-                              db_booth_cashier, db_booth_seller,
+                              db_booth_cashier, db_booth_seller, db_product,
                               db_employee_role, db_employee_seller_role):
         """Pokus o dvojité vrácení platby vrátí chybu."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Beer', 'price': 100, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 2}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
@@ -725,18 +742,19 @@ class TestGetLastRefundableDB:
 
     def test_successful_get_last_refundable(self, client, db_pool, db_cursor,
                                              db_wallet, db_event, db_employee_admin,
-                                             db_booth_cashier, db_booth_seller,
+                                             db_booth_cashier, db_booth_seller, db_product,
                                              db_employee_role, db_employee_seller_role):
         """Vklad + platba -> last-refundable vrátí informace o platbě."""
         _deposit(db_cursor, db_wallet, db_event, db_booth_cashier, db_employee_admin, 500)
 
-        products = [{'id': str(uuid4()), 'name': 'Hamburger', 'price': 89, 'quantity': 1}]
+        products = [{'id': str(db_product['id']), 'name': db_product['name'],
+                     'price': db_product['price'], 'quantity': 1}]
         with mock_auth_db(db_employee_admin), mock_event_db(db_event), \
              mock_booth_db(db_booth_seller), \
              patch('cashier_app.transactions.get_pool', return_value=db_pool):
             resp = client.post('/api/transactions/make-payment', data={
                 'tag-id': db_wallet['tag_id'],
-                'amount-czk': '-89',
+                'amount-czk': '-50',
                 'idempotency-key': str(uuid4()),
                 'products-info': json.dumps(products),
             })
@@ -749,7 +767,7 @@ class TestGetLastRefundableDB:
                 f'/api/transactions/last-refundable?tag-id={db_wallet["tag_id"]}')
             assert resp.status_code == 200
             data = resp.get_json()
-            assert data['refund_amount'] == 89
+            assert data['refund_amount'] == 50
             assert data['products_info'] == products
             assert 'occurred_at' in data
             assert 'transaction_id' in data

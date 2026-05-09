@@ -81,12 +81,22 @@ class TestAssignEmployee:
             assert resp.status_code == 400
             assert resp.get_json()['error'] == 'missing_username_or_email'
 
+    def test_missing_booths(self, client):
+        with mock_auth(ADMIN_EMPLOYEE):
+            resp = client.post('/api/events/employees/assign-employee', data={
+                'event-id': str(uuid4()),
+                'username-or-email': 'someone',
+            })
+            assert resp.status_code == 400
+            assert resp.get_json()['error'] == 'missing_booths'
+
     @patch('cashier_app.events.event_employees.is_manager', return_value=False)
     def test_non_admin_non_manager_forbidden(self, mock_is_manager, client):
         with mock_auth(REGULAR_EMPLOYEE):
             resp = client.post('/api/events/employees/assign-employee', data={
                 'event-id': str(uuid4()),
-                'username-or-email': 'someone'
+                'username-or-email': 'someone',
+                'booths': str(uuid4()),
             })
             assert resp.status_code == 403
 

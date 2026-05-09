@@ -5,7 +5,6 @@ from uuid import UUID
 import json
 from cashier_app.auth import require_login
 from cashier_app.db import get_pool
-from cashier_app.utils.products import validate_product_or_category_name, validate_product_price
 from cashier_app.employee_events_booths import require_seller_booth_selected, require_cashier_booth_selected, require_event_selected
 from cashier_app.utils.transactions import make_transaction
 from cashier_app.utils.employees_users import is_manager
@@ -58,16 +57,9 @@ def make_payment():
     try:
         products_info = json.loads(products_info)
         total_products_price = 0
+        product_ids = []
         for product in products_info:
             if product['quantity'] < 1:
-                return jsonify(error='invalid_products_info'), 400
-
-            ok, errors = validate_product_or_category_name(product['name'])
-            if not ok:
-                return jsonify(error='invalid_products_info'), 400
-
-            ok, errors = validate_product_price(product['price'])
-            if not ok:
                 return jsonify(error='invalid_products_info'), 400
 
             try:
@@ -76,6 +68,7 @@ def make_payment():
                 return jsonify(error='invalid_products_info'), 400
 
             total_products_price -= product['price'] * product['quantity']
+            product_ids.append(product['id'])
     except Exception as e:
         return jsonify(error='invalid_products_info'), 400
 
@@ -85,6 +78,25 @@ def make_payment():
     try:
         with get_pool().connection() as conn:
             with conn.cursor() as cur:
+                if product_ids:
+                    db_products = cur.execute(
+                        '''
+                        SELECT id, name, price
+                        FROM products
+                        WHERE id = ANY(%s)
+                        AND event_id = %s
+                        AND deleted_at IS NULL''',
+                        (product_ids, g.event['id'])).fetchall()
+
+                    db_products_by_id = {str(p['id']): p for p in db_products}
+
+                    for product in products_info:
+                        db_product = db_products_by_id.get(product['id'])
+                        if (db_product is None
+                                or db_product['name'] != product['name']
+                                or db_product['price'] != product['price']):
+                            return jsonify(error='invalid_products_info'), 400
+
                 wallet = cur.execute(
                     '''
                     SELECT id, owner_id, balance_czk

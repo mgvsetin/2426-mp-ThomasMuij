@@ -572,6 +572,7 @@ from cashier_app.events.categories import api_categories_bp
 from cashier_app.events.event_employees import api_employees_bp
 from cashier_app.events.transaction_history import api_transaction_history_bp
 from cashier_app.events.statistics import api_statistics_bp
+from cashier_app.events.exports import api_exports_bp
 
 api_bp.register_blueprint(api_booths_bp)
 api_bp.register_blueprint(api_products_bp)
@@ -579,3 +580,4 @@ api_bp.register_blueprint(api_categories_bp)
 api_bp.register_blueprint(api_employees_bp)
 api_bp.register_blueprint(api_transaction_history_bp)
 api_bp.register_blueprint(api_statistics_bp)
+api_bp.register_blueprint(api_exports_bp)

@@ -47,9 +47,9 @@ def assign_manager():
                 '''
                 SELECT id, is_admin
                 FROM employees
-                WHERE (username = %s OR email = %s)
+                WHERE (LOWER(username) = %s OR LOWER(email) = %s)
                 AND deleted_at IS NULL''',
-                (username_or_email, username_or_email)).fetchone()
+                (username_or_email.lower(), username_or_email.lower())).fetchone()
 
             event = cur.execute(
                 '''
@@ -110,6 +110,9 @@ def assign_employee():
     except (ValueError, TypeError):
         return jsonify(error='invalid_booth_id'), 400
 
+    if not booth_ids:
+        return jsonify(error='missing_booths'), 400
+
     if not g.employee['is_admin'] and not is_manager(g.employee['id'], event_id):
         return jsonify(error='insufficient_privileges'), 403
 
@@ -143,9 +146,9 @@ def assign_employee():
                 '''
                 SELECT id, is_admin
                 FROM employees
-                WHERE (username = %s OR email = %s)
+                WHERE (LOWER(username) = %s OR LOWER(email) = %s)
                 AND deleted_at IS NULL''',
-                (username_or_email, username_or_email)).fetchone()
+                (username_or_email.lower(), username_or_email.lower())).fetchone()
 
             if not employee:
                 return jsonify(error='employee_not_found'), 400

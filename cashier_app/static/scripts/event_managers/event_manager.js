@@ -115,6 +115,18 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  // stáhnout CSV transakcí
+  if (event.target.matches('#download-transactions-csv')) {
+    window.location.href = `/api/events/${encodeURIComponent(eventId)}/transactions/csv`;
+    return;
+  }
+
+  // stáhnout CSV nevyčerpaných peněženek
+  if (event.target.matches('#download-unredeemed-wallets-csv')) {
+    window.location.href = `/api/events/${encodeURIComponent(eventId)}/unredeemed-wallets/csv`;
+    return;
+  }
+
   // smazat akci
   const deleteEventBtn = event.target.closest('#delete-event');
   if (deleteEventBtn) {
@@ -3668,7 +3680,7 @@ function showAssignEmployeeErrors(error) {
       setErr(usernameOrEmailError, 'Zaměstnanec nebyl nalezen.');
       return;
     case 'can_not_assign_admin':
-      setErr(generalError, 'Nelze přiřadit admina.');
+      setErr(generalError, 'Admin už má plná oprávnění.');
       return;
     case 'booth_not_found':
       setErr(boothsError, 'Jeden ze stánků nebyl nalezen.');
@@ -3676,8 +3688,11 @@ function showAssignEmployeeErrors(error) {
     case 'invalid_booth_id':
       setErr(boothsError, 'ID stánku není správné.');
       return;
+    case 'missing_booths':
+      setErr(boothsError, 'Vyberte alespoň jeden stánek.');
+      return;
     case 'can_not_assign_manager_to_booths':
-      setErr(generalError, 'Nelze přiřadit manažera ke stánkům.');
+      setErr(generalError, 'Manažer už má prístup ke všem stánkům v akci.');
       return;
     default:
       break;
@@ -3733,6 +3748,9 @@ function showEditEmployeeErrors(error) {
       return;
     case 'invalid_booth_id':
       setErr(boothsError, 'ID stánku není správné.');
+      return;
+    case 'missing_booths':
+      setErr(boothsError, 'Vyberte alespoň jeden stánek.');
       return;
     case 'can_not_assign_manager_to_booths':
       setErr(generalError, 'Nelze přiřadit manažera ke stánkům.');
