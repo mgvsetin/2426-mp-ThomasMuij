@@ -188,7 +188,6 @@ def set_session(client: FlaskClient, employee: dict[str, Any] | None = None, eve
 
 DB_TEST_CONNINFO = os.environ.get('TEST_DATABASE_CONNINFO', (
     "dbname=cashier_app_test host=localhost user=postgres password=heslo123 port=5432"
-    " options='-c timezone=UTC'"
 ))
 
 
