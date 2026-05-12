@@ -9,6 +9,7 @@ import { escapeHTML } from '../general/html_display_utils.js';
 import { clearModalErrors, closeModal, openModal } from '../general/modals_forms.js';
 import { renderSidebar, sidebarClickListeners } from '../general/sidebar.js';
 import { handleRowSelection, markSelectedRows, unselectRows } from '../general/table_utils.js';
+import { isTypingInEditable } from '../general/utils.js';
 
 
 const tableBody = document.querySelector('#deleted-users-table-body');
@@ -182,6 +183,8 @@ usersSearchBar.addEventListener('input', () => {
 
 
 document.addEventListener('keydown', (event) => {
+  if (isTypingInEditable()) return;
+
   handleRowSelection(event);
 
   if (event.key === 'Escape') {

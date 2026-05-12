@@ -17,6 +17,7 @@ import { clearFormErrors, editUserFormOnChange, editWalletInputListeners, openDe
 import { resetWalletsCache } from "./wallets.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
 import { setUpCardReading } from "../general/card_reader.js";
+import { isTypingInEditable } from "../general/utils.js";
 
 const pageContainer = document.querySelector('#page-container');
 const sellerPage = document.querySelector('#seller-page');
@@ -683,6 +684,8 @@ document.addEventListener('keydown', (event) => {
     });
     return;
   }
+
+  if (isTypingInEditable()) return;
 
   if (event.key === 'Enter') {
     const selectedRows = document.querySelectorAll('tr[selected]');

@@ -9,6 +9,7 @@ import { changeSelectedCode, initValues, phoneInputClickListeners, phoneInputFoc
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { fetchEventData as getEventDataOriginal, getEventIdFromPath, resetEventDataCache } from "../general/events.js";
 import { handleUnauthorizedRedirect } from "../general/api_utils.js";
+import { isTypingInEditable } from "../general/utils.js";
 
 
 const card = document.querySelector('#card');
@@ -1078,6 +1079,9 @@ document.addEventListener('input', (event) => {
 document.addEventListener('keydown', (event) => {
   if (multiSelectKeydownHandler(event)) return;
   if (phoneInputKeydownListeners(event)) return;
+
+  if (isTypingInEditable()) return;
+
   handleRowSelection(event);
 
   handleCopyPasteUndoRedoOnKeydown(event, eventId).then((result) => {

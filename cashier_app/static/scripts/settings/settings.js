@@ -8,6 +8,7 @@ import { headerClickListeners, renderHeader } from "../general/header.js";
 import { escapeHTML } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
+import { isTypingInEditable } from "../general/utils.js";
 
 const displayUsername = document.querySelector('#display-username');
 const displayEmail = document.querySelector('#display-email');
@@ -127,6 +128,8 @@ document.addEventListener('click', (event) => {
 
 
 document.addEventListener('keydown', (event) => {
+  if (isTypingInEditable()) return;
+
   if (event.key === 'Escape') {
     const overlay = document.querySelector('.overlay');
     if (overlay) {

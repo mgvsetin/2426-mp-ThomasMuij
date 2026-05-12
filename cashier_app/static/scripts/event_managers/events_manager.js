@@ -7,6 +7,7 @@ import { clearModalErrors, closeModal, openModal } from "../general/modals_forms
 import { getSessionInfo } from "../general/session.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
+import { isTypingInEditable } from "../general/utils.js";
 
 const searchBar = document.querySelector('.search-bar');
 const addEventButton = document.querySelector('#add-event-button');
@@ -228,6 +229,8 @@ document.addEventListener('submit', async (event) => {
 
 
 document.addEventListener('keydown', (event) => {
+  if (isTypingInEditable()) return;
+
   handleRowSelection(event);
   handleCopyPasteUndoRedoOnKeydown(event, 'events_manager').then((result) => {
     if (['paste', 'undo', 'redo'].includes(result)) {

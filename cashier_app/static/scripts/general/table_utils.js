@@ -15,6 +15,7 @@ let copyPasteMesContainer;
  */
 export function handleRowSelection(event) {
   if (document.querySelector('.modal')) return;
+  if (isTypingInEditable()) return;
 
   if (event.type === 'keydown' && event.key === 'Escape') {
     unselectRows();

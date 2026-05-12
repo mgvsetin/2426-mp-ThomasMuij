@@ -9,6 +9,7 @@ import { escapeHTML } from "../general/html_display_utils.js";
 import { clearModalErrors, closeModal, openModal } from "../general/modals_forms.js";
 import { renderSidebar, sidebarClickListeners } from "../general/sidebar.js";
 import { directTo, handleCopyPasteUndoRedoOnKeydown, handleRowSelection, markSelectedRows, unselectRows } from "../general/table_utils.js";
+import { isTypingInEditable } from "../general/utils.js";
 
 const employeeTableBody = document.querySelector('#employee-table-body');
 const tableHeader = document.querySelector('table thead');
@@ -350,6 +351,8 @@ searchBar.addEventListener('input', (event) => {
 
 
 document.addEventListener('keydown', (event) => {
+  if (isTypingInEditable()) return;
+
   handleRowSelection(event);
   handleCopyPasteUndoRedoOnKeydown(event, 'employees_manager').then((result) => {
     if (['paste-employees', 'undo', 'redo'].includes(result)) {
