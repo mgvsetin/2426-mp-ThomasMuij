@@ -1,0 +1,63 @@
+@startuml sequence_payment
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam activityFontSize 13
+skinparam activityDiamondFontSize 13
+skinparam ArrowFontSize 12
+
+title Platební operace
+
+start
+
+:Zaměstnanec vybere produkty\na naskenuje kartu (tag_id);
+
+partition "Platba" {
+
+    :POST /api/transactions/make-payment;
+
+    if (Peněženka nalezena?) then (ne)
+        :404 wallet_not_found;
+        stop
+    else (ano)
+    endif
+
+    if (Dostatek prostředků?) then (ne)
+        :400 insufficient_balance;
+        stop
+    else (ano)
+    endif
+
+    :Zůstatek odečten\nTransakce uložena;
+
+    :200 OK – platba proběhla;
+
+}
+
+if (Zaměstnanec chce refundovat?) then (ne)
+    stop
+else (ano)
+endif
+
+partition "Refundace" {
+
+    :GET /api/transactions/last-refundable;
+
+    if (Existuje platba\ndo 5 minut?) then (ne)
+        :404 no_refundable_transaction;
+        stop
+    else (ano)
+    endif
+
+    :Zobrazí detail refundace\nZaměstnanec potvrdí;
+
+    :POST /api/transactions/make-refund;
+
+    :Zůstatek vrácen\nRefundace uložena;
+
+    :200 OK – refundace proběhla;
+
+}
+
+stop
+
+@enduml

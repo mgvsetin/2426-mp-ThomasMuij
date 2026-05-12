@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historie transakcí</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/transaction_history/user_transaction_history.css') }}">
+</head>
+
+<body>
+  <div id="container">
+    <div id="header">
+      <h1>Historie transakcí</h1>
+      <div id="user-info">
+        <div class="info-item">
+          <span class="info-label">Jméno</span>
+          <span class="info-value" id="user-first-name">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Příjmení</span>
+          <span class="info-value" id="user-last-name">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value" id="user-email">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Telefon</span>
+          <span class="info-value" id="user-phone">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Jiný identifikátor</span>
+          <span class="info-value" id="user-other-identifier">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Akce</span>
+          <span class="info-value" id="event-name">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="summary">
+      <div class="summary-item">
+        <span class="summary-label">Celkový počet transakcí</span>
+        <span class="summary-value" id="total-transactions">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Vklady</span>
+        <span class="summary-value" id="total-deposits">0 Kč</span>
+        <span class="summary-subvalue" id="total-deposits-count">0 transakcí</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Výběry</span>
+        <span class="summary-value" id="total-withdrawals">0 Kč</span>
+        <span class="summary-subvalue" id="total-withdrawals-count">0 transakcí</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Všechny platby</span>
+        <span class="summary-value" id="total-payments">0 Kč</span>
+        <span class="summary-subvalue" id="total-payments-count">0 transakcí</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Nevrácené platby</span>
+        <span class="summary-value" id="non-refunded-payments">0 Kč</span>
+        <span class="summary-subvalue" id="non-refunded-payments-count">0 transakcí</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Vrácení</span>
+        <span class="summary-value" id="total-refunds">0 Kč</span>
+        <span class="summary-subvalue" id="total-refunds-count">0 transakcí</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Celkový zůstatek</span>
+        <span class="summary-value" id="total-balance">0 Kč</span>
+        <span class="summary-subvalue" id="total-cards-count">0 karet</span>
+      </div>
+    </div>
+
+    <div id="cards-section">
+      <h2>Karty uživatele</h2>
+      <table id="cards-table">
+        <thead>
+          <tr>
+            <th class="counter-header">#</th>
+            <th>ID karty</th>
+            <th>Vklady</th>
+            <th>Výběry</th>
+            <th>Platby</th>
+            <th>Vrácení</th>
+            <th>Celkem transakcí</th>
+            <th>Konečný zůstatek</th>
+          </tr>
+        </thead>
+        <tbody id="cards-table-body">
+          <tr>
+            <td colspan="8" class="empty-message">Načítání...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="transactions-section">
+      <h2>Všechny transakce</h2>
+      <table id="transactions-table">
+        <thead>
+          <tr>
+            <th class="counter-header">#</th>
+            <th>Datum a čas</th>
+            <th>ID karty</th>
+            <th>Typ</th>
+            <th>Částka (Kč)</th>
+            <th>Stav před</th>
+            <th>Stav po</th>
+            <th>Stánek</th>
+            <th>Zaměstnanec</th>
+            <th>Produkty</th>
+          </tr>
+        </thead>
+        <tbody id="transactions-table-body">
+          <tr>
+            <td colspan="10" class="empty-message">Načítání...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="{{ versioned_static('scripts/transaction_history/user_transaction_history.js') }}"></script>
+</body>
+
+</html>

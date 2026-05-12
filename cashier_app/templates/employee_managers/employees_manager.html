@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Správa zaměstnanců</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/employee_managers/employees_manager.css') }}">
+</head>
+
+<body>
+  <div id="container">
+    <div id="topbar">
+      <div class="search-div">
+        <div class="search-bar-container">
+          <input class="search-bar" placeholder="Vyhledávání">
+          <div class="search-icon-container">
+            <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
+          </div>
+        </div>
+      </div>
+      <button id="add-employee-button" class="btn btn-primary">
+        + Přidat zaměstnance
+      </button>
+    </div>
+
+    <div id="card">
+      <div class="table-wrap">
+        <table id="employee-table" table-contents="all-employees">
+          <thead>
+            <tr>
+              <th id="counter-header">#</th>
+              <th id="user-header">
+                <div><span>Zaměstnanec</span></div>
+              </th>
+              <th id="email-header">
+                <div><span>Email</span></div>
+              </th>
+              <th id="is-admin-header">
+                <div><span>Admin</span></div>
+              </th>
+              <!-- <th id="created-by-header">
+                <div><span>Vytvořil</span></div>
+              </th> -->
+              <th id="created-at-header">
+                <div><span>Vytvořen</span></div>
+              </th>
+              <th id="actions-header"></th>
+            </tr>
+          </thead>
+          <tbody id="employee-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script src="{{ versioned_static('scripts/employee_managers/employees_manager.js') }}" type="module"></script>
+</body>
+
+</html>

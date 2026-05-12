@@ -1,0 +1,161 @@
+#main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f6f1ff 0%, hsl(227, 100%, 95%) 100%);
+}
+
+#login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: start;
+  box-shadow: 0 8px 32px rgba(68, 68, 235, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  padding: 0 28px 8px 28px;
+  background-color: white;
+  border: 1px solid rgba(68, 68, 235, 0.1);
+  min-width: 320px;
+}
+
+#login-icon {
+  margin-top: 32px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, rgb(68, 68, 235), rgb(100, 100, 245));
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(68, 68, 235, 0.3);
+}
+
+#login-text {
+  margin: 16px 10px 4px 10px;
+  font-weight: 700;
+  font-size: 26px;
+  color: #1a1a2e;
+  letter-spacing: -0.3px;
+}
+
+#login-subtitle {
+  font-size: 13px;
+  color: #8a8aaa;
+  margin-bottom: 24px;
+}
+
+#login-form {
+  display: flex;
+  flex-direction: column;
+  padding: 0 4px;
+  width: 270px;
+}
+
+#username-email-label,
+#password-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a4a6a;
+  margin-bottom: 5px;
+  letter-spacing: 0.2px;
+}
+
+#username-email,
+#password {
+  border: 1.5px solid #e2e6f0;
+  border-radius: 8px;
+  box-shadow: none;
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  outline: none;
+  padding: 10px 12px;
+  width: 100%;
+  color: #1a1a2e;
+  background-color: #fafbff;
+  transition: border-color 0.18s, box-shadow 0.18s, background-color 0.18s;
+}
+
+#username-email:focus,
+#password:focus {
+  border-color: rgb(68, 68, 235);
+  box-shadow: 0 0 0 3px rgba(68, 68, 235, 0.1);
+  background-color: #fff;
+}
+
+#password-container {
+  position: relative;
+}
+
+#password-container #password {
+  padding-right: 38px;
+}
+
+.pw-eye {
+  top: 10px;
+  right: 10px;
+}
+
+#remember-me-checkbox-label {
+  margin-bottom: 16px;
+  cursor: pointer;
+  align-self: flex-start;
+  font-size: 13px;
+  color: #4a4a6a;
+  display: flex;
+  align-items: center;
+  column-gap: 6px;
+}
+
+#remember-me-checkbox {
+  cursor: pointer;
+  accent-color: rgb(68, 68, 235);
+  width: 14px;
+  height: 14px;
+}
+
+.error-message {
+  color: rgb(185, 28, 28);
+  background-color: rgb(254, 242, 242);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  width: 100%;
+  display: none;
+  margin-bottom: 14px;
+  align-self: stretch;
+}
+
+.show-error-message {
+  display: block;
+}
+
+#submit-button {
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, rgb(68, 68, 235), rgb(85, 85, 245));
+  color: white;
+  padding: 11px;
+  margin-bottom: 28px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 14px rgba(68, 68, 235, 0.3);
+  transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+}
+
+#submit-button:hover {
+  background: linear-gradient(135deg, rgb(58, 58, 228), rgb(75, 75, 238));
+  box-shadow: 0 6px 18px rgba(68, 68, 235, 0.4);
+  /* transform: translateY(-1px); */
+}
+
+#submit-button:active {
+  background: linear-gradient(135deg, rgb(50, 50, 220), rgb(65, 65, 230));
+  box-shadow: 0 2px 8px rgba(68, 68, 235, 0.3);
+  /* transform: translateY(0); */
+}

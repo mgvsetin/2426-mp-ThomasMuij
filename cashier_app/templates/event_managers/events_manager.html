@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Správa akcí</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/event_managers/events_manager.css') }}">
+</head>
+
+<body>
+  <div id="container">
+    <div id="topbar">
+      <div class="search-div">
+        <div class="search-bar-container">
+          <input class="search-bar" placeholder="Vyhledávání" />
+          <div class="search-icon-container">
+            <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+          </div>
+        </div>
+      </div>
+
+      <a href="/deleted/events" target="_blank"><button id="open-deleted-events" class="btn btn-ghost">Smazané akce</button></a>
+
+      <button id="add-event-button" class="btn btn-primary">
+        + Přidat akci
+      </button>
+    </div>
+
+    <div id="card">
+      <div id="events-split">
+        <!-- Aktivní -->
+        <section class="events-section" id="active-events-section">
+          <header class="events-section-header">
+            <h3>Aktivní</h3>
+            <div class="section-meta"><span id="active-count">0</span></div>
+          </header>
+          <div class="table-wrap">
+            <table class="events-table" id="active-table" table-contents="events">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="name-header">
+                    <div><span>Akce</span></div>
+                  </th>
+                  <th id="start-at-header">
+                    <div><span>Začátek</span></div>
+                  </th>
+                  <th id="end-at-header">
+                    <div><span>Konec</span></div>
+                  </th>
+                  <th id="created-at-header">
+                    <div><span>Vytvořena</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody id="active-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Budoucí -->
+        <section class="events-section" id="future-events-section">
+          <header class="events-section-header">
+            <h3>Budoucí</h3>
+            <div class="section-meta"><span id="future-count">0</span></div>
+          </header>
+          <div class="table-wrap">
+            <table class="events-table" id="future-table" table-contents="events">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="name-header-future">
+                    <div><span>Akce</span></div>
+                  </th>
+                  <th id="start-at-header-future">
+                    <div><span>Začátek</span></div>
+                  </th>
+                  <th id="end-at-header-future">
+                    <div><span>Konec</span></div>
+                  </th>
+                  <th id="created-at-header-future">
+                    <div><span>Vytvořena</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody id="future-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Minulé -->
+        <section class="events-section" id="past-events-section">
+          <header class="events-section-header">
+            <h3>Minulé</h3>
+            <div class="section-meta"><span id="past-count">0</span></div>
+          </header>
+          <div class="table-wrap">
+            <table class="events-table" id="past-table" table-contents="events">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="name-header-past">
+                    <div><span>Akce</span></div>
+                  </th>
+                  <th id="start-at-header-past">
+                    <div><span>Začátek</span></div>
+                  </th>
+                  <th id="end-at-header-past">
+                    <div><span>Konec</span></div>
+                  </th>
+                  <th id="created-at-header-past">
+                    <div><span>Vytvořena</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody id="past-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="{{ versioned_static('scripts/event_managers/events_manager.js') }}"></script>
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+APScheduler==3.11.0
+argon2-cffi==25.1.0
+email-validator==2.3.0
+filelock==3.17.0
+Flask==3.1.2
+Flask-Limiter==3.12
+phonenumbers==9.0.21
+pillow==12.0.0
+psycopg==3.2.12
+psycopg-binary==3.2.12
+psycopg-pool==3.2.7
+pytest==9.0.2
+python-dateutil==2.9.0.post0
+pytest-cov==7.1.0

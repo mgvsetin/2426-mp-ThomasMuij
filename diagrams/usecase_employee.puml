@@ -1,0 +1,61 @@
+@startuml usecase_employee
+top to bottom direction
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecaseFontSize 12
+skinparam actorFontSize 13
+skinparam packageFontSize 14
+skinparam shadowing false
+skinparam defaultFontName Arial
+
+title Use Case Diagram -- Zaměstnanec (Cashier / Seller)
+
+actor "Zaměstnanec" as EMP
+
+rectangle "Platební systém" {
+
+    usecase "Přihlášení" as UC_LOGIN
+    usecase "Výběr akce" as UC_EVENT
+    usecase "Výběr stánku\n(cashier / seller)" as UC_BOOTH
+
+    package "Pokladní (Cashier)" {
+        usecase "Zadání údajů\nzákazníka" as UC_CUST_DATA
+        usecase "Vyhledání existujícího\nzákazníka" as UC_FIND_CUST
+        usecase "Vytvoření nového\nuživatele" as UC_NEW_USER
+        usecase "Načtení karty" as UC_CARD_C
+        usecase "Zadání částky\nk dobití" as UC_AMOUNT
+        usecase "Přiřazení peněženky\nk zákazníkovi" as UC_ASSIGN_WALLET
+    }
+
+    package "Prodejce (Seller)" {
+        usecase "Vybrání produktů" as UC_PRODUCTS
+        usecase "Načtení karty\nzákazníka" as UC_CARD_S
+        usecase "Potvrzení platby" as UC_PAY
+        usecase "Refundace" as UC_REFUND
+    }
+}
+
+' vstupní bod
+EMP --> UC_LOGIN
+UC_LOGIN --> UC_EVENT
+UC_EVENT --> UC_BOOTH
+
+' větvení podle role
+UC_BOOTH --> UC_CUST_DATA
+UC_BOOTH --> UC_PRODUCTS
+
+' Cashier flow: vyhledání / vytvoření -> karta -> částka -> přiřazení
+UC_CUST_DATA --> UC_FIND_CUST
+UC_CUST_DATA --> UC_NEW_USER
+UC_FIND_CUST --> UC_CARD_C
+UC_NEW_USER --> UC_CARD_C
+UC_CARD_C --> UC_AMOUNT
+UC_AMOUNT --> UC_ASSIGN_WALLET
+
+' Seller flow
+UC_PRODUCTS --> UC_CARD_S
+UC_CARD_S --> UC_PAY
+UC_PAY --> UC_REFUND
+
+@enduml

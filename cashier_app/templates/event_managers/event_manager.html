@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Správa akce</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/event_managers/event_manager.css') }}">
+
+  <script src="{{ versioned_static('scripts/event_managers/chart.umd.min.js') }}"></script>
+</head>
+
+<body>
+  <div id="container">
+    <div id="card">
+      <div id="event-head">
+        <div id="event-info">
+          <div id="event-name">Akce: -</div>
+          <div id="event-start-at">Začíná: <span></span></div>
+          <div id="event-end-at">Končí: <span></span></div>
+          <div id="event-created-at-container">
+            Vytvořena: <span id="event-created-at">-</span>
+          </div>
+        </div>
+        <div id="event-actions">
+          <button id="view-event-transactions" class="btn btn-ghost">Historie transakcí</button>
+          <button id="download-transactions-csv" class="btn btn-ghost">Stáhnout CSV transakcí</button>
+          <button id="edit-event" class="btn btn-primary">Upravit akci</button>
+          <button id="delete-event" class="btn btn-delete">Smazat</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="panel" id="booths-panel">
+          <div class="panel-header">
+            <h3>Stánky</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="booths-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-booth" class="btn btn-primary">+ Přidat stánek</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="booths-table" table-contents="booths">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="booths-name-header">
+                    <div><span>Název</span></div>
+                  </th>
+                  <th id="booths-booth_type-header">
+                    <div><span>Typ</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="managers-panel">
+          <div class="panel-header">
+            <h3>Manažeři akce</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="managers-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-manager" class="btn btn-primary">+ Přiřadit manažera</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="managers-table" table-contents="managers">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="managers-username-header">
+                    <div><span>Zaměstnanec</span></div>
+                  </th>
+                  <th id="managers-email-header">
+                    <div><span>Email</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="employees-panel">
+          <div class="panel-header">
+            <h3>Zaměstnanci</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="employees-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-employee" class="btn btn-primary">+ Přiřadit zaměstnance</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="employees-table" table-contents="employees">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="employees-username-header">
+                    <div><span>Zaměstnanec</span></div>
+                  </th>
+                  <th id="employees-email-header">
+                    <div><span>Email</span></div>
+                  </th>
+                  <th id="employees-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="products-panel">
+          <div class="panel-header">
+            <h3>Produkty & Ceny</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-product" class="btn btn-primary">+ Přidat produkt</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="products-table" table-contents="products">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="products-name-header">
+                    <div><span>Název</span></div>
+                  </th>
+                  <th id="products-price-header">
+                    <div><span>Cena (Kč)</span></div>
+                  </th>
+                  <th id="products-image_path-header">
+                    <div><span>Obrázek</span></div>
+                  </th>
+                  <th id="products-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
+                  <th id="products-categories-header">
+                    <div><span>Kategorie</span></div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="categories-panel">
+          <div class="panel-header">
+            <h3>Kategorie</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="categories-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="add-category" class="btn btn-primary">+ Přidat kategorii</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="categories-table" table-contents="categories">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="categories-name-header">
+                    <div><span>Kategorie</span></div>
+                  </th>
+                  <th id="categories-booths-header">
+                    <div><span>Stánky</span></div>
+                  </th>
+                  <th id="categories-products-header">
+                    <div><span>Produkty</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="users-panel">
+          <div class="panel-header">
+            <h3>Uživatelé</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="users-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <a href="/deleted/users" target="_blank"><button id="open-deleted-users" class="btn btn-ghost">Smazaní uživatelé</button></a>
+              <button id="add-user" class="btn btn-primary">+ Přidat uživatele</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="users-table" table-contents="users">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="users-first-name-header">
+                    <div><span>Jméno</span></div>
+                  </th>
+                  <th id="users-last-name-header">
+                    <div><span>Příjmení</span></div>
+                  </th>
+                  <th id="users-email-header">
+                    <div><span>Email</span></div>
+                  </th>
+                  <th id="users-phone-header">
+                    <div><span>Telefon</span></div>
+                  </th>
+                  <th id="users-other-identifier-header">
+                    <div><span>Jiný identifikátor</span></div>
+                  </th>
+                  <th id="users-wallets-header">
+                    <div><span>Peněženky</span></div>
+                  </th>
+                  <th id="users-event-connected-header">
+                    <div><span>Součástí akce</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="wallets-panel">
+          <div class="panel-header">
+            <h3>Peněženky</h3>
+            <div class="search-div">
+              <div class="search-bar-container">
+                <input class="search-bar" id="wallets-search-bar" placeholder="Vyhledávání" />
+                <div class="search-icon-container">
+                  <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+                </div>
+              </div>
+            </div>
+            <div><button id="download-unredeemed-wallets-csv" class="btn btn-ghost">Stáhnout CSV nevyčerpaných</button></div>
+          </div>
+          <div class="table-wrap">
+            <table id="wallets-table" table-contents="wallets">
+              <thead>
+                <tr>
+                  <th class="counter-header">#</th>
+                  <th id="wallets-tag-id-header">
+                    <div><span>ID karty</span></div>
+                  </th>
+                  <th id="wallets-owner-header">
+                    <div><span>Vlastník</span></div>
+                  </th>
+                  <th id="wallets-balance-header">
+                    <div><span>Zůstatek (Kč)</span></div>
+                  </th>
+                  <th class="actions-header"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <section id="statistics-container" class="panel">
+        <div class="panel-header">
+          <h2>Statistiky</h2>
+        </div>
+
+        <div id="statistics"></div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="{{ versioned_static('scripts/event_managers/event_manager.js') }}"></script>
+</body>
+
+</html>

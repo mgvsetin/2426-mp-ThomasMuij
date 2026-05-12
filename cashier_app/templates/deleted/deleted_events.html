@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smazané akce</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/deleted/deleted_events.css') }}">
+</head>
+
+<body>
+  <div id="container">
+    <div id="topbar">
+      <div class="search-div">
+        <div class="search-bar-container">
+          <input class="search-bar" placeholder="Vyhledávání">
+          <div class="search-icon-container">
+            <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="card">
+      <div class="table-wrap">
+        <table id="deleted-events-table">
+          <thead>
+            <tr>
+              <th class="counter-header">#</th>
+              <th id="name-header">
+                <div><span>Název</span></div>
+              </th>
+              <th id="start-at-header">
+                <div><span>Začátek</span></div>
+              </th>
+              <th id="end-at-header">
+                <div><span>Konec</span></div>
+              </th>
+              <th id="deleted-at-header">
+                <div><span>Smazáno</span></div>
+              </th>
+              <th class="actions-header"></th>
+            </tr>
+          </thead>
+          <tbody id="deleted-events-table-body">
+            <tr>
+              <td colspan="6" class="empty-message">Načítání...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="{{ versioned_static('scripts/deleted/deleted_events.js') }}"></script>
+</body>
+
+</html>

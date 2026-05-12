@@ -1,0 +1,385 @@
+body {
+  padding: 20px;
+  background: #ffffff;
+  color: #102a43;
+  line-height: 1.5;
+}
+
+@media print {
+  body {
+    padding: 0;
+  }
+}
+
+#container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+#header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e6eef6;
+}
+
+#header h1 {
+  margin: 0 0 10px 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #153040;
+}
+
+#user-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+tbody td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #153040;
+  font-weight: 500;
+}
+
+#cards-section {
+  margin-top: 30px;
+}
+
+#cards-section h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #153040;
+}
+
+#cards-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #e4ecf5;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+#cards-table thead th {
+  text-align: left;
+  padding: 10px 8px;
+  font-weight: 700;
+  border-bottom: 2px solid #e6eef6;
+  background: #fbfdff;
+  white-space: nowrap;
+}
+
+#cards-table tbody td {
+  padding: 10px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f2f6fb;
+}
+
+#cards-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+#cards-table tbody tr:nth-child(even) {
+  background: #f7fbff;
+}
+
+#transactions-section {
+  margin-top: 30px;
+}
+
+#transactions-section h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #153040;
+}
+
+#transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: #ffffff;
+  border: 1px solid #e4ecf5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#transactions-table thead th {
+  text-align: left;
+  padding: 10px 8px;
+  font-weight: 700;
+  color: #1f3b4d;
+  border-bottom: 2px solid #e6eef6;
+  background: #fbfdff;
+  white-space: nowrap;
+}
+
+#transactions-table tbody td {
+  padding: 10px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f2f6fb;
+}
+
+#transactions-table tbody tr:nth-child(odd) {
+  background: #ffffff;
+}
+
+#transactions-table tbody tr:nth-child(even) {
+  background: #f7fbff;
+}
+
+.counter-header {
+  width: 48px;
+}
+
+.datetime {
+  font-weight: 500;
+  color: #153040;
+  white-space: nowrap;
+}
+
+.amount-positive {
+  color: #129756;
+  font-weight: 600;
+}
+
+.amount-negative {
+  color: #954132;
+  font-weight: 600;
+}
+
+.amount-zero {
+  font-weight: 600;
+}
+
+.transaction-type {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.transaction-type.payment {
+  background: #ede9fe;
+  color: #6b21a8;
+}
+
+.transaction-type.deposit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.transaction-type.withdrawal {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.transaction-type.refund {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+.transaction-type.no-change {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.products-info {
+  font-size: 13px;
+  max-width: 300px;
+}
+
+.product-item {
+  margin: 2px 0;
+}
+
+.empty-message {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+.error-message {
+  text-align: center;
+  color: #dc2626;
+  padding: 40px 20px;
+  font-weight: 500;
+}
+
+.card-tag {
+  font-weight: 600;
+  color: #153040;
+}
+
+.stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.stat-amount {
+  font-weight: 600;
+}
+
+.refund-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9d174d;
+  background: #fce7f3;
+  border: 1px solid #f9a8d4;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.refund-btn:hover:not(:disabled) {
+  background: #fbcfe8;
+}
+
+.refund-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actions-header {
+  white-space: nowrap;
+  width: 1%;
+}
+
+#summary {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f7fbff;
+  border: 1px solid #e4ecf5;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 1.25rem;
+  color: #153040;
+  font-weight: 700;
+}
+
+.summary-subvalue {
+  font-size: 0.95rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+@media print {
+
+  #transactions-table,
+  #cards-table {
+    border: 1px solid #000;
+  }
+
+  #transactions-table thead th,
+  #cards-table thead th {
+    background: #f0f0f0 !important;
+    border-bottom: 2px solid #000;
+  }
+
+  #transactions-table tbody tr:nth-child(odd),
+  #transactions-table tbody tr:nth-child(even),
+  #cards-table tbody tr:nth-child(odd),
+  #cards-table tbody tr:nth-child(even) {
+    background: #ffffff;
+  }
+
+  #transactions-table tbody td,
+  #cards-table tbody td {
+    border-bottom: 1px solid #ccc;
+  }
+
+  .transaction-type.payment,
+  .transaction-type.deposit,
+  .transaction-type.withdrawal,
+  .transaction-type.refund,
+  .transaction-type.no-change {
+    background: #f0f0f0;
+    border: 1px solid #000;
+  }
+
+  #summary {
+    background: #f0f0f0;
+    border: 1px solid #000;
+  }
+
+  .refund-btn,
+  .actions-header,
+  .action-cell {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #user-info {
+    grid-template-columns: 1fr;
+  }
+
+  #summary {
+    grid-template-columns: 1fr;
+  }
+
+  #transactions-table,
+  #cards-table {
+    font-size: 12px;
+  }
+
+  #transactions-table thead th,
+  #transactions-table tbody td,
+  #cards-table thead th,
+  #cards-table tbody td {
+    padding: 8px 6px;
+  }
+}

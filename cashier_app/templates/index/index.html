@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Objednávky</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/table.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/index/index.css') }}">
+</head>
+
+<body>
+  <div id="page-container">
+    <div id="seller-page">
+      <div id="product-side">
+        <div class="search-div">
+          <div class="search-bar-container">
+            <input class="search-bar" id="products-search-bar" placeholder="Vyhledávání">
+            <div class="search-icon-container">
+              <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
+            </div>
+          </div>
+        </div>
+        <div id="categories"></div>
+
+        <div id="product-grid"></div>
+      </div>
+
+      <div id="summary-side">
+        <div id="customer-details">
+          <div id="customer-details-title">
+            <div id="customer-details-title-text">Zákazník</div>
+            <button class="remove-card-button">
+              <img class="remove-card-icon" src="{{ versioned_static('images/icons/trash_icon.png') }}">
+            </button>
+          </div>
+          <div id="tag-id">
+            Karta: -
+          </div>
+          <div id="balance">
+            Zůstatek: -
+          </div>
+          <div id="balance-after-purchase">
+            Zůstatek po platbě: -
+          </div>
+        </div>
+        <div id="order-summary-container">
+          <div id="order-summary-title">
+            Objednávka
+          </div>
+          <div id="order-summary"></div>
+        </div>
+        <div id="payment-summary">
+          <div id="order-cost-row">
+            <div id="order-cost-message">
+              Celkem:
+            </div>
+            <div id="order-cost">
+              0 Kč
+            </div>
+          </div>
+          <div id="pay-error"></div>
+          <button id="pay-button">
+            Zaplatit
+          </button>
+          <button id="refund-button">
+            Vrátit platbu
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="cashier-page">
+      <section class="panel" id="users-panel">
+        <div class="panel-header">
+          <h3>Uživatelé</h3>
+          <div class="search-div">
+            <div class="search-bar-container">
+              <input class="search-bar" id="users-search-bar" placeholder="Vyhledávání" />
+              <div class="search-icon-container">
+                <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}" alt="search" />
+              </div>
+            </div>
+          </div>
+          <!-- <div><button id="add-employee" class="btn btn-primary">+ Přiřadit zaměstnance</button></div> -->
+          <div><a href="/deleted/users" target="_blank"><button id="open-deleted-users" class="btn btn-ghost">Smazaní uživatelé</button></a></div>
+        </div>
+        <div class="table-wrap">
+          <table id="users-table">
+            <thead>
+              <tr>
+                <th class="counter-header">#</th>
+                <th id="first-name-header">
+                  <div><span>Jméno</span></div>
+                </th>
+                <th id="last-name-header">
+                  <div><span>Příjmení</span></div>
+                </th>
+                <th id="email-header">
+                  <div><span>Email</span></div>
+                </th>
+                <th id="phone-number-header">
+                  <div><span>Telefonní číslo</span></div>
+                </th>
+                <th id="other-identifier-header">
+                  <div><span>Jiný identifikátor</span></div>
+                </th>
+                <th id="wallets-header">
+                  <div><span>Karty</span></div>
+                </th>
+                <th class="actions-header"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div id="card-and-user-part">
+        <section id="card-info">
+          <div id="card-info-title">
+            <div>Karta</div>
+            <button class="remove-card-button">
+              <img class="remove-card-icon" src="{{ versioned_static('images/icons/trash_icon.png') }}">
+            </button>
+          </div>
+          <div id="cashier-tag-id">
+            ID: -
+          </div>
+          <div id="cashier-balance">
+            Zůstatek: -
+          </div>
+        </section>
+
+        <section id="user-selection-or-creation">
+          <header>
+            <h2>Uživatel</h2>
+            <button id="user-inputs-search-table-toggle" search-users="">
+              <img class="search-icon" src="{{ versioned_static('images/icons/search_icon.png') }}">
+            </button>
+          </header>
+          <form id="user-form" autocomplete="off">
+
+            <input type="hidden" id="user-id-input" name="user-id">
+
+            <div class="form-row">
+              <label for="first-name-input">Jméno</label>
+              <input id="first-name-input" name="first-name" type="text" />
+              <div id="first-name-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="last-name-input">Příjmení</label>
+              <input id="last-name-input" name="last-name" type="text" />
+              <div id="last-name-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="email-input">Email</label>
+              <input id="email-input" name="email" type="email" />
+              <div id="email-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="phone-number-input">Telefonní číslo</label>
+              <div class="phone-input-wrapper">
+                <div class="country-code-container">
+                  <input type="text" id="country-code-input" name="phone-number-country-code">
+                  <!-- <div class="country-code-selector" tabindex="0">
+                    <span class="selected-code"></span>
+                  </div> -->
+                  <div class="country-code-dropdown">
+                    <!-- <div class="search-box">
+                      <input type="text" placeholder="Hledat zemi nebo kód..." class="search-input">
+                    </div> -->
+                    <div class="dropdown-content"></div>
+                  </div>
+                </div>
+                <input id="phone-number-input" class="user-phone-input" name="phone-number" type="tel" />
+              </div>
+              <div id="phone-number-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="other-identifier-input">Jiný identifikátor</label>
+              <input id="other-identifier-input" name="other-identifier" type="text" />
+              <div id="other-identifier-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="change-balance-by-input">Přidat nebo ubrat peníze (Kč)</label>
+              <input id="change-balance-by-input" name="change-balance-by" type="number" />
+              <div id="change-balance-by-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <label for="set-new-balance-input">Nový zůstatek (Kč)</label>
+              <input id="set-new-balance-input" name="new-balance" type="number" />
+              <div id="set-new-balance-error" class="form-error"></div>
+            </div>
+
+            <div class="form-row">
+              <div id="general-error" class="form-error"></div>
+            </div>
+
+            <div id="user-actions">
+              <button type="button" id="cancel-user-form" class="btn btn-ghost">Zrušit</button>
+              <!-- <button type="button" id="open-more-user-options">Další</button> -->
+              <button type="submit" id="save-user-form" class="btn btn-primary">Vytvořit</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ versioned_static('scripts/index/index.js') }}" type="module"></script>
+</body>
+
+</html>

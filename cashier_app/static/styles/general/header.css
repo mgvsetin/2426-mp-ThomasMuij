@@ -1,0 +1,216 @@
+#header {
+  background-color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  border-bottom: 1px solid rgb(211, 211, 211);
+  display: flex;
+  align-items: stretch;
+  z-index: 2000;
+}
+
+
+#header-left {
+  flex: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 20px;
+}
+
+#open-sidebar-button {
+  flex: 0 0 auto;
+  background-color: rgba(0, 0, 0, 0);
+  border: none;
+  border-radius: 5px;
+  height: 30px;
+  width: 30px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+#open-sidebar-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+#open-sidebar-button:active {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+#open-sidebar-icon {
+  height: 20px;
+  object-fit: cover;
+  display: block;
+}
+
+
+#header-middle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+
+#header-right {
+  flex: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+
+#logout-button {
+  margin-right: 5px;
+}
+
+#account-button {
+  flex: 0 0 auto;
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  margin-right: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#account-button:focus {
+  outline: 1.5px solid Highlight;
+  outline-offset: 1.5px;
+}
+
+#account-icon {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  user-select: none;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+}
+
+
+#account-dropdown {
+  position: absolute;
+  top: 55px;
+  right: 12px;
+  width: 260px;
+  background: linear-gradient(180deg, #fbfdff, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(16,24,40,0.12);
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform-origin: top right;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.96) translateY(-6px);
+  transition: transform .16s cubic-bezier(.2, .9, .2, 1), opacity .12s ease;
+  will-change: transform, opacity;
+}
+
+#account-dropdown[opened] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1) translateY(0)
+}
+
+#session-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 4px 4px 2px 4px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4));
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02) inset;
+}
+
+#username {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+#event-booth {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-all;
+}
+
+.dropdown-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px
+}
+
+.dropdown-actions a,
+.dropdown-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  text-decoration: none;
+  font-size: 15px;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+  transition: background .12s ease, transform .08s ease;
+}
+
+.dropdown-actions a:hover,
+.dropdown-actions button:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.dropdown-actions a:active,
+.dropdown-actions button:active {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.logout {
+  font-weight: 600
+}
+
+.divider {
+  height: 2px;
+  background: rgba(233, 233, 235, 0.8);
+  margin: 2px 0;
+  border-radius: 1px
+}

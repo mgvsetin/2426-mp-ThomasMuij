@@ -1,0 +1,138 @@
+body {
+  padding: var(--body-padding-top) var(--base-padding) var(--base-padding) var(--base-padding);
+  background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
+  color: #102a43;
+}
+
+.search-div {
+  flex: 1 1 auto;
+}
+
+#container {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--body-padding-top) - var(--base-padding));
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  margin-bottom: 4px;
+  padding: 0 15px;
+  gap: 32px;
+  background-color: rgb(251, 253, 255);
+  background-color: white;
+  border: 1px solid rgb(230, 238, 246);
+  border-radius: 8px;
+}
+
+
+#card {
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid rgb(230, 238, 246);
+  box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-wrap {
+  flex: 0 1 auto;
+  min-height: 120px;
+}
+
+tbody tr {
+  scroll-margin-top: 48px;
+}
+
+.username {
+  font-weight: 600;
+  color: #153040;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email {
+  font-weight: 600;
+  color: #153040;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* .created-by {
+  font-size: 12px;
+}
+
+.created-by span {
+  padding: 2px 0;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.created-by span:hover {
+  color: #556382;
+} */
+
+.actions {
+  min-width: 120px;
+}
+
+.error-message {
+  padding-top: 10px;
+  background-color: white;
+}
+
+.is-admin-toggle {
+  width: 90px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  background: #eaf2ff;
+  cursor: pointer;
+  align-items: center;
+  justify-items: center;
+}
+
+.track {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: #10b981;
+  border-radius: 999px;
+  z-index: 1;
+  transition: transform .18s ease;
+}
+
+.is-admin-toggle[data-state="yes"] .track {
+  transform: translateX(100%);
+}
+
+.option {
+  font-size: 13px;
+  text-align: center;
+  font-weight: 700;
+  z-index: 2;
+  color: #6b7280;
+  user-select: none;
+}
+
+/* selected label becomes white for contrast */
+.is-admin-toggle[data-state="no"] .option.no,
+.is-admin-toggle[data-state="yes"] .option.yes {
+  color: #fff
+}
+
+.is-admin-toggle.disabled .track {
+  background: #125a42;
+}

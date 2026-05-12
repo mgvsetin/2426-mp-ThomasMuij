@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Přihlášení</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/login/login.css') }}">
+</head>
+
+<body>
+  <main id="main">
+    <div id="login-container">
+      <div id="login-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+      </div>
+      <div id="login-text">Přihlášení</div>
+      <div id="login-subtitle">Přihlaste se ke svému účtu</div>
+      <form id="login-form" method="post">
+        <label for="username-email" id="username-email-label">Uživatelské jméno nebo email</label>
+        <input id="username-email" name="username-email" type="text" autocomplete="username"
+          placeholder="Username or email" autofocus required>
+        <label for="password" id="password-label">Heslo</label>
+        <div id="password-container">
+          <input value="development" type="password" id="password" name="password" autocomplete="current-password"
+            placeholder="Password" required>
+
+          <!-- SVG: vyplněné oko <-> přeškrtnuté oko.
+              Přepíná se změnou třídy mezi "state-show" a "state-hide".
+              Výchozí: state-hide -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" class="pw-eye state-hide"
+            role="img" aria-hidden="true" focusable="false">
+            <!-- vnější vyplněný tvar oka (stejný pro oba stavy) -->
+            <path class="eye-shape" d="M1.5 12S5.5 5.5 12 5.5 22.5 12 22.5 12 18.5 18.5 12 18.5 1.5 12 1.5 12z" />
+
+            <!-- stav zobrazit: bílý kruh duhovky s tmavým zorníkem -->
+            <g class="g-show" aria-hidden="true">
+              <!-- bílý kruh duhovky -->
+              <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+              <!-- tmavý zorník -->
+              <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+            </g>
+
+            <!-- stav skrýt: stejný kruh + zorník, s úhlopříčnou čárou přes celý ikon -->
+            <g class="g-hide" aria-hidden="true">
+              <!-- bílý kruh duhovky -->
+              <circle cx="12" cy="12" r="4" fill="var(--contrast)" />
+              <!-- tmavý zorník (s kruhem) -->
+              <circle cx="12" cy="12" r="2" fill="var(--fg)" />
+
+              <!-- diagonální čára -->
+              <line class="slash" x1="6.4" y1="4.8" x2="18.4" y2="19.2" stroke="var(--contrast)" stroke-width="2" />
+              <line class="slash" x1="5.2" y1="4.8" x2="17.2" y2="19.2" stroke="var(--fg)" stroke-width="2" />
+            </g>
+          </svg>
+
+        </div>
+        <label id="remember-me-checkbox-label">
+          <input type="checkbox" id="remember-me-checkbox" name="remember-me">
+          Zapamatovat
+        </label>
+        <div class="error-message" role="alert" aria-live="polite"></div>
+        <input type="submit" value="Přihlásit se" id="submit-button">
+      </form>
+    </div>
+  </main>
+
+  <script src="{{ versioned_static('scripts/login/login.js') }}" type="module"></script>
+</body>
+
+</html>

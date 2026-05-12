@@ -1,0 +1,440 @@
+:root {
+  --bg-start: #f6f8fb;
+  --bg-end: #ffffff;
+  --accent: #1f6feb;
+  --muted: #6b7280;
+  --panel-border: #e4ecf5;
+  --radius: 8px;
+  --max-height: 65vh;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  padding: 70px 12px 17px 12px;
+  background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
+  color: #123;
+  min-height: 100vh;
+}
+
+.search-div {
+  margin: 3px 13px;
+  border-radius: 5px;
+}
+
+body.no-scroll {
+  overflow: hidden;
+}
+
+#container {
+  margin: 0 auto;
+}
+
+#load-error-message {
+  border-color: #f5c6cb;
+  color: #842029
+}
+
+#event-created-at-container {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+
+#card {
+  background: #ffffff;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 12px;
+  box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
+}
+
+#event-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px
+}
+
+#event-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  display: inline-block;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px
+}
+
+#event-start-at,
+#event-end-at {
+  font-weight: 600;
+}
+
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 100px;
+}
+
+.panel-header {
+  display: grid;
+  align-items: center;
+  grid-template-columns: max-content 1fr max-content;
+  margin-bottom: 8px
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 1rem
+}
+
+.panel-header h3,
+.panel-header h2 {
+  cursor: pointer;
+}
+
+.table-wrap {
+  --table-max-height: var(--max-height);
+  max-height: var(--table-max-height);
+  transition: max-height 200ms ease;
+}
+
+/* Image container for product editing (non-table context) */
+.image-container {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.image-container.edit-product-image-container {
+  height: 100px;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+
+#statistics-container {
+  margin-top: 30px;
+}
+
+#statistics-container .panel-header {
+  border-bottom: 2px solid rgb(230, 230, 230);
+  margin: 10px 0 15px 0;
+  padding-bottom: 5px;
+}
+
+#statistics-container h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+#statistics {
+  overflow: auto;
+  max-height: 5000px;
+  transition: max-height 200ms ease;
+}
+
+#statistics.closed {
+  max-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statistics {
+    transition: none;
+  }
+}
+
+/* CELKOVÉ STATISTIKY - KARTY */
+.stats-overview {
+  margin-bottom: 30px;
+}
+
+.stats-overview h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: rgb(250, 250, 250);
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgb(100, 100, 100);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgb(30, 30, 30);
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: rgb(130, 130, 130);
+  margin-top: 4px;
+}
+
+.stat-card--refund {
+  border-color: rgb(220, 53, 69, 0.4);
+  background: rgb(255, 248, 248);
+}
+
+.stat-card--refund .stat-value {
+  color: rgb(180, 30, 30);
+}
+
+.stat-refund-badge {
+  color: rgb(180, 30, 30);
+  font-weight: 500;
+}
+
+.booth-stat-revenue-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgb(130, 130, 130);
+  margin-left: 6px;
+}
+
+/* GRAFY */
+.stats-charts {
+  margin-bottom: 30px;
+}
+
+.stats-charts h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.chart-wrapper {
+  margin-bottom: 25px;
+}
+
+.chart-wrapper h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: rgb(60, 60, 60);
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+/* DETAIL STÁNKŮ */
+.stats-booths {
+  margin-bottom: 30px;
+}
+
+.stats-booths h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.stats-booths h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 10px 0;
+  color: rgb(60, 60, 60);
+}
+
+.booth-stat-card {
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.booth-stat-header {
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.booth-stat-header:hover {
+  background-color: rgb(248, 248, 248);
+}
+
+.booth-stat-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.booth-stat-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(30, 30, 30);
+}
+
+.booth-stat-revenue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.booth-stat-details {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: rgb(100, 100, 100);
+  flex-wrap: wrap;
+}
+
+.booth-products {
+  border-top: 1px solid rgb(230, 230, 230);
+  padding: 15px;
+  background-color: rgb(252, 252, 252);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booth-products {
+    animation: none;
+  }
+}
+
+.booth-products-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.booth-products-table thead {
+  background: rgb(245, 245, 245);
+}
+
+.booth-products-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgb(220, 220, 220);
+}
+
+.booth-products-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgb(240, 240, 240);
+}
+
+.booth-products-table tbody tr:hover {
+  background-color: rgb(248, 248, 248);
+}
+
+/* DETAIL PRODUKTŮ */
+.stats-products {
+  margin-bottom: 30px;
+}
+
+.stats-products h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.products-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid rgb(230, 230, 230);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.products-stats-table thead {
+  background: rgb(245, 245, 245);
+}
+
+.products-stats-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid rgb(220, 220, 220);
+  font-size: 14px;
+}
+
+.products-stats-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgb(240, 240, 240);
+  font-size: 14px;
+}
+
+.products-stats-table tbody tr:hover {
+  background: rgb(252, 252, 252);
+}
+
+
+.event-connected-yes {
+  color: #059669;
+  font-weight: 600;
+}
+
+.event-connected-no {
+  color: #6b7280;
+}

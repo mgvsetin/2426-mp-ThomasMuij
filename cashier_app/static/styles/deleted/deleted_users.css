@@ -1,0 +1,71 @@
+body {
+  padding: var(--body-padding-top) var(--base-padding) var(--base-padding) var(--base-padding);
+  background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
+  color: #102a43;
+}
+
+.search-div {
+  flex: 1 1 auto;
+}
+
+#container {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--base-padding) - var(--body-padding-top));
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  margin-bottom: 4px;
+  padding: 0 15px;
+  gap: 32px;
+  background-color: white;
+  border: 1px solid rgb(230, 238, 246);
+  border-radius: 8px;
+}
+
+#card {
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid rgb(230, 238, 246);
+  box-shadow: 0 6px 20px rgba(23, 39, 55, 0.04);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Size to content, shrink if needed, don't overflow parent */
+.table-wrap {
+  flex: 0 1 auto;
+  min-height: 70px;
+}
+
+/* Page-specific styles */
+.deleted-at {
+  white-space: nowrap;
+}
+
+.icon-btn.restore {
+  background: #f0fdfa;
+  border-color: rgba(15, 118, 110, 0.06);
+  color: #0f766e;
+}
+
+.error-message {
+  padding-top: 10px;
+  background-color: white;
+}
+
+.empty-message {
+  text-align: center;
+  color: #6b7280;
+}
+
+#force-user-restore {
+  margin: 8px 0;
+}

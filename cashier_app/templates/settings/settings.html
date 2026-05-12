@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nastavení</title>
+
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/general.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/header.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/sidebar.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/general/modals_forms.css') }}">
+  <link rel="stylesheet" href="{{ versioned_static('styles/settings/settings.css') }}">
+</head>
+
+<body>
+  <div id="container">
+    <h1 id="page-title">Nastavení</h1>
+
+    <div id="settings-grid">
+      <div class="settings-section" id="account-section">
+        <div class="section-header">
+          <h2>Účet</h2>
+        </div>
+
+        <div class="info-rows">
+          <div class="info-row">
+            <div class="info-label">Uživatelské jméno</div>
+            <div class="info-value" id="display-username">-</div>
+            <!-- <button class="btn btn-ghost info-action" id="edit-username-button">Upravit</button> -->
+          </div>
+
+          <div class="info-row">
+            <div class="info-label">Email</div>
+            <div class="info-value" id="display-email">-</div>
+            <!-- <button class="btn btn-ghost info-action" id="edit-email-button">Upravit</button> -->
+          </div>
+
+          <div class="info-row">
+            <div class="info-label">Heslo</div>
+            <div class="info-value muted">••••••••</div>
+            <button class="btn btn-ghost info-action" id="change-password-button">Změnit</button>
+          </div>
+
+          <div class="info-row">
+            <div class="info-label">Role</div>
+            <div class="info-value" id="display-role">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section" id="readers-section">
+        <div class="section-header">
+          <h2>Čtečky karet</h2>
+        </div>
+        <div id="readers-list"></div>
+        <div id="readers-empty" class="readers-empty">Žádné čtečky nejsou připojeny.</div>
+        <div id="readers-not-supported" class="readers-not-supported" style="display:none;">
+          Tento prohlížeč nepodporuje Web Serial API.
+        </div>
+        <div id="reader-test-result" class="reader-test-result" style="display:none;">
+          <span class="reader-test-label">Přečtené ID karty:</span>
+          <span id="reader-test-value" class="reader-test-value">-</span>
+        </div>
+        <div class="section-actions">
+          <button id="add-reader-button" class="btn btn-primary">+ Přidat čtečku</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ versioned_static('scripts/settings/settings.js') }}" type="module"></script>
+</body>
+
+</html>
