@@ -83,7 +83,6 @@ def export_unredeemed_wallets_csv(event_id):
                 FROM wallets w
                 LEFT JOIN users u ON u.id = w.owner_id
                 WHERE w.event_id = %s
-                  AND w.deleted_at IS NULL
                   AND w.balance_czk > 0
                 ORDER BY w.balance_czk DESC, u.last_name, u.first_name
                 ''',
